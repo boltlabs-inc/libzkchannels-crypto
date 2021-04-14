@@ -13,18 +13,18 @@ jobs:
     steps:
       - uses: actions/cache@v2
         with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions/checkout@v2
 
       - name: Set toolchain
         uses: actions-rs/toolchain@v1
         with:
-        components: rustfmt, clippy
+          components: rustfmt, clippy
 
       - name: Format check
         run: cargo fmt -- --check

@@ -35,5 +35,11 @@ jobs:
       - name: Build
         run: cargo build --all-features --all-targets --verbose
 
-      - name: Run all tests
+      - name: Run all tests except doctests
         run: cargo test --all-features --all-targets --verbose
+      
+      - name: Run all doctests
+        run: cargo test --all-features --doc --verbose
+
+      - name: Build documentation
+        run: cargo doc --all-features --no-deps --verbose

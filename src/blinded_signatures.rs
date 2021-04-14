@@ -1,4 +1,4 @@
-// Implementation of Pointcheval-Sanders blind signatures with efficient protocols
+// Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381
 use crate::signatures::*;
 
 pub(crate) struct BlindSecretKey {}

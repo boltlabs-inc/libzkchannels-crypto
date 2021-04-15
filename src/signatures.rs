@@ -1,55 +1,59 @@
 // Implementation of randomizable multi-message Pointcheval-Sanders signatures over BLS12-381
-use crate::blinded_signatures::*;
-use bls12_381 as BLS12;
+use crate::{blinded_signatures::*, types::*};
 use ff::Field;
 use group::Group;
 use rand::CryptoRng;
 use rand_core::RngCore;
-use std::ops::Index;
+use std::{iter, ops::Deref};
 
 /// Pointcheval-Sanders secret key for normal multi-message signing
+#[derive(Debug)]
 pub(crate) struct SecretKey {
-    x: BLS12::Scalar,
-    ys: Vec<BLS12::Scalar>,
+    x: Scalar,
+    ys: Vec<Scalar>,
 }
 
 /// Pointcheval-Sanders public key for normal multi-message verifying
+#[derive(Debug, Clone)]
 pub struct PublicKey {
     /// AKA g~
-    g: BLS12::G2Affine,
+    g: G2Affine,
     /// AKA X~
-    x: BLS12::G2Affine,
+    x: G2Affine,
     /// AKA Y~_1 ... Y~_l
-    ys: Vec<BLS12::G2Affine>,
+    ys: Vec<G2Affine>,
 }
 
 /// Pointcheval-Sanders keypair
+#[derive(Debug)]
 pub struct KeyPair {
     sk: SecretKey,
     pub pk: PublicKey,
 }
 
-/// Fixed-length message type used in Pointcheval-Sanders schemes
-pub struct Message(Vec<BLS12::Scalar>);
+/// Fixed-length message type used in Pointcheval-Sanders schemes   
+#[derive(Debug, Clone)]
+pub struct Message(Vec<Scalar>);
 
 /// Pointcheval-Sanders basic signature object
+#[derive(Debug, Clone)]
 pub struct Signature {
     /// AKA sigma_1
-    h: BLS12::G1Affine,
+    h: G1Affine,
     /// AKA sigma_2 or H
-    h_exp: BLS12::G1Affine,
+    h_exp: G1Affine,
 }
 
-impl Index<usize> for Message {
-    type Output = BLS12::Scalar;
+impl Deref for Message {
+    type Target = [Scalar];
 
-    fn index(&self, i: usize) -> &Self::Output {
-        &self.0[i]
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
 impl Message {
-    pub fn new(m: Vec<BLS12::Scalar>) -> Self {
+    pub fn new(m: Vec<Scalar>) -> Self {
         Message(m)
     }
 
@@ -65,11 +69,10 @@ impl Message {
 impl SecretKey {
     /// Constructs a new SecretKey from scratch
     pub fn new(length: usize, rng: &mut (impl CryptoRng + RngCore)) -> Self {
-        let x = BLS12::Scalar::random(&mut *rng);
-        let mut ys = Vec::with_capacity(length);
-        for _i in 0..length {
-            ys.push(BLS12::Scalar::random(&mut *rng));
-        }
+        let x = Scalar::random(&mut *rng);
+        let ys = iter::repeat_with(|| Scalar::random(&mut *rng))
+            .take(length)
+            .collect();
         SecretKey { x, ys }
     }
 
@@ -88,18 +91,22 @@ impl SecretKey {
         }
         // select h randomly from G*_1
         // this function shouldn't return ID, but we'll check just in case
-        let mut h = BLS12::G1Projective::random(&mut *rng);
+        let mut h = G1Projective::random(&mut *rng);
         while bool::from(h.is_identity()) {
-            h = BLS12::G1Projective::random(&mut *rng);
+            h = G1Projective::random(&mut *rng);
         }
-        let mut exp = self.x;
-        for i in 0..msg.len() {
-            exp += self.ys[i] * msg[i];
-        }
+        // exp = x + sum( yi * mi )
+        let exp = self.x
+            + self
+                .ys
+                .iter()
+                .zip(msg.iter())
+                .map(|(yi, mi)| yi * mi)
+                .sum::<Scalar>();
 
         Ok(Signature {
-            h: BLS12::G1Affine::from(h),
-            h_exp: BLS12::G1Affine::from(h * exp),
+            h: G1Affine::from(h),
+            h_exp: G1Affine::from(h * exp),
         })
     }
 }
@@ -109,36 +116,37 @@ impl PublicKey {
     fn from_secret_key(sk: &SecretKey, rng: &mut (impl CryptoRng + RngCore)) -> Self {
         // select g randomly from G*_2
         // this function shouldn't return ID, but we'll check just in case
-        let mut g = BLS12::G2Projective::random(&mut *rng);
+        let mut g = G2Projective::random(&mut *rng);
         while bool::from(g.is_identity()) {
-            g = BLS12::G2Projective::random(&mut *rng);
+            g = G2Projective::random(&mut *rng);
         }
 
         // G1 * Scalar is point multiplication (Yi = g ^ yi)
-        let mut ys = Vec::with_capacity(sk.ys.len());
-        for yi in &sk.ys {
-            ys.push(BLS12::G2Affine::from(g * yi));
-        }
+        let ys = sk.ys.iter().map(|yi| G2Affine::from(g * yi)).collect();
 
         PublicKey {
-            g: BLS12::G2Affine::from(g),
-            x: BLS12::G2Affine::from(g * sk.x),
+            g: G2Affine::from(g),
+            x: G2Affine::from(g * sk.x),
             ys,
         }
     }
 
     pub fn verify(&self, msg: &Message, sig: &Signature) -> bool {
         if bool::from(sig.h.is_identity()) {
-            println!("It's identity!");
             return false;
         }
-        let mut lhs = BLS12::G2Projective::from(self.x);
-        for i in 0..self.ys.len() {
-            lhs += self.ys[i] * msg[i];
-        }
 
-        let verify_pairing = BLS12::pairing(&sig.h, &BLS12::G2Affine::from(lhs));
-        let signature_pairing = BLS12::pairing(&sig.h_exp, &self.g);
+        // lhs = x + sum( yi ^ mi )
+        let lhs = G2Projective::from(self.x)
+            + self
+                .ys
+                .iter()
+                .zip(msg.iter())
+                .map(|(yi, mi)| yi * mi)
+                .sum::<G2Projective>();
+
+        let verify_pairing = pairing(&sig.h, &lhs.into());
+        let signature_pairing = pairing(&sig.h_exp, &self.g);
 
         verify_pairing == signature_pairing
     }

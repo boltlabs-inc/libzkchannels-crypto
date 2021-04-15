@@ -1,36 +1,41 @@
 // Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381
 use crate::signatures::*;
 
+#[derive(Debug)]
 pub(crate) struct BlindSecretKey {}
 
+#[derive(Debug, Clone)]
 pub struct BlindPublicKey {}
 
+#[derive(Debug)]
 pub struct BlindKeyPair {
     sk: BlindSecretKey,
     pub pk: BlindPublicKey,
 }
 
+#[derive(Debug, Clone)]
 pub struct BlindedMessage {}
 
+#[derive(Debug, Clone)]
 pub struct BlindedSignature {}
 
 impl BlindSecretKey {
     pub fn new(_length: u64) -> Self {
-        unimplemented!();
+        todo!();
     }
 
     pub fn from_secret_key(_sk: &SecretKey) -> Self {
-        unimplemented!();
+        todo!();
     }
 
-    pub fn blind_sign(&self, _msg: BlindedMessage) -> BlindedSignature {
-        unimplemented!();
+    pub fn blind_sign(&self, _msg: &BlindedMessage) -> BlindedSignature {
+        todo!();
     }
 }
 
 impl BlindPublicKey {
     fn from_secret_key(_sk: &BlindSecretKey) -> Self {
-        unimplemented!();
+        todo!();
     }
 }
 
@@ -47,7 +52,7 @@ impl BlindKeyPair {
         BlindKeyPair { sk: bsk, pk }
     }
 
-    pub fn blind_sign(&self, msg: BlindedMessage) -> BlindedSignature {
+    pub fn blind_sign(&self, msg: &BlindedMessage) -> BlindedSignature {
         self.sk.blind_sign(msg)
     }
 }

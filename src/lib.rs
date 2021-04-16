@@ -2,12 +2,32 @@ pub mod blinded_signatures;
 pub mod signatures;
 
 mod types {
+    use std::ops::Deref;
+
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
+
+    /// Fixed-length message type used in Pointcheval-Sanders schemes   
+    #[derive(Debug, Clone)]
+    pub struct Message(Vec<Scalar>);
+
+    impl Deref for Message {
+        type Target = [Scalar];
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl Message {
+        pub fn new(m: Vec<Scalar>) -> Self {
+            Message(m)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::signatures::{KeyPair, Message};
+    use crate::{signatures::KeyPair, types::Message};
     use bls12_381::Scalar;
     use ff::Field;
     use std::iter;

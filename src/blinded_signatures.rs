@@ -21,16 +21,19 @@ pub struct BlindedMessage {}
 #[derive(Debug, Clone)]
 pub struct BlindedSignature {}
 
+#[derive(Debug, Clone, Copy)]
+pub struct BlindingFactor(pub Scalar);
+
 impl BlindedSignature {
     /// Generates a blinded signature and corresponding blinding factor
-    pub fn from(_rng: &mut (impl CryptoRng + RngCore), _sig: Signature) -> (Self, Scalar) {
+    pub fn from(_rng: &mut (impl CryptoRng + RngCore), _sig: Signature) -> (Self, BlindingFactor) {
         todo!();
     }
 
     /// Unblinds a signature. This will always compute: the user must take care to use
     /// a blinding factor that actually corresponds to the signature in order to retrieve
     /// a valid Signature on the original message.
-    pub fn unblind(&self, _bf: &Scalar) -> Signature {
+    pub fn unblind(&self, _bf: &BlindingFactor) -> Signature {
         todo!()
     }
 
@@ -53,7 +56,7 @@ impl BlindSecretKey {
     fn try_blind_sign(
         &self,
         _rng: &mut (impl CryptoRng + RngCore),
-        _msg: BlindedMessage,
+        _msg: &BlindedMessage,
     ) -> Result<BlindedSignature, String> {
         todo!();
     }
@@ -64,7 +67,7 @@ impl BlindPublicKey {
     fn from_secret_key(
         _rng: &mut (impl CryptoRng + RngCore),
         _sk: &BlindSecretKey,
-        _g: G1Projective,
+        _g: &G1Projective,
     ) -> Self {
         todo!();
     }
@@ -73,7 +76,7 @@ impl BlindPublicKey {
     pub fn blind_message(
         _rng: &mut (impl CryptoRng + RngCore),
         _msg: &Message,
-    ) -> (BlindedMessage, Scalar) {
+    ) -> (BlindedMessage, BlindingFactor) {
         todo!();
     }
 
@@ -94,7 +97,7 @@ impl BlindKeyPair {
     pub fn try_blind_sign(
         &self,
         rng: &mut (impl CryptoRng + RngCore),
-        msg: BlindedMessage,
+        msg: &BlindedMessage,
     ) -> Result<BlindedSignature, String> {
         self.sk.try_blind_sign(rng, msg)
     }

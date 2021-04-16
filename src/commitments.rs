@@ -3,7 +3,8 @@ use crate::types::*;
 #[derive(Debug, Clone, Copy)]
 pub struct CommitmentRandomness(pub Scalar);
 
-struct Commitment;
+#[derive(Debug, Clone)]
+pub struct Commitment;
 
 impl Commitment {
     /// Commits to a message; produces commitment and commitment randomness

@@ -4,7 +4,7 @@ use ff::Field;
 use group::Group;
 use rand::CryptoRng;
 use rand_core::RngCore;
-use std::{iter, ops::Deref};
+use std::iter;
 
 /// Pointcheval-Sanders secret key for normal multi-message signing
 #[derive(Debug)]
@@ -27,13 +27,9 @@ pub struct PublicKey {
 /// Pointcheval-Sanders keypair
 #[derive(Debug)]
 pub struct KeyPair {
-    sk: SecretKey,
+    pub(crate) sk: SecretKey,
     pub pk: PublicKey,
 }
-
-/// Fixed-length message type used in Pointcheval-Sanders schemes   
-#[derive(Debug, Clone)]
-pub struct Message(Vec<Scalar>);
 
 /// Pointcheval-Sanders basic signature object
 #[derive(Debug, Clone)]
@@ -42,28 +38,6 @@ pub struct Signature {
     h: G1Affine,
     /// AKA sigma_2 or H
     h_exp: G1Affine,
-}
-
-impl Deref for Message {
-    type Target = [Scalar];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Message {
-    pub fn new(m: Vec<Scalar>) -> Self {
-        Message(m)
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
 }
 
 impl Signature {
@@ -167,14 +141,8 @@ impl KeyPair {
         KeyPair { sk, pk }
     }
 
-    pub fn get_blinded_keypair(&self, rng: &mut (impl CryptoRng + RngCore)) -> BlindKeyPair {
+    pub fn to_blinded_keypair(&self, rng: &mut (impl CryptoRng + RngCore)) -> BlindKeyPair {
         BlindKeyPair::from_keypair(rng, &self)
-    }
-
-    #[allow(dead_code)]
-    /// Not recommended: this function should only be used to construct BlindedKeyPairs
-    pub(crate) fn get_secret_key(&self) -> &SecretKey {
-        &self.sk
     }
 
     pub fn try_sign(

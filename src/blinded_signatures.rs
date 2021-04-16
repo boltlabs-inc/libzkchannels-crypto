@@ -1,5 +1,7 @@
 // Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381
-use crate::signatures::*;
+use crate::{signatures::*, types::*};
+use rand::CryptoRng;
+use rand_core::RngCore;
 
 #[derive(Debug)]
 pub(crate) struct BlindSecretKey {}
@@ -19,40 +21,81 @@ pub struct BlindedMessage {}
 #[derive(Debug, Clone)]
 pub struct BlindedSignature {}
 
+impl BlindedSignature {
+    /// Generates a blinded signature and corresponding blinding factor
+    pub fn from(_rng: &mut (impl CryptoRng + RngCore), _sig: Signature) -> (Self, Scalar) {
+        todo!();
+    }
+
+    /// Unblinds a signature. This will always compute: the user must take care to use
+    /// a blinding factor that actually corresponds to the signature in order to retrieve
+    /// a valid Signature on the original message.
+    pub fn unblind(&self, _bf: &Scalar) -> Signature {
+        todo!()
+    }
+
+    /// Randomizes signature in-place.
+    pub fn randomize(&mut self, _rng: &mut (impl CryptoRng + RngCore)) {
+        todo!()
+    }
+}
+
+#[allow(dead_code)]
 impl BlindSecretKey {
-    pub fn new(_length: u64) -> Self {
+    fn new(_rng: &mut (impl CryptoRng + RngCore), _length: usize, _g: G1Projective) -> Self {
         todo!();
     }
 
-    pub fn from_secret_key(_sk: &SecretKey) -> Self {
+    fn from_secret_key(_sk: &SecretKey, _g: G1Projective) -> Self {
         todo!();
     }
 
-    pub fn blind_sign(&self, _msg: &BlindedMessage) -> BlindedSignature {
+    fn try_blind_sign(
+        &self,
+        _rng: &mut (impl CryptoRng + RngCore),
+        _msg: BlindedMessage,
+    ) -> Result<BlindedSignature, String> {
         todo!();
     }
 }
 
 impl BlindPublicKey {
-    fn from_secret_key(_sk: &BlindSecretKey) -> Self {
+    #[allow(dead_code)]
+    fn from_secret_key(
+        _rng: &mut (impl CryptoRng + RngCore),
+        _sk: &BlindSecretKey,
+        _g: G1Projective,
+    ) -> Self {
+        todo!();
+    }
+
+    /// Generates a blinded message and corresponding blinding factor
+    pub fn blind_message(
+        _rng: &mut (impl CryptoRng + RngCore),
+        _msg: &Message,
+    ) -> (BlindedMessage, Scalar) {
+        todo!();
+    }
+
+    pub fn blind_verify(&self, _msg: &Message, _sig: &BlindedSignature, _bf: &Scalar) -> bool {
         todo!();
     }
 }
 
 impl BlindKeyPair {
-    pub fn new(length: u64) -> Self {
-        let sk = BlindSecretKey::new(length);
-        let pk = BlindPublicKey::from_secret_key(&sk);
-        BlindKeyPair { sk, pk }
+    pub fn new(_length: usize, _rng: &mut (impl CryptoRng + RngCore)) -> Self {
+        todo!();
     }
 
-    pub(crate) fn from_secret_key(sk: &SecretKey) -> Self {
-        let bsk = BlindSecretKey::from_secret_key(sk);
-        let pk = BlindPublicKey::from_secret_key(&bsk);
-        BlindKeyPair { sk: bsk, pk }
+    pub fn from_keypair(_rng: &mut (impl CryptoRng + RngCore), _kp: &KeyPair) -> Self {
+        todo!();
     }
 
-    pub fn blind_sign(&self, msg: &BlindedMessage) -> BlindedSignature {
-        self.sk.blind_sign(msg)
+    pub fn try_blind_sign(
+        &self,
+        rng: &mut (impl CryptoRng + RngCore),
+        msg: BlindedMessage,
+    ) -> Result<BlindedSignature, String> {
+        self.sk.try_blind_sign(rng, msg)
     }
 }

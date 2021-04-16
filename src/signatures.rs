@@ -66,6 +66,13 @@ impl Message {
     }
 }
 
+impl Signature {
+    /// Randomizes signature in-place.
+    pub fn randomize(&mut self, _rng: &mut (impl CryptoRng + RngCore)) {
+        todo!()
+    }
+}
+
 impl SecretKey {
     /// Constructs a new SecretKey from scratch
     pub fn new(length: usize, rng: &mut (impl CryptoRng + RngCore)) -> Self {
@@ -160,8 +167,14 @@ impl KeyPair {
         KeyPair { sk, pk }
     }
 
-    pub fn get_blinded_keypair(&self) -> BlindKeyPair {
-        BlindKeyPair::from_secret_key(&self.sk)
+    pub fn get_blinded_keypair(&self, rng: &mut (impl CryptoRng + RngCore)) -> BlindKeyPair {
+        BlindKeyPair::from_keypair(rng, &self)
+    }
+
+    #[allow(dead_code)]
+    /// Not recommended: this function should only be used to construct BlindedKeyPairs
+    pub(crate) fn get_secret_key(&self) -> &SecretKey {
+        &self.sk
     }
 
     pub fn try_sign(

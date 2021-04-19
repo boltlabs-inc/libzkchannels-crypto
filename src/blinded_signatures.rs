@@ -112,12 +112,38 @@ impl BlindKeyPair {
         todo!();
     }
 
-    /// Produces a signature on the given message
+    /// Signs a blinded message
     pub fn try_blind_sign(
         &self,
         rng: &mut (impl CryptoRng + RngCore),
         msg: &BlindedMessage,
     ) -> Result<BlindedSignature, String> {
         self.sk.try_blind_sign(rng, msg)
+    }
+
+    /// Verifies that the given signature is on the message, using the blinding factor.
+    pub fn blind_verify(
+        &self,
+        msg: &Message,
+        sig: &BlindedSignature,
+        bf: &BlindingFactor,
+    ) -> bool {
+        self.pk.blind_verify(msg, sig, bf)
+    }
+
+    /// Signs a message
+    pub fn try_sign(
+        &self,
+        _rng: &mut (impl CryptoRng + RngCore),
+        _msg: &Message,
+    ) -> Result<Signature, String> {
+        // extracts non-blind keypair and signs
+        todo!();
+    }
+
+    /// Verifies that the signature is valid and is on the message
+    pub fn verify(&self, _msg: &Message, _sig: &Signature) -> bool {
+        // extracts non-blind keypair and verifies
+        todo!();
     }
 }

@@ -41,7 +41,7 @@ pub struct Signature {
 }
 
 impl Signature {
-    /// Randomizes signature in-place.
+    /// Randomizes signature in-place
     pub fn randomize(&mut self, _rng: &mut (impl CryptoRng + RngCore)) {
         todo!()
     }
@@ -57,7 +57,7 @@ impl SecretKey {
         SecretKey { x, ys }
     }
 
-    /// attempts to sign a message. This is not a constant-time implementation.
+    /// Attempts to sign a message. This is not a constant-time implementation.
     pub fn try_sign(
         &self,
         rng: &mut (impl CryptoRng + RngCore),
@@ -76,7 +76,7 @@ impl SecretKey {
         while bool::from(h.is_identity()) {
             h = G1Projective::random(&mut *rng);
         }
-        // exp = x + sum( yi * mi )
+        // x + sum( yi * mi ), for the secret key (x, y1, ...) and message m1 ...
         let exp = self.x
             + self
                 .ys
@@ -102,7 +102,8 @@ impl PublicKey {
             g = G2Projective::random(&mut *rng);
         }
 
-        // G1 * Scalar is point multiplication (Yi = g ^ yi)
+        // public yi = g ^ (secret yi)
+        // note that g: G1 * yi: Scalar is point multiplication
         let ys = sk.ys.iter().map(|yi| G2Affine::from(g * yi)).collect();
 
         PublicKey {
@@ -112,13 +113,14 @@ impl PublicKey {
         }
     }
 
+    /// Verifies that the signature is valid and is on the message
     pub fn verify(&self, msg: &Message, sig: &Signature) -> bool {
         if bool::from(sig.h.is_identity()) {
             return false;
         }
 
-        // lhs = x + sum( yi ^ mi )
-        let lhs = G2Projective::from(self.x)
+        // x + sum( yi ^ mi ), for the public key (x, y1, ...) and message m1, m2...
+        let lhs = self.x
             + self
                 .ys
                 .iter()
@@ -141,10 +143,12 @@ impl KeyPair {
         KeyPair { sk, pk }
     }
 
+    /// Extends keypair to support blinded signatures
     pub fn to_blinded_keypair(&self, rng: &mut (impl CryptoRng + RngCore)) -> BlindKeyPair {
         BlindKeyPair::from_keypair(rng, &self)
     }
 
+    /// Signs a message
     pub fn try_sign(
         &self,
         rng: &mut (impl CryptoRng + RngCore),
@@ -153,6 +157,7 @@ impl KeyPair {
         self.sk.try_sign(rng, msg)
     }
 
+    /// Verifies that the signature is valid and is on the message
     pub fn verify(&self, msg: &Message, sig: &Signature) -> bool {
         self.pk.verify(msg, sig)
     }

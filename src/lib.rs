@@ -1,4 +1,5 @@
 pub mod blinded_signatures;
+pub mod commitments;
 pub mod signatures;
 
 mod types {

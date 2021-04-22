@@ -10,48 +10,6 @@ pub struct Commitment;
 #[derive(Debug, Clone, Copy)]
 pub struct CommitmentRandomness(pub Scalar);
 
-trait Commit {
-    /// Commits to a message; produces commitment and commitment randomness
-    fn commit(
-        &self,
-        rng: &mut (impl CryptoRng + RngCore),
-        msg: &Message,
-    ) -> (Commitment, CommitmentRandomness);
-
-    /// Verifies the commitment on the given message and randomness
-    fn decommit(&self, msg: &Message, com: Commitment, r: &CommitmentRandomness) -> bool;
-}
-
-/// Pedersen commitment using generators defined in a Pointcheval-Sanders public key
-impl Commit for BlindPublicKey {
-    fn commit(
-        &self,
-        _rng: &mut (impl CryptoRng + RngCore),
-        _msg: &Message,
-    ) -> (Commitment, CommitmentRandomness) {
-        todo!();
-    }
-
-    fn decommit(&self, _msg: &Message, _com: Commitment, _r: &CommitmentRandomness) -> bool {
-        todo!();
-    }
-}
-
-/// Pedersen commitment using generators defined in a Pointcheval-Sanders keypair
-impl Commit for BlindKeyPair {
-    fn commit(
-        &self,
-        rng: &mut (impl CryptoRng + RngCore),
-        msg: &Message,
-    ) -> (Commitment, CommitmentRandomness) {
-        self.pk.commit(rng, msg)
-    }
-
-    fn decommit(&self, msg: &Message, com: Commitment, r: &CommitmentRandomness) -> bool {
-        self.pk.decommit(msg, com, r)
-    }
-}
-
 /// Parameters for Pedersen commitments
 pub struct PedersenParameters;
 
@@ -62,17 +20,42 @@ impl PedersenParameters {
     }
 }
 
-/// General-purpose Pedersen commitments
-impl Commit for PedersenParameters {
-    fn commit(
+impl Message {
+    /// Commits to a message; produces commitment and commitment randomness
+    pub fn commit(
         &self,
         _rng: &mut (impl CryptoRng + RngCore),
-        _msg: &Message,
+        _pp: &PedersenParameters,
     ) -> (Commitment, CommitmentRandomness) {
         todo!();
     }
 
-    fn decommit(&self, _msg: &Message, _com: Commitment, _r: &CommitmentRandomness) -> bool {
+    /// Verifies the commitment on the given message and randomness
+    pub fn decommit(
+        &self,
+        _pp: PedersenParameters,
+        _com: Commitment,
+        _r: &CommitmentRandomness,
+    ) -> bool {
+        todo!();
+    }
+
+    /// Commits to a message using generators from a Pointcheval-Sanders key
+    pub fn commit_to_publickey(
+        &self,
+        _rng: &mut (impl CryptoRng + RngCore),
+        _pk: &BlindPublicKey,
+    ) -> (Commitment, CommitmentRandomness) {
+        todo!();
+    }
+
+    /// Verifies a commitment with randomness generated with the public key
+    pub fn decommit_to_publickey(
+        &self,
+        _pk: &BlindPublicKey,
+        _com: Commitment,
+        _r: &CommitmentRandomness,
+    ) -> bool {
         todo!();
     }
 }

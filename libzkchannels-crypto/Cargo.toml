@@ -1,0 +1,14 @@
+[package]
+name = "libzkchannels-crypto"
+version = "0.1.0"
+authors = ["Marcella Hastings <marcella@boltlabs.io>"]
+edition = "2018"
+license = "MIT"
+description = "implementation of a randomizable signature scheme with efficient zero knowledge protocols"
+
+[dependencies]
+bls12_381 = "0.4.0"
+ff = "0.9"
+group = "0.9"
+rand_core = "0.6.0"
+rand = "0.8.3"

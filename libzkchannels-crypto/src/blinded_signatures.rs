@@ -122,12 +122,7 @@ impl BlindKeyPair {
     }
 
     /// Verifies that the given signature is on the message, using the blinding factor.
-    pub fn blind_verify(
-        &self,
-        msg: &Message,
-        sig: &BlindedSignature,
-        bf: &BlindingFactor,
-    ) -> bool {
+    pub fn blind_verify(&self, msg: &Message, sig: &BlindedSignature, bf: &BlindingFactor) -> bool {
         self.pk.blind_verify(msg, sig, bf)
     }
 

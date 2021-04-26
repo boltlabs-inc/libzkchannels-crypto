@@ -33,8 +33,8 @@ impl Message {
     /// Verifies the commitment on the given message and randomness
     pub fn decommit(
         &self,
-        _pp: PedersenParameters,
-        _com: Commitment,
+        _pp: &PedersenParameters,
+        _com: &Commitment,
         _r: &CommitmentRandomness,
     ) -> bool {
         todo!();
@@ -53,7 +53,7 @@ impl Message {
     pub fn decommit_to_publickey(
         &self,
         _pk: &BlindPublicKey,
-        _com: Commitment,
+        _com: &Commitment,
         _r: &CommitmentRandomness,
     ) -> bool {
         todo!();

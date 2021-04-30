@@ -1,4 +1,4 @@
-use crate::{blinded_signatures::*, types::*};
+use crate::{blinded_signatures::BlindPublicKey, types::*};
 use rand::CryptoRng;
 use rand_core::RngCore;
 

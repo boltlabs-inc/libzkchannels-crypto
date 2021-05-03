@@ -37,7 +37,7 @@ pub struct BlindedSignature;
 pub struct BlindingFactor(pub Scalar);
 
 impl BlindingFactor {
-    pub fn new(_rng: &mut (impl CryptoRng + RngCore)) {
+    pub fn new(_rng: &mut (impl CryptoRng + RngCore)) -> Self {
         todo!();
     }
 }

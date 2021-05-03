@@ -1,6 +1,6 @@
-pub mod blinded_signatures;
-pub mod commitments;
-pub mod signatures;
+pub mod pedersen_commitments;
+pub mod ps_blind_signatures;
+pub mod ps_signatures;
 
 mod types {
     use std::ops::Deref;
@@ -28,7 +28,7 @@ mod types {
 
 #[cfg(test)]
 mod tests {
-    use crate::{signatures::KeyPair, types::Message};
+    use crate::{ps_signatures::KeyPair, types::Message};
     use bls12_381::Scalar;
     use ff::Field;
     use std::iter;

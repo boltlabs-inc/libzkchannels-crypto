@@ -1,15 +1,19 @@
-// Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381
-use crate::{signatures::*, types::*};
+/// Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381
+/// See references in ps_signatures.rs
+use crate::{pedersen_commitments::PedersenParameters, ps_signatures::*, types::*};
 use rand::CryptoRng;
 use rand_core::RngCore;
 
 /// Pointcheval-Sanders secret key for blind multi-message signing
+/// Includes scalars [x], [y1], ..., [yl] and G1 element X = [x]g
 #[derive(Debug)]
-pub(crate) struct BlindSecretKey {}
+pub(crate) struct BlindSecretKey;
 
 /// Pointcheval-Sanders public key for blind multi-message verifying
+/// Includes a basic PS public key in G2: (g~, [x]g~, [y1]g~, ...)
+/// and additional information for constructing blind signatures in G1: (g, [y1]g, ..., [yl]g)
 #[derive(Debug, Clone)]
-pub struct BlindPublicKey {}
+pub struct BlindPublicKey;
 
 /// Pointcheval-Sanders keypair for blinded operations
 #[derive(Debug)]
@@ -18,21 +22,29 @@ pub struct BlindKeyPair {
     pub pk: BlindPublicKey,
 }
 
-/// Pointcheval-Sanders basic blinded message object
+/// A message, blinded for use in PS blind signature protocols
+/// This is a commitment in G1 generated using a BlindPublicKey additional information as generators
 #[derive(Debug, Clone)]
-pub struct BlindedMessage {}
+pub struct BlindedMessage;
 
-/// Pointcheval-Sanders basic blinded signature object
+/// A signature on a blinded message, generated using PS blind signing protocols
+/// This has the same form as a regular signature
 #[derive(Debug, Clone)]
-pub struct BlindedSignature {}
+pub struct BlindedSignature;
 
 /// Pointcheval-Sanders blinding factor for a message or signature
 #[derive(Debug, Clone, Copy)]
 pub struct BlindingFactor(pub Scalar);
 
+impl BlindingFactor {
+    pub fn new(_rng: &mut (impl CryptoRng + RngCore)) {
+        todo!();
+    }
+}
+
 impl BlindedSignature {
-    /// Generates a blinded signature and corresponding blinding factor
-    pub fn from(_rng: &mut (impl CryptoRng + RngCore), _sig: Signature) -> (Self, BlindingFactor) {
+    /// Blinds a signature using the given blinding factor
+    pub fn from_signature(_sig: &Signature, _bf: &BlindingFactor) -> Self {
         todo!();
     }
 
@@ -51,16 +63,6 @@ impl BlindedSignature {
 
 #[allow(dead_code)]
 impl BlindSecretKey {
-    /// Generates a new secret key given a generator. Only used internally.
-    fn new(_rng: &mut (impl CryptoRng + RngCore), _length: usize, _g: G1Projective) -> Self {
-        todo!();
-    }
-
-    /// Extends a secret key to support blind signatures with a specified generator. Only used internally.
-    fn from_secret_key(_sk: &SecretKey, _g: G1Projective) -> Self {
-        todo!();
-    }
-
     /// Produces a signature on the given message.
     fn try_blind_sign(
         &self,
@@ -72,21 +74,12 @@ impl BlindSecretKey {
 }
 
 impl BlindPublicKey {
-    #[allow(dead_code)]
-    /// Generates a new public key from a secret key + generator. Only used internally.
-    fn from_secret_key(
-        _rng: &mut (impl CryptoRng + RngCore),
-        _sk: &BlindSecretKey,
-        _g: &G1Projective,
-    ) -> Self {
+    pub fn as_pedersen_parameters(&self) -> PedersenParameters {
         todo!();
     }
 
-    /// Generates a blinded message and corresponding blinding factor
-    pub fn blind_message(
-        _rng: &mut (impl CryptoRng + RngCore),
-        _msg: &Message,
-    ) -> (BlindedMessage, BlindingFactor) {
+    /// Blinds a message using the given blinding factor
+    pub fn blind_message(_msg: &Message, _bf: &BlindingFactor) -> BlindedMessage {
         todo!();
     }
 

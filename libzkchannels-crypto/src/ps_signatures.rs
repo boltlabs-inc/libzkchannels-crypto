@@ -1,4 +1,8 @@
-// Implementation of randomizable multi-message Pointcheval-Sanders signatures over BLS12-381
+/// Implementation of randomizable multi-message Pointcheval-Sanders signatures over BLS12-381
+/// The signature scheme is defined in the 2016 paper, "Short randomizable signatures"
+/// Available at: https://eprint.iacr.org/2015/525.pdf
+/// The BLS12-381 curve is defined in the (now expired) IRTF draft titled "BLS Signatures",
+/// Available at: https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/
 use crate::types::*;
 use ff::Field;
 use group::Group;
@@ -31,7 +35,7 @@ pub struct KeyPair {
     pub pk: PublicKey,
 }
 
-/// Pointcheval-Sanders basic signature object
+/// A signature on a message, generated using Pointcheval-Sanders
 #[derive(Debug, Clone)]
 pub struct Signature {
     /// AKA h

@@ -1,4 +1,7 @@
-use crate::{blinded_signatures::BlindPublicKey, types::*};
+/// Implements the commitment scheme from Torben Pryds Pedersen's 1992 paper,
+/// "Non-interactive and information-theoretic secure verifiable secret sharing"
+/// Available at: https://www.cs.cornell.edu/courses/cs754/2001fa/129.PDF
+use crate::types::*;
 use rand::CryptoRng;
 use rand_core::RngCore;
 
@@ -9,6 +12,12 @@ pub struct Commitment;
 /// Commitment randomness (generated during commitment)
 #[derive(Debug, Clone, Copy)]
 pub struct CommitmentRandomness(pub Scalar);
+
+impl CommitmentRandomness {
+    pub fn new(_rng: &mut (impl CryptoRng + RngCore)) -> Self {
+        todo!();
+    }
+}
 
 /// Parameters for Pedersen commitments
 pub struct PedersenParameters;
@@ -22,11 +31,7 @@ impl PedersenParameters {
 
 impl Message {
     /// Commits to a message; produces commitment and commitment randomness
-    pub fn commit(
-        &self,
-        _rng: &mut (impl CryptoRng + RngCore),
-        _pp: &PedersenParameters,
-    ) -> (Commitment, CommitmentRandomness) {
+    pub fn commit(&self, _cr: &CommitmentRandomness, _pp: &PedersenParameters) -> Commitment {
         todo!();
     }
 
@@ -34,25 +39,6 @@ impl Message {
     pub fn decommit(
         &self,
         _pp: &PedersenParameters,
-        _com: &Commitment,
-        _r: &CommitmentRandomness,
-    ) -> bool {
-        todo!();
-    }
-
-    /// Commits to a message using generators from a Pointcheval-Sanders key
-    pub fn commit_to_publickey(
-        &self,
-        _rng: &mut (impl CryptoRng + RngCore),
-        _pk: &BlindPublicKey,
-    ) -> (Commitment, CommitmentRandomness) {
-        todo!();
-    }
-
-    /// Verifies a commitment with randomness generated with the public key
-    pub fn decommit_to_publickey(
-        &self,
-        _pk: &BlindPublicKey,
         _com: &Commitment,
         _r: &CommitmentRandomness,
     ) -> bool {

@@ -3,36 +3,23 @@
 /// Available at: https://eprint.iacr.org/2015/525.pdf
 /// The BLS12-381 curve is defined in the (now expired) IRTF draft titled "BLS Signatures",
 /// Available at: https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/
-use crate::types::*;
-use ff::Field;
+use crate::{ps_keys::*, types::*};
 use group::Group;
 use rand::CryptoRng;
 use rand_core::RngCore;
-use std::iter;
 
-/// Pointcheval-Sanders secret key for normal multi-message signing
-#[derive(Debug)]
-pub(crate) struct SecretKey {
-    x: Scalar,
-    ys: Vec<Scalar>,
+/// A type that can try to sign a message
+pub trait Signer {
+    fn try_sign(
+        &self,
+        rng: &mut (impl CryptoRng + RngCore),
+        msg: &Message,
+    ) -> Result<Signature, String>;
 }
 
-/// Pointcheval-Sanders public key for normal multi-message verifying
-#[derive(Debug, Clone)]
-pub struct PublicKey {
-    /// AKA g~
-    g2: G2Affine,
-    /// AKA X~
-    x2: G2Affine,
-    /// AKA Y~_1 ... Y~_l
-    y2s: Vec<G2Affine>,
-}
-
-/// Pointcheval-Sanders keypair
-#[derive(Debug)]
-pub struct KeyPair {
-    pub(crate) sk: SecretKey,
-    pub pk: PublicKey,
+/// A type that can verify a signature on a message
+pub trait Verifier {
+    fn verify(&self, msg: &Message, sig: &Signature) -> bool;
 }
 
 /// A signature on a message, generated using Pointcheval-Sanders
@@ -51,27 +38,9 @@ impl Signature {
     }
 }
 
-impl SecretKey {
-    /// Constructs a new SecretKey from scratch
-    pub fn new(length: usize, rng: &mut (impl CryptoRng + RngCore)) -> Self {
-        let x = SecretKey::get_nonzero_scalar(&mut *rng);
-        let ys = iter::repeat_with(|| SecretKey::get_nonzero_scalar(&mut *rng))
-            .take(length)
-            .collect();
-        SecretKey { x, ys }
-    }
-
-    fn get_nonzero_scalar(rng: &mut (impl CryptoRng + RngCore)) -> Scalar {
-        loop {
-            let r = Scalar::random(&mut *rng);
-            if !r.is_zero() {
-                return r;
-            }
-        }
-    }
-
+impl Signer for SecretKey {
     /// Attempts to sign a message. This is not a constant-time implementation.
-    pub fn try_sign(
+    fn try_sign(
         &self,
         rng: &mut (impl CryptoRng + RngCore),
         msg: &Message,
@@ -107,29 +76,9 @@ impl SecretKey {
     }
 }
 
-impl PublicKey {
-    /// Constructs a new PublicKey out of the scalars in SecretKey
-    fn from_secret_key(sk: &SecretKey, rng: &mut (impl CryptoRng + RngCore)) -> Self {
-        // select g randomly from G*_2
-        // this function shouldn't return ID, but we'll check just in case
-        let mut g = G2Projective::random(&mut *rng);
-        while bool::from(g.is_identity()) {
-            g = G2Projective::random(&mut *rng);
-        }
-
-        // y2i = g * [yi] (point multiplication with the secret key)
-        let ys = sk.ys.iter().map(|yi| G2Affine::from(g * yi)).collect();
-
-        PublicKey {
-            g2: G2Affine::from(g),
-            // x2 = g * [x]
-            x2: G2Affine::from(g * sk.x),
-            y2s: ys,
-        }
-    }
-
+impl Verifier for PublicKey {
     /// Verifies that the signature is valid and is on the message
-    pub fn verify(&self, msg: &Message, sig: &Signature) -> bool {
+    fn verify(&self, msg: &Message, sig: &Signature) -> bool {
         if bool::from(sig.sigma1.is_identity()) {
             return false;
         }
@@ -150,30 +99,19 @@ impl PublicKey {
     }
 }
 
-impl KeyPair {
-    /// Creates a new KeyPair from scratch
-    pub fn new(length: usize, rng: &mut (impl CryptoRng + RngCore)) -> Self {
-        let sk = SecretKey::new(length, rng);
-        let pk = PublicKey::from_secret_key(&sk, rng);
-        KeyPair { sk, pk }
-    }
-
-    /// Extends keypair to support blinded signatures
-    // pub fn to_blinded_keypair(&self, rng: &mut (impl CryptoRng + RngCore)) -> BlindKeyPair {
-    //     BlindKeyPair::from_keypair(rng, &self)
-    // }
-
+impl Signer for KeyPair {
     /// Signs a message
-    pub fn try_sign(
+    fn try_sign(
         &self,
         rng: &mut (impl CryptoRng + RngCore),
         msg: &Message,
     ) -> Result<Signature, String> {
         self.sk.try_sign(rng, msg)
     }
-
+}
+impl Verifier for KeyPair {
     /// Verifies that the signature is valid and is on the message
-    pub fn verify(&self, msg: &Message, sig: &Signature) -> bool {
+    fn verify(&self, msg: &Message, sig: &Signature) -> bool {
         self.pk.verify(msg, sig)
     }
 }

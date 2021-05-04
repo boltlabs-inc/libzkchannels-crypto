@@ -1,5 +1,6 @@
 pub mod pedersen_commitments;
 pub mod ps_blind_signatures;
+pub mod ps_keys;
 pub mod ps_signatures;
 
 mod types {
@@ -28,7 +29,7 @@ mod types {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ps_signatures::KeyPair, types::Message};
+    use crate::{ps_keys::*, ps_signatures::*, types::*};
     use bls12_381::Scalar;
     use ff::Field;
     use std::iter;

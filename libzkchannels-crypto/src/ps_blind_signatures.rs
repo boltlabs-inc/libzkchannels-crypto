@@ -74,7 +74,7 @@ impl BlindSecretKey {
 }
 
 impl BlindPublicKey {
-    pub fn as_pedersen_parameters(&self) -> PedersenParameters {
+    pub fn as_pedersen_parameters(&self) -> PedersenParameters<G2Projective> {
         todo!();
     }
 

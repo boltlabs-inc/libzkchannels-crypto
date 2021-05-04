@@ -1,26 +1,10 @@
 /// Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381
 /// See references in ps_signatures.rs
-use crate::{pedersen_commitments::PedersenParameters, ps_signatures::*, types::*};
+use crate::{
+    pedersen_commitments::PedersenParameters, ps_keys::*, ps_signatures::Signature, types::*,
+};
 use rand::CryptoRng;
 use rand_core::RngCore;
-
-/// Pointcheval-Sanders secret key for blind multi-message signing
-/// Includes scalars [x], [y1], ..., [yl] and G1 element X = [x]g
-#[derive(Debug)]
-pub(crate) struct BlindSecretKey;
-
-/// Pointcheval-Sanders public key for blind multi-message verifying
-/// Includes a basic PS public key in G2: (g~, [x]g~, [y1]g~, ...)
-/// and additional information for constructing blind signatures in G1: (g, [y1]g, ..., [yl]g)
-#[derive(Debug, Clone)]
-pub struct BlindPublicKey;
-
-/// Pointcheval-Sanders keypair for blinded operations
-#[derive(Debug)]
-pub struct BlindKeyPair {
-    sk: BlindSecretKey,
-    pub pk: BlindPublicKey,
-}
 
 /// A message, blinded for use in PS blind signature protocols
 /// This is a commitment in G1 generated using a BlindPublicKey additional information as generators
@@ -61,8 +45,8 @@ impl BlindedSignature {
     }
 }
 
-#[allow(dead_code)]
-impl BlindSecretKey {
+#[allow(unused)]
+impl SecretKey {
     /// Produces a signature on the given message.
     fn try_blind_sign(
         &self,
@@ -73,7 +57,7 @@ impl BlindSecretKey {
     }
 }
 
-impl BlindPublicKey {
+impl PublicKey {
     pub fn as_pedersen_parameters(&self) -> PedersenParameters<G2Projective> {
         todo!();
     }
@@ -94,17 +78,7 @@ impl BlindPublicKey {
     }
 }
 
-impl BlindKeyPair {
-    /// Generates a new keypair for use with blind signatures
-    pub fn new(_length: usize, _rng: &mut (impl CryptoRng + RngCore)) -> Self {
-        todo!();
-    }
-
-    /// Extends the given keypair to support blind signatures
-    pub fn from_keypair(_rng: &mut (impl CryptoRng + RngCore), _kp: &KeyPair) -> Self {
-        todo!();
-    }
-
+impl KeyPair {
     /// Signs a blinded message
     pub fn try_blind_sign(
         &self,
@@ -117,21 +91,5 @@ impl BlindKeyPair {
     /// Verifies that the given signature is on the message, using the blinding factor.
     pub fn blind_verify(&self, msg: &Message, sig: &BlindedSignature, bf: &BlindingFactor) -> bool {
         self.pk.blind_verify(msg, sig, bf)
-    }
-
-    /// Signs a message
-    pub fn try_sign(
-        &self,
-        _rng: &mut (impl CryptoRng + RngCore),
-        _msg: &Message,
-    ) -> Result<Signature, String> {
-        // extracts non-blind keypair and signs
-        todo!();
-    }
-
-    /// Verifies that the signature is valid and is on the message
-    pub fn verify(&self, _msg: &Message, _sig: &Signature) -> bool {
-        // extracts non-blind keypair and verifies
-        todo!();
     }
 }

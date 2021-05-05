@@ -68,7 +68,7 @@ impl PublicKey {
     }
 
     /// Verifies that the given signature is on the message, using the blinding factor.
-    pub fn blind_verify(
+    pub fn verify_blinded(
         &self,
         _msg: &Message,
         _sig: &BlindedSignature,
@@ -89,7 +89,7 @@ impl KeyPair {
     }
 
     /// Verifies that the given signature is on the message, using the blinding factor.
-    pub fn blind_verify(&self, msg: &Message, sig: &BlindedSignature, bf: &BlindingFactor) -> bool {
-        self.pk.blind_verify(msg, sig, bf)
+    pub fn verify_blinded(&self, msg: &Message, sig: &BlindedSignature, bf: &BlindingFactor) -> bool {
+        self.pk.verify_blinded(msg, sig, bf)
     }
 }

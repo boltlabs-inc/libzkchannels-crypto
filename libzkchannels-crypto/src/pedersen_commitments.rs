@@ -22,9 +22,8 @@ impl CommitmentRandomness {
 
 #[allow(unused)]
 /// Parameters for Pedersen commitments
-/// These must be defined over a suitable group.
-/// The group must support scalar multiplication and addition over elements, and generation of random values
-/// In practice, this should only be used with the groups G1Projective and G2Projective from BLS12-381
+/// These must be defined over a suitable group, written additively.
+/// In practice, this should only be used with the groups from BLS12-381
 pub struct PedersenParameters<T>
 where
     T: Group<Scalar = Scalar>,

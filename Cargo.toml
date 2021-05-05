@@ -1,4 +1,5 @@
 [workspace]
 members = [
     "libzkchannels-crypto",
+    "libzkchannels-primitives",
 ]

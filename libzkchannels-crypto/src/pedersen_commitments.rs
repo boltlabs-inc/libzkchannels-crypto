@@ -24,15 +24,15 @@ impl CommitmentRandomness {
 /// Parameters for Pedersen commitments
 /// These must be defined over a suitable group, written additively.
 /// In practice, this should only be used with the groups from BLS12-381
-pub struct PedersenParameters<T>
+pub struct PedersenParameters<G>
 where
-    T: Group<Scalar = Scalar>,
+    G: Group<Scalar = Scalar>,
 {
-    h: T,
-    gs: Vec<T>,
+    h: G,
+    gs: Vec<G>,
 }
 
-impl<T: Group<Scalar = Scalar>> PedersenParameters<T> {
+impl<G: Group<Scalar = Scalar>> PedersenParameters<G> {
     /// Generates random, new parameters for commitments to messages of given length
     pub fn new(_length: usize, _rng: &mut (impl CryptoRng + RngCore)) -> Self {
         todo!();

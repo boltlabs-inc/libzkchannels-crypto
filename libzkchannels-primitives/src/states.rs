@@ -1,8 +1,9 @@
+use serde::*;
+
 use crate::nonce::*;
 use crate::parameters::*;
 use crate::revlock::*;
 use crate::types::*;
-use pedersen_commitments::*;
 use ps_blind_signatures::*;
 use ps_signatures::Signature;
 
@@ -27,6 +28,12 @@ pub struct State {
     bal_c: CustomerBalance,
 }
 
+impl Clone for State {
+    fn clone(&self) -> Self {
+        todo!()
+    }
+}
+
 impl State {
     /// Generates a new State with the given balances and ID
     pub fn new(
@@ -39,7 +46,7 @@ impl State {
     }
 
     /// Forms a new state, with balances updated by the given amount
-    pub fn update(&self, _rng: &mut (impl CryptoRng + RngCore), _amt: &PaymentAmount) -> Self {
+    pub fn update(self, _rng: &mut (impl CryptoRng + RngCore), _amt: &PaymentAmount) -> Self {
         todo!();
     }
 
@@ -64,16 +71,21 @@ impl State {
 }
 
 /// Commitment to a State
-pub struct StateCommitment(Commitment);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StateCommitment(/*Commitment*/);
 
 /// Commitment to a CloseState - describes the state as will be posted on-chain to close a channel
-pub struct CloseStateCommitment(Commitment);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloseStateCommitment(/*Commitment*/);
 
 /// Signature on a CloseState - can be posted on-chain to close a channel
 pub struct CloseStateSignature;
 
 /// Blinded signature on a CloseState
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloseStateBlindedSignature;
+
+/// Blinding factor for a CloseStateCommitment and corresponding CloseStateBlindedSignature
 pub struct CloseStateBlindingFactor;
 
 impl CloseStateBlindedSignature {
@@ -81,7 +93,7 @@ impl CloseStateBlindedSignature {
     pub fn new(
         _rng: &mut (impl CryptoRng + RngCore),
         _param: &MerchantParameters,
-        _com: CloseStateCommitment,
+        _com: &CloseStateCommitment,
     ) -> CloseStateBlindedSignature {
         todo!();
     }
@@ -102,13 +114,15 @@ impl CloseStateSignature {
 pub struct PayToken(Signature);
 
 /// Blind signature on a PayToken
-pub struct BlindedPayToken(BlindedSignature);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlindedPayToken(/*BlindedSignature*/);
 
-/// Blinding factor corresponding to a BlindedPayToken
+/// Blinding factor for a PayTokenCommitment and corresponding BlindedPayToken
 pub struct PayTokenBlindingFactor(BlindingFactor);
 
 /// Commitment to a PayToken, used to validate a BlindedPayToken
 /// Note: this is a commitment to the message in a _signature_ proof
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PayTokenCommitment;
 
 impl BlindedPayToken {

@@ -1,13 +1,18 @@
+use serde::*;
+
 use crate::parameters::*;
 use crate::types::*;
-use pedersen_commitments::*;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RevocationLock;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RevocationSecret;
 
-pub struct RevocationLockCommitment(Commitment);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RevocationLockCommitment(/*Commitment*/);
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RevocationLockCommitmentRandomness();
 
 impl RevocationLock {

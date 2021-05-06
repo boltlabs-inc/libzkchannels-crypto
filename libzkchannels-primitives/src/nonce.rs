@@ -1,7 +1,9 @@
+use serde::*;
+
 use crate::types::*;
 
 #[allow(unused)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Nonce;
 
 #[allow(unused)]

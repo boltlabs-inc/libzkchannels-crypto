@@ -1,4 +1,6 @@
-/// Implementation of keys for basic and blind multi-message Pointcheval-Sanders signatures over BLS12-381
+/// This defines a class of keys for use across the schemes in this crate.
+/// The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over BLS12-381
+/// They can also be used for non-blind PS signatures and as commitment parameters.
 /// The signature scheme is defined in the 2016 paper, "Short randomizable signatures"
 /// Available at: https://eprint.iacr.org/2015/525.pdf
 /// The BLS12-381 curve is defined in the (now expired) IRTF draft titled "BLS Signatures",
@@ -12,7 +14,7 @@ use rand_core::RngCore;
 pub(crate) struct SecretKey {
     pub x: Scalar,
     pub ys: Vec<Scalar>,
-    pub x_generator: G1Affine,
+    pub x1: G1Affine,
 }
 
 /// Pointcheval-Sanders public key for multi-message operations

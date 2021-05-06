@@ -1,3 +1,4 @@
+use crate::nonce::*;
 use crate::parameters::*;
 use crate::revlock::*;
 use crate::states::*;
@@ -14,8 +15,8 @@ impl PayProof {
         _params: &CustomerParameters,
         _rl: &RevocationLock,
         _old_state: &State,
+        _old_state_bf: &PayTokenBlindingFactor,
         _state: &State,
-        _close_state: &CloseState,
     ) -> (
         Self,
         RevocationLockCommitment,
@@ -25,7 +26,17 @@ impl PayProof {
         todo!();
     }
 
-    pub fn verify(_params: &MerchantParameters) -> bool {
+    /// Verifies a PayProof of knowledge of opening of commitments with the given public parameters (nonce, amount)
+    pub fn verify(
+        _params: &MerchantParameters,
+        _pay_token: &BlindedPayToken,
+        _pay_token_com: &PayTokenCommitment,
+        _rl_com: &RevocationLockCommitment,
+        _state_com: &StateCommitment,
+        _close_state_com: &CloseStateCommitment,
+        _nonce: &Nonce,
+        _amount: &PaymentAmount,
+    ) -> bool {
         todo!();
     }
 }

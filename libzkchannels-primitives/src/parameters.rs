@@ -1,4 +1,3 @@
-use crate::states::*;
 use crate::types::*;
 use pedersen_commitments::*;
 use ps_keys::*;
@@ -17,10 +16,4 @@ pub struct MerchantParameters {
     signing_keys: KeyPair,
     /// Parameters for forming general commitments
     commitment_params: PedersenParameters<G1Projective>,
-}
-
-impl MerchantParameters {
-    pub fn sign_state_commitment(&self, _com: CloseStateCommitment) -> CloseState {
-        todo!();
-    }
 }

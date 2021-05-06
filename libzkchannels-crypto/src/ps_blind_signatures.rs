@@ -18,7 +18,7 @@ pub struct BlindedSignature;
 
 /// Pointcheval-Sanders blinding factor for a message or signature
 #[derive(Debug, Clone, Copy)]
-pub struct BlindingFactor(pub Scalar);
+pub struct BlindingFactor(pub(crate) Scalar);
 
 impl BlindingFactor {
     pub fn new(_rng: &mut (impl CryptoRng + RngCore)) -> Self {

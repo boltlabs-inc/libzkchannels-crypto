@@ -26,7 +26,7 @@ pub trait Verifier {
 }
 
 /// A signature on a message, generated using Pointcheval-Sanders.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Signature {
     /// AKA h
     sigma1: G1Affine,

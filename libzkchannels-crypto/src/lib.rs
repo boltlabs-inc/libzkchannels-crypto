@@ -1,11 +1,10 @@
-/*! 
+/*!
 This crate provides an implementation of the following cryptographic primitives over the pairing-friendly curve BLS12-381:
 - Pedersen Commitments instantiated using G1 and G2.
 - Schnorr-style zero-knowledge proofs instantiated using G1 and G2.
 - Pointcheval Sanders signatures and zero-knowledge proof of knowledge of a signature (CT-RSA 2016).
 - Camenisch, Chaabouni, and shelat's range proofs (Asiacrypt 2008) instantiated using Pointcheval Sanders signatures.
 */
-
 
 #![warn(missing_docs)]
 #![warn(missing_copy_implementations, missing_debug_implementations)]

@@ -38,7 +38,9 @@ pub struct PublicKey {
 /// Pointcheval-Sanders keypair.
 #[derive(Debug)]
 pub struct KeyPair {
+    /// Pointcheval-Sanders secret key.
     pub(crate) sk: SecretKey,
+    /// Pointcheval-Sanders public key.
     pub pk: PublicKey,
 }
 

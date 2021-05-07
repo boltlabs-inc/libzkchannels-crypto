@@ -9,7 +9,7 @@ use rand::CryptoRng;
 use rand_core::RngCore;
 
 /// Represents a Pedersen commitment to a message.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Commitment;
 
 /// Randomness used to construct an information-theoretically hiding commitment.
@@ -27,6 +27,7 @@ impl CommitmentRandomness {
 /// Parameters for Pedersen commitments.
 /// These must be defined over a suitable group, written additively.
 /// In practice, this should only be used with the groups from BLS12-381.
+#[derive(Debug)]
 pub struct PedersenParameters<G>
 where
     G: Group<Scalar = Scalar>,

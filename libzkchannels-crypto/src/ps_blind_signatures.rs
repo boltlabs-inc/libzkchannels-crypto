@@ -9,12 +9,12 @@ use rand_core::RngCore;
 
 /// A message, blinded for use in PS blind signature protocols.
 /// This is a commitment in G1 generated using a BlindPublicKey additional information as generators.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BlindedMessage;
 
 /// A signature on a blinded message, generated using PS blind signing protocols.
 /// This has the same form as a regular signature.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BlindedSignature;
 
 /// Pointcheval-Sanders blinding factor for a message or signature.
@@ -22,7 +22,7 @@ pub struct BlindedSignature;
 pub struct BlindingFactor(pub(crate) Scalar);
 
 impl BlindingFactor {
-    /// Generate a new blinding factor. 
+    /// Generate a new blinding factor.
     pub fn new(_rng: &mut (impl CryptoRng + RngCore)) -> Self {
         todo!();
     }

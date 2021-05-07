@@ -22,6 +22,7 @@ pub struct BlindedSignature;
 pub struct BlindingFactor(pub(crate) Scalar);
 
 impl BlindingFactor {
+    /// Generate a new blinding factor. 
     pub fn new(_rng: &mut (impl CryptoRng + RngCore)) -> Self {
         todo!();
     }
@@ -59,6 +60,7 @@ impl SecretKey {
 }
 
 impl PublicKey {
+    /// Represent the G2 elements of PublicKey as Pedersen parameters.
     pub fn as_pedersen_parameters(&self) -> PedersenParameters<G2Projective> {
         todo!();
     }

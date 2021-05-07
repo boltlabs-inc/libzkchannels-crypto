@@ -1,4 +1,4 @@
-//! Implements Pedersen commitments.
+//! Implements Pedersen commitments in a prime order group.
 //!
 //! This commitment scheme is from Torben Pryds Pedersen's 1992 paper,
 //! "Non-interactive and information-theoretic secure verifiable secret sharing"
@@ -12,6 +12,7 @@ use rand_core::RngCore;
 #[derive(Debug, Clone)]
 pub struct Commitment;
 
+/// Randomness used to construct an information-theoretically hiding commitment.
 #[derive(Debug, Clone, Copy)]
 pub struct CommitmentRandomness(pub Scalar);
 

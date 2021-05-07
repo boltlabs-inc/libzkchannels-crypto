@@ -11,6 +11,7 @@ use rand_core::RngCore;
 
 /// A type that can try to sign a message.
 pub trait Signer {
+    /// Sign a message.
     fn try_sign(
         &self,
         rng: &mut (impl CryptoRng + RngCore),
@@ -20,6 +21,7 @@ pub trait Signer {
 
 /// A type that can verify a signature on a message.
 pub trait Verifier {
+    /// Verify a signature on a given message.
     fn verify(&self, msg: &Message, sig: &Signature) -> bool;
 }
 

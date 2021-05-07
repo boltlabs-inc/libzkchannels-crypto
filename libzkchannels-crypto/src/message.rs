@@ -15,6 +15,7 @@ impl Deref for Message {
 }
 
 impl Message {
+    /// Create a new message from a Vec<Scalar>.
     pub fn new(m: Vec<Scalar>) -> Self {
         Message(m)
     }

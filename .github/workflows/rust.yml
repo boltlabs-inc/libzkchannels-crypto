@@ -21,11 +21,6 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - name: Set toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          components: rustfmt, clippy
-
       - name: Format check
         run: cargo fmt -- --check
 

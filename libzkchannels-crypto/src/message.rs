@@ -1,7 +1,8 @@
+//! Defines a fixed-length message type for use across schemes in this crate.
 use crate::types::*;
 use std::ops::Deref;
 
-/// Fixed-length message type used across schemes
+/// Fixed-length message type used across schemes.
 #[derive(Debug, Clone)]
 pub struct Message(Vec<Scalar>);
 

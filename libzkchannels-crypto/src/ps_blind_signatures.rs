@@ -1,22 +1,23 @@
-/// Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381
-/// See references in ps_signatures.rs
+//! Implements of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381.
+//!
+//! See references in ps_signatures.rs
 use crate::{
     pedersen_commitments::PedersenParameters, ps_keys::*, ps_signatures::Signature, types::*,
 };
 use rand::CryptoRng;
 use rand_core::RngCore;
 
-/// A message, blinded for use in PS blind signature protocols
-/// This is a commitment in G1 generated using a BlindPublicKey additional information as generators
+/// A message, blinded for use in PS blind signature protocols.
+/// This is a commitment in G1 generated using a BlindPublicKey additional information as generators.
 #[derive(Debug, Clone)]
 pub struct BlindedMessage;
 
-/// A signature on a blinded message, generated using PS blind signing protocols
-/// This has the same form as a regular signature
+/// A signature on a blinded message, generated using PS blind signing protocols.
+/// This has the same form as a regular signature.
 #[derive(Debug, Clone)]
 pub struct BlindedSignature;
 
-/// Pointcheval-Sanders blinding factor for a message or signature
+/// Pointcheval-Sanders blinding factor for a message or signature.
 #[derive(Debug, Clone, Copy)]
 pub struct BlindingFactor(pub(crate) Scalar);
 
@@ -27,7 +28,7 @@ impl BlindingFactor {
 }
 
 impl BlindedSignature {
-    /// Blinds a signature using the given blinding factor
+    /// Blinds a signature using the given blinding factor.
     pub fn from_signature(_sig: &Signature, _bf: &BlindingFactor) -> Self {
         todo!();
     }
@@ -39,7 +40,7 @@ impl BlindedSignature {
         todo!()
     }
 
-    /// Randomizes signature in-place
+    /// Randomizes signature in place.
     pub fn randomize(&mut self, _rng: &mut (impl CryptoRng + RngCore)) {
         todo!()
     }
@@ -62,7 +63,7 @@ impl PublicKey {
         todo!();
     }
 
-    /// Blinds a message using the given blinding factor
+    /// Blinds a message using the given blinding factor.
     pub fn blind_message(_msg: &Message, _bf: &BlindingFactor) -> BlindedMessage {
         todo!();
     }
@@ -79,7 +80,7 @@ impl PublicKey {
 }
 
 impl KeyPair {
-    /// Signs a blinded message
+    /// Signs a blinded message.
     pub fn try_blind_sign(
         &self,
         rng: &mut (impl CryptoRng + RngCore),

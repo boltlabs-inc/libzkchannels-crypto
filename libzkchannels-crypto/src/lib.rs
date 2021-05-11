@@ -21,4 +21,9 @@ pub mod ps_signatures;
 mod types {
     pub use crate::message::*;
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
+
+    /// Trait synonym for a cryptographically secure random number generator.
+    pub trait Rng: rand::CryptoRng + rand::RngCore {}
+    impl<T: rand::CryptoRng + rand::RngCore> Rng for T {}
+
 }

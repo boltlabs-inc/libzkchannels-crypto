@@ -5,8 +5,6 @@
 //! Available at: https://www.cs.cornell.edu/courses/cs754/2001fa/129.PDF .*/
 use crate::types::*;
 use group::Group;
-use rand::CryptoRng;
-use rand_core::RngCore;
 
 /// Represents a Pedersen commitment to a message.
 #[derive(Debug, Clone, Copy)]
@@ -18,7 +16,7 @@ pub struct CommitmentRandomness(pub Scalar);
 
 impl CommitmentRandomness {
     /// Creates suitably random commitment randomness.
-    pub fn new(_rng: &mut (impl CryptoRng + RngCore)) -> Self {
+    pub fn new(_rng: &mut impl Rng) -> Self {
         todo!();
     }
 }
@@ -39,7 +37,7 @@ where
 
 impl<G: Group<Scalar = Scalar>> PedersenParameters<G> {
     /// Generates random, new parameters for commitments to messages of given length.
-    pub fn new(_length: usize, _rng: &mut (impl CryptoRng + RngCore)) -> Self {
+    pub fn new(_length: usize, _rng: &mut impl Rng) -> Self {
         todo!();
     }
 

@@ -4,8 +4,6 @@
 use crate::{
     pedersen_commitments::PedersenParameters, ps_keys::*, ps_signatures::Signature, types::*,
 };
-use rand::CryptoRng;
-use rand_core::RngCore;
 
 /// A message, blinded for use in PS blind signature protocols.
 /// This is a commitment in G1 generated using a BlindPublicKey additional information as generators.
@@ -23,7 +21,7 @@ pub struct BlindingFactor(pub(crate) Scalar);
 
 impl BlindingFactor {
     /// Generate a new blinding factor.
-    pub fn new(_rng: &mut (impl CryptoRng + RngCore)) -> Self {
+    pub fn new(_rng: &mut impl Rng) -> Self {
         todo!();
     }
 }
@@ -42,7 +40,7 @@ impl BlindedSignature {
     }
 
     /// Randomizes signature in place.
-    pub fn randomize(&mut self, _rng: &mut (impl CryptoRng + RngCore)) {
+    pub fn randomize(&mut self, _rng: &mut impl Rng) {
         todo!()
     }
 }
@@ -52,7 +50,7 @@ impl SecretKey {
     /// Produces a signature on the given message.
     fn try_blind_sign(
         &self,
-        _rng: &mut (impl CryptoRng + RngCore),
+        _rng: &mut impl Rng,
         _msg: &BlindedMessage,
     ) -> Result<BlindedSignature, String> {
         todo!();
@@ -85,7 +83,7 @@ impl KeyPair {
     /// Signs a blinded message.
     pub fn try_blind_sign(
         &self,
-        rng: &mut (impl CryptoRng + RngCore),
+        rng: &mut impl Rng,
         msg: &BlindedMessage,
     ) -> Result<BlindedSignature, String> {
         self.sk.try_blind_sign(rng, msg)

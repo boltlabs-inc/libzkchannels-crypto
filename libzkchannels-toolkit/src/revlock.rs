@@ -25,21 +25,29 @@ pub struct RevocationLockCommitment(/*Commitment*/);
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct RevocationLockCommitmentRandomness();
 
-impl RevocationLock {
-    /// Generates a new revocation lock and its corresponding secret.
-    pub fn generate_pair(_rng: &mut (impl CryptoRng + RngCore)) -> (Self, RevocationSecret) {
-        todo!();
+impl RevocationSecret {
+    /// Create a new, random revocation secret.
+    pub fn new(_rng: &mut impl Rng) -> Self {
+        todo!()
     }
 
+    /// Derives the [`RevocationLock`]  corresponding to this [`RevocationSecret`]
+    pub fn revocation_lock(&self) -> RevocationLock {
+        todo!();
+    }
+}
+
+impl RevocationLock {
     /// Validates a revocation pair.
-    pub fn verify(&self, _rs: &RevocationSecret) -> bool {
+    pub fn verify(&self, _rs: &RevocationSecret) -> Verification {
         todo!();
     }
 
     /// Forms a commitment (and corresponding commitment randomness) to a RevocationLock.
-    pub fn commit(
+    #[allow(unused)]
+    pub(crate) fn commit(
         &self,
-        _rng: &mut (impl CryptoRng + RngCore),
+        _rng: &mut impl Rng,
         _param: &CustomerParameters,
     ) -> (RevocationLockCommitment, RevocationLockCommitmentRandomness) {
         todo!();
@@ -47,13 +55,15 @@ impl RevocationLock {
 }
 
 impl RevocationLockCommitment {
-    /// Validates a commitment to revocation lock against the given parameters and commitment randomness.
-    pub fn decommit(
+    /// Validates a commitment to revocation lock against the given parameters and commitment
+    /// randomness.
+    pub fn verify(
         &self,
-        _param: &MerchantParameters,
-        _rl: &RevocationLock,
-        _bf: &RevocationLockCommitmentRandomness,
-    ) -> bool {
+        _parameters: &MerchantParameters,
+        _revocation_secret: &RevocationSecret,
+        _revocation_lock: &RevocationLock,
+        _revocation_lock_commitment_randomness: &RevocationLockCommitmentRandomness,
+    ) -> Verification {
         todo!();
     }
 }

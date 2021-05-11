@@ -25,8 +25,9 @@ impl CommitmentRandomness {
 
 #[allow(unused)]
 /// Parameters for Pedersen commitments.
+/// 
 /// These must be defined over a suitable group, written additively.
-/// In practice, this should only be used with the groups from BLS12-381.
+/// In practice, this should only be used with the groups from BLS12-381
 #[derive(Debug)]
 pub struct PedersenParameters<G>
 where

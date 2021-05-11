@@ -1,12 +1,9 @@
-//! This describes the proof used in the Pay subprotocol of libzkchannels.
+//! This describes the zero-knowledge proofs used in the Establish and Pay subprotocols of zkChannels.
 //! 
-//! This is a Schnorr proof that makes the following guarantees in zero knowledge:
-//! - The old state is correctly updated from the new state by the given payment amount.
-//! - The customer holds a valid [`PayToken`](crate::states::PayToken) and knows the old [`State`] it corresponds to.
-//! - The customer knows the opening of commitments to the [`RevocationLock`], 
-//! the new [`State`], and the corresponding `CloseState`. 
-//! - The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the old [`State`].
-//! - The balances in the new [`State`] are non-negative.
+//! These proofs are formed by the customer and demonstrate that they know the current state of the channel and are 
+//! modifying it appropriately. The merchant verifies the proofs, confirming that the customer is behaving correctly
+//! without learning any information about the channel state.
+//!
 use serde::*;
 
 use crate::nonce::*;
@@ -15,25 +12,88 @@ use crate::revlock::*;
 use crate::states::*;
 use crate::types::*;
 
-/// Payment proof: provides proof that a party has a new state that is correctly updated
-/// from a previous state, for which it holds a signature.
+
+/// An establish proof demonstrates that a customer is trying to initialize a channel correctly.
+/// 
+/// This is a Schnorr proof that makes the following guarantees in zero knowledge:
+/// - The balances in the `State` match the previously-agreed-upon values.
+/// - The commited `State` and `CloseState` are correctly formed relative to each other.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct EstablishProof;
+
+impl EstablishProof {
+    /// Forms a new zero-knowledge [`EstablishProof`] object. Also produces commitments to the entities
+    /// that make up the proof and their corresponding blinding factors.
+    pub fn new(
+        _rng: &mut (impl CryptoRng + RngCore),
+        _params: &CustomerParameters,
+        _state: &State,
+    ) -> (
+        Self,
+        CloseStateCommitment,
+        CloseStateBlindingFactor,
+        StateCommitment,
+        PayTokenBlindingFactor,
+     ) {
+        todo!();
+    }
+
+    /// Verifies the [`EstablishProof`] against the provided verification objects.
+    pub fn verify(
+        &self,
+        _params: &MerchantParameters,
+        _verification_objects: &EstablishProofVerification,
+    ) -> bool {
+        todo!();
+    }
+}
+
+/// Collects the information a merchant needs to verify a [`EstablishProof`].
+#[derive(Debug, Clone, Copy)]
+pub struct EstablishProofVerification {
+    /// Commitment to a [`State`].
+    pub state_com: StateCommitment,
+    /// Commitment to a `CloseState`.
+    pub close_state_com: CloseStateCommitment,
+    /// Expected channel ID.
+    pub cid: ChannelID,
+    /// Expected merchant balance.
+    pub bal_m: MerchantBalance,
+    /// Expected customer balance.
+    pub bal_c: CustomerBalance,
+}
+
+
+/// A payment proof demonstrates that a customer is trying to make a valid payment on a channel.
+/// 
+/// This is a Schnorr proof that makes the following guarantees in zero knowledge: 
+/// - The old state is correctly updated from the new state by the given payment amount. 
+/// - The customer holds a valid [`PayToken`](crate::states::PayToken) and knows the old [`State`] it corresponds to. 
+/// - The customer knows the opening of commitments to the [`RevocationLock`],  
+/// the new [`State`], and the corresponding `CloseState`.  
+/// - The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the old [`State`]. 
+/// - The balances in the new [`State`] are non-negative. 
+/// 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PayProof;
 
 impl PayProof {
-    /// Forms a new zero-knowledge PayProof object.
+    /// Forms a new zero-knowledge [`PayProof`] object. Also produces supporting commitments to the entities
+    /// that make up the proof and their corresponding blinding factors.
     pub fn new(
         _rng: &mut (impl CryptoRng + RngCore),
         _params: &CustomerParameters,
         _rl: &RevocationLock,
         _old_state: State,
-        _old_state_bf: &PayTokenBlindingFactor,
         _state: &State,
     ) -> (
         Self,
         RevocationLockCommitment,
+        RevocationLockCommitmentRandomness,
         StateCommitment,
+        PayTokenBlindingFactor,
         CloseStateCommitment,
+        CloseStateBlindingFactor
     ) {
         todo!();
     }

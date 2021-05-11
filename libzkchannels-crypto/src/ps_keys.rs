@@ -9,8 +9,6 @@
 //! The BLS12-381 curve is defined in the (now expired) IRTF draft titled "BLS Signatures",
 //! Available at: https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/.
 use crate::types::*;
-use rand::CryptoRng;
-use rand_core::RngCore;
 
 /// Pointcheval-Sanders secret key for multi-message signing operations.
 #[derive(Debug)]
@@ -47,7 +45,7 @@ pub struct KeyPair {
 #[allow(unused)]
 impl SecretKey {
     /// Constructs a new SecretKey of the given length.
-    fn new(_rng: &mut (impl CryptoRng + RngCore), _length: usize, _g1: &G1Projective) -> Self {
+    fn new(_rng: &mut impl Rng, _length: usize, _g1: &G1Projective) -> Self {
         todo!();
     }
 }
@@ -56,7 +54,7 @@ impl SecretKey {
 impl PublicKey {
     /// Constructs a new PublicKey out of the scalars in SecretKey.
     fn from_secret_key(
-        _rng: &mut (impl CryptoRng + RngCore),
+        _rng: &mut impl Rng,
         _sk: &SecretKey,
         _g1: &G1Projective,
     ) -> Self {
@@ -66,7 +64,7 @@ impl PublicKey {
 
 impl KeyPair {
     /// Creates a new KeyPair for multi-message Pointcheval Sanders.
-    pub fn new(_length: usize, _rng: &mut (impl CryptoRng + RngCore)) -> Self {
+    pub fn new(_length: usize, _rng: &mut impl Rng) -> Self {
         todo!();
     }
 }

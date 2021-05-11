@@ -6,15 +6,13 @@
 //! The BLS12-381 curve is defined in the (now expired) IRTF draft titled "BLS Signatures",
 //! available at: https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/.
 use crate::{ps_keys::*, types::*};
-use rand::CryptoRng;
-use rand_core::RngCore;
 
 /// A type that can try to sign a message.
 pub trait Signer {
     /// Sign a message.
     fn try_sign(
         &self,
-        rng: &mut (impl CryptoRng + RngCore),
+        rng: &mut impl Rng,
         msg: &Message,
     ) -> Result<Signature, String>;
 }
@@ -36,7 +34,7 @@ pub struct Signature {
 
 impl Signature {
     /// Randomizes signature in place.
-    pub fn randomize(&mut self, _rng: &mut (impl CryptoRng + RngCore)) {
+    pub fn randomize(&mut self, _rng: &mut impl Rng) {
         todo!()
     }
 }
@@ -45,7 +43,7 @@ impl Signer for SecretKey {
     /// Attempts to sign a message.
     fn try_sign(
         &self,
-        _rng: &mut (impl CryptoRng + RngCore),
+        _rng: &mut impl Rng,
         _msg: &Message,
     ) -> Result<Signature, String> {
         todo!();
@@ -63,7 +61,7 @@ impl Signer for KeyPair {
     /// Signs a message.
     fn try_sign(
         &self,
-        rng: &mut (impl CryptoRng + RngCore),
+        rng: &mut impl Rng,
         msg: &Message,
     ) -> Result<Signature, String> {
         self.sk.try_sign(rng, msg)

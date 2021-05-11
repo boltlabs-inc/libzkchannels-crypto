@@ -1,9 +1,9 @@
 //! This library describes revocation pairs, a formalization of hash locks.
-//! 
+//!
 //! A pair ([`RevocationLock`], [`RevocationSecret`]) satisfy two properties:
 //! - Correctness: A revocation pair generated with [`generate_pair`](RevocationLock::generate_pair()) will always [`verify`](RevocationLock::verify()) correctly.
-//! - Security: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability.
-//! 
+//! - Security: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability (e.g. basically never)
+//!
 use serde::*;
 
 use crate::parameters::*;

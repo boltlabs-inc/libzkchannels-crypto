@@ -3,11 +3,11 @@
 //! The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over BLS12-381.
 //! They can also be used for non-blind PS signatures and as commitment parameters.
 //!
-//! The signature scheme is defined in the 2016 paper, "Short randomizable signatures".
-//! Available at: https://eprint.iacr.org/2015/525.pdf.
+//! The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
+//! (https://eprint.iacr.org/2015/525.pdf); The BLS12-381 curve is defined in the (now expired) IRTF
+//! draft titled ["BLS
+//! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 //!
-//! The BLS12-381 curve is defined in the (now expired) IRTF draft titled "BLS Signatures",
-//! Available at: https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/.
 use crate::types::*;
 
 /// Pointcheval-Sanders secret key for multi-message signing operations.
@@ -33,7 +33,7 @@ pub struct PublicKey {
     pub y2s: Vec<G2Affine>,
 }
 
-/// Pointcheval-Sanders keypair.
+/// A keypair formed from a [`SecretKey`] and a [`PublicKey`].
 #[derive(Debug)]
 pub struct KeyPair {
     /// Pointcheval-Sanders secret key.
@@ -44,7 +44,8 @@ pub struct KeyPair {
 
 #[allow(unused)]
 impl SecretKey {
-    /// Constructs a new SecretKey of the given length.
+    /// Generate a new random `SecretKey` of a given length.
+    // FIXME: are there any particular caveats on the generated key?
     fn new(_rng: &mut impl Rng, _length: usize, _g1: &G1Projective) -> Self {
         todo!();
     }
@@ -52,18 +53,14 @@ impl SecretKey {
 
 #[allow(unused)]
 impl PublicKey {
-    /// Constructs a new PublicKey out of the scalars in SecretKey.
-    fn from_secret_key(
-        _rng: &mut impl Rng,
-        _sk: &SecretKey,
-        _g1: &G1Projective,
-    ) -> Self {
+    /// Derive a new `PublicKey` from an existing [`SecretKey`] and additional randomness.
+    fn from_secret_key(_rng: &mut impl Rng, _sk: &SecretKey, _g1: &G1Projective) -> Self {
         todo!();
     }
 }
 
 impl KeyPair {
-    /// Creates a new KeyPair for multi-message Pointcheval Sanders.
+    /// Generate a new random `KeyPair` of a given length..
     pub fn new(_length: usize, _rng: &mut impl Rng) -> Self {
         todo!();
     }

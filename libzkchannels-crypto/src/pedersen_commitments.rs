@@ -6,7 +6,7 @@
 use crate::types::*;
 use group::Group;
 
-/// Represents a Pedersen commitment to a message.
+/// A Pedersen commitment to a message.
 #[derive(Debug, Clone, Copy)]
 pub struct Commitment;
 
@@ -25,7 +25,7 @@ impl CommitmentRandomness {
 /// Parameters for Pedersen commitments.
 /// 
 /// These must be defined over a suitable group, written additively.
-/// In practice, this should only be used with the groups from BLS12-381
+/// In practice, this should only be used with the groups from BLS12-381.
 #[derive(Debug)]
 pub struct PedersenParameters<G>
 where
@@ -41,12 +41,12 @@ impl<G: Group<Scalar = Scalar>> PedersenParameters<G> {
         todo!();
     }
 
-    /// Commits to a message using the provided commitment randomness.
+    /// Commit to a message using the provided commitment randomness.
     pub fn commit(&self, _msg: &Message, _cr: &CommitmentRandomness) -> Commitment {
         todo!();
     }
 
-    /// Verifies the commitment on the given message and randomness.
+    /// With a given commitment randomness scalar, verify a commitment to a message.
     pub fn decommit(&self, _com: &Commitment, _msg: &Message, _cr: &CommitmentRandomness) -> bool {
         todo!();
     }

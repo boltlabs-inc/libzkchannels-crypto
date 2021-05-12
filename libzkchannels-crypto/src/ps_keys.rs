@@ -1,13 +1,12 @@
-//! Defines a class of keys for use across the schemes in this crate.
+//! This defines a class of keys for use across the schemes in this crate.
 //!
-//! The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over BLS12-381.
-//! They can also be used for non-blind PS signatures and as commitment parameters.
-//!
+//! The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over
+//! BLS12-381 and can also be used for non-blind PS signatures and as commitment parameters.
+//!   
 //! The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
 //! (https://eprint.iacr.org/2015/525.pdf); The BLS12-381 curve is defined in the (now expired) IRTF
 //! draft titled ["BLS
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
-//!
 use crate::types::*;
 
 /// Pointcheval-Sanders secret key for multi-message signing operations.

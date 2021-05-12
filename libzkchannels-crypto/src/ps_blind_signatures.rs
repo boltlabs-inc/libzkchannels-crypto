@@ -1,17 +1,22 @@
-//! Implements of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381.
+//! Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381.
 //!
-//! See references in ps_signatures.rs
+//! More information on the constructs involved can be found in the documentation for the
+//! [`ps_signatures`](crate::ps_signatures) module.
 use crate::{
     pedersen_commitments::PedersenParameters, ps_keys::*, ps_signatures::Signature, types::*,
 };
 
 /// A message, blinded for use in PS blind signature protocols.
-/// This is a commitment in G1 generated using a BlindPublicKey additional information as generators.
+///
+/// Mathematically, this is a commitment in G1 generated using a blinded [`PublicKey`] for additional
+/// information; programmatically, a `BlindedMessage` can be constructed using
+/// [`PublicKey::blind_message`].
 #[derive(Debug, Clone, Copy)]
 pub struct BlindedMessage;
 
 /// A signature on a blinded message, generated using PS blind signing protocols.
-/// This has the same form as a regular signature.
+///
+/// This has the same representation as a regular [`Signature`], but different semantics.
 #[derive(Debug, Clone, Copy)]
 pub struct BlindedSignature;
 
@@ -27,19 +32,19 @@ impl BlindingFactor {
 }
 
 impl BlindedSignature {
-    /// Blinds a signature using the given blinding factor.
+    /// Blind a signature using the given blinding factor.
     pub fn from_signature(_sig: &Signature, _bf: &BlindingFactor) -> Self {
         todo!();
     }
 
-    /// Unblinds a signature. This will always compute: the user must take care to use
+    /// Unblind a signature. This will always compute: the user must take care to use
     /// a blinding factor that actually corresponds to the signature in order to retrieve
     /// a valid Signature on the original message.
     pub fn unblind(&self, _bf: &BlindingFactor) -> Signature {
         todo!()
     }
 
-    /// Randomizes signature in place.
+    /// Randomize a signature in-place.
     pub fn randomize(&mut self, _rng: &mut impl Rng) {
         todo!()
     }
@@ -47,7 +52,7 @@ impl BlindedSignature {
 
 #[allow(unused)]
 impl SecretKey {
-    /// Produces a signature on the given message.
+    /// Produce a signature on the given message.
     fn try_blind_sign(
         &self,
         _rng: &mut impl Rng,
@@ -63,12 +68,12 @@ impl PublicKey {
         todo!();
     }
 
-    /// Blinds a message using the given blinding factor.
+    /// Blind a message using the given blinding factor.
     pub fn blind_message(_msg: &Message, _bf: &BlindingFactor) -> BlindedMessage {
         todo!();
     }
 
-    /// Verifies that the given signature is on the message, using the blinding factor.
+    /// Verify that the given signature is on the message, using the blinding factor.
     pub fn verify_blinded(
         &self,
         _msg: &Message,
@@ -80,7 +85,8 @@ impl PublicKey {
 }
 
 impl KeyPair {
-    /// Signs a blinded message.
+    /// Sign a blinded message.
+    // FIXME: in what cases will this fail?
     pub fn try_blind_sign(
         &self,
         rng: &mut impl Rng,
@@ -89,7 +95,8 @@ impl KeyPair {
         self.sk.try_blind_sign(rng, msg)
     }
 
-    /// Verifies that the given signature is on the message, using the blinding factor.
+    /// Given the blinding factor, verify that the given signature is valid with respect to the
+    /// message, using the blinding factor.
     pub fn verify_blinded(
         &self,
         msg: &Message,

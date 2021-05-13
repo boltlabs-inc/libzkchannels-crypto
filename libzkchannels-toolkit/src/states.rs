@@ -73,7 +73,7 @@ pub struct State {
 pub struct PreviousState(State);
 
 impl PreviousState {
-    /// Forms a commitment (and corresponding blinding factor) to the `PreviousState`'s [`RevocationLock`].
+    /// Form a commitment (and corresponding blinding factor) to the `PreviousState`'s [`RevocationLock`].
     pub fn get_revocation_lock_commitment(
         &self,
     ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {

@@ -85,7 +85,7 @@ pub struct CloseState<'a> {
 }
 
 impl State {
-    /// Generates a new `State` with the given balances and ID.
+    /// Generate a new `State` with the given balances and ID.
     pub fn new(
         _rng: &mut impl Rng,
         _channel_id: ChannelId,
@@ -139,7 +139,7 @@ impl State {
         }
     }
 
-    /// Applies a payment to the state by updating the balances appropriately and generating new
+    /// Apply a payment to the state by updating the balances appropriately and generating new
     /// [`Nonce`] and [`RevocationLock`] (returning the corresponding [`RevocationSecret`]).
     ///
     /// A positive payment amount *deducts* from the [`CustomerBalance`] and *adds* to the
@@ -155,7 +155,7 @@ impl State {
         todo!();
     }
 
-    /// Forms a commitment (and corresponding blinding factor) to the [`State`].
+    /// Form a commitment (and corresponding blinding factor) to the [`State`].
     ///
     /// This is typically called by the customer.
     pub fn commit<'a>(
@@ -171,7 +171,7 @@ impl State {
 }
 
 impl CloseState<'_> {
-    /// Forms a commitment (and corresponding blinding factor) to the [`CloseState`].
+    /// Form a commitment (and corresponding blinding factor) to the [`CloseState`].
     ///
     /// This is typically called by the customer.
     pub fn commit<'a>(
@@ -236,7 +236,7 @@ pub struct CloseStateBlindedSignature;
 pub struct CloseStateBlindingFactor;
 
 impl CloseStateBlindedSignature {
-    /// Produces a [`CloseStateBlindedSignature`] by blindly signing the given [`CloseStateCommitment`].
+    /// Produce a [`CloseStateBlindedSignature`] by blindly signing the given [`CloseStateCommitment`].
     ///
     /// This is typically called by the merchant.
     pub fn new(
@@ -247,7 +247,7 @@ impl CloseStateBlindedSignature {
         todo!();
     }
 
-    /// Unblinds a [`CloseStateBlindedSignature`] to get an (unblinded) [`CloseStateSignature`]
+    /// Unblind a [`CloseStateBlindedSignature`] to get an (unblinded) [`CloseStateSignature`]
     /// using the given [`CloseStateBlindingFactor`].
     ///
     /// This is typically called by the customer.
@@ -260,7 +260,7 @@ impl CloseStateBlindedSignature {
 }
 
 impl CloseStateSignature {
-    /// Verifies the merchant signature against the given [`CloseState`].
+    /// Verify the merchant signature against the given [`CloseState`].
     ///
     /// This is typically called by the customer.
     pub fn verify(
@@ -286,14 +286,14 @@ pub struct BlindedPayToken(/*BlindedSignature*/);
 pub struct PayTokenBlindingFactor(BlindingFactor);
 
 impl BlindedPayToken {
-    /// Produces a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
+    /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
     pub fn new(_rng: &mut impl Rng, _param: &MerchantParameters, _com: StateCommitment) -> Self {
         todo!();
     }
 
-    /// Unblinds a [`BlindedPayToken`] to get an (unblinded) [`PayToken`].
+    /// Unblind a [`BlindedPayToken`] to get an (unblinded) [`PayToken`].
     ///
     /// This is typically called by the customer.
     pub fn unblind(self, _bf: Current<'_, PayTokenBlindingFactor>) -> Current<'_, PayToken> {
@@ -302,7 +302,7 @@ impl BlindedPayToken {
 }
 
 impl PayToken {
-    /// Verifies a `PayToken` against the given [`State`].
+    /// Verify a `PayToken` against the given [`State`].
     ///
     /// This is typically called by the customer.
     pub fn verify(&self, _param: &CustomerParameters, _state: &State) -> Verification {

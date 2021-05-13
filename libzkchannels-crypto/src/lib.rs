@@ -12,11 +12,14 @@ This crate provides an implementation of the following cryptographic primitives 
 #![warn(future_incompatible)]
 #![warn(unused)]
 #![forbid(broken_intra_doc_links)]
+
+pub mod challenge;
 pub mod message;
 pub mod pedersen_commitments;
 pub mod ps_blind_signatures;
 pub mod ps_keys;
 pub mod ps_signatures;
+pub mod signature_proof;
 
 mod types {
     pub use crate::message::*;

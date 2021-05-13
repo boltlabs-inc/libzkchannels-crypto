@@ -23,7 +23,13 @@ pub struct BlindedMessage;
 ///
 /// This has the same representation as a regular [`Signature`], but different semantics.
 #[derive(Debug, Clone, Copy)]
-pub struct BlindedSignature;
+pub struct BlindedSignature(Signature);
+
+impl BlindedSignature {
+    pub fn to_bytes(&self) -> [u8; 96] {
+        self.0.to_bytes()
+    }
+}
 
 /// Pointcheval-Sanders blinding factor for a message or signature.
 #[derive(Debug, Clone, Copy)]
@@ -38,14 +44,14 @@ impl BlindingFactor {
 
 impl BlindedSignature {
     /// Blind a [`Signature`] using the given [`BlindingFactor`].
-    pub fn from_signature(_sig: &Signature, _bf: &BlindingFactor) -> Self {
+    pub fn from_signature(_sig: &Signature, _bf: BlindingFactor) -> Self {
         todo!();
     }
 
     /// Unblind a [`BlindedSignature`]. This will always compute: the user must take care to use
     /// a blinding factor that actually corresponds to the signature in order to retrieve
     /// a valid [`Signature`] on the original message.
-    pub fn unblind(&self, _bf: &BlindingFactor) -> Signature {
+    pub fn unblind(&self, _bf: BlindingFactor) -> Signature {
         todo!()
     }
 
@@ -69,6 +75,7 @@ impl SecretKey {
 
 impl PublicKey {
     /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
+    // FIXME(marcella): where should this go?
     pub fn as_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective> {
         todo!();
     }
@@ -79,7 +86,7 @@ impl PublicKey {
     }
 
     /// Blind a message using the given blinding factor.
-    pub fn blind_message(_msg: &Message, _bf: &BlindingFactor) -> BlindedMessage {
+    pub fn blind_message(_msg: &Message, _bf: BlindingFactor) -> BlindedMessage {
         todo!();
     }
 
@@ -88,7 +95,7 @@ impl PublicKey {
         &self,
         _msg: &Message,
         _sig: &BlindedSignature,
-        _bf: &BlindingFactor,
+        _bf: BlindingFactor,
     ) -> bool {
         todo!();
     }
@@ -118,7 +125,7 @@ impl KeyPair {
         &self,
         msg: &Message,
         sig: &BlindedSignature,
-        bf: &BlindingFactor,
+        bf: BlindingFactor,
     ) -> bool {
         self.pk.verify_blinded(msg, sig, bf)
     }

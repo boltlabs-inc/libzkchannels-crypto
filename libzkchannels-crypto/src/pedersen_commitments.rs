@@ -9,7 +9,7 @@ Implements Pedersen commitments \[1\] over the prime-order pairing groups from B
 2. D. Boneh, S. Gorbunov, R. Wahby, H. Wee, and Z. Zhang. "BLS Signatures, Version 4". Internet-draft, IETF.
 2021. URL: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 */
-use crate::types::*;
+use crate::{challenge::ChallengeScalar, types::*};
 use ff::Field;
 use group::Group;
 use std::iter;
@@ -87,18 +87,18 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
         }
     }
 
-    /// Run the resonse phase of the Schnorr-style commitment proof to complete the proof.
+    /// Run the challenge and response phases of the Schnorr-style commitment proof to complete the proof.
     pub fn generate_proof_object(
         self,
         msg: &Message,
         commitment_randomness: CommitmentRandomness,
-        challenge_scalar: Scalar,
+        challenge_scalar: ChallengeScalar,
     ) -> CommitmentProof<G> {
         // generate response scalars
         let response_scalars = iter::once(&commitment_randomness.0)
             .chain(&**msg)
             .zip(&*self.commitment_scalars)
-            .map(|(mi, cs)| challenge_scalar * mi + cs)
+            .map(|(mi, cs)| challenge_scalar.0 * mi + cs)
             .collect::<Vec<_>>();
 
         CommitmentProof {
@@ -123,8 +123,8 @@ pub struct CommitmentRandomness(pub Scalar);
 
 impl CommitmentRandomness {
     /// Choose commitment randomness uniformly at random from the set of possible scalars.
-    pub fn new(_rng: &mut impl Rng) -> Self {
-        todo!();
+    pub fn new(rng: &mut impl Rng) -> Self {
+        Self(Scalar::random(rng))
     }
 }
 

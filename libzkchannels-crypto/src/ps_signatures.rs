@@ -40,6 +40,13 @@ impl Signature {
     pub fn randomize(&mut self, _rng: &mut impl Rng) {
         todo!()
     }
+
+    pub fn to_bytes(&self) -> [u8; 96] {
+        let mut buf: [u8; 96] = [0; 96];
+        buf[..48].copy_from_slice(&self.sigma1.to_compressed());
+        buf[48..].copy_from_slice(&self.sigma2.to_compressed());
+        buf
+    }
 }
 
 impl Signer for SecretKey {

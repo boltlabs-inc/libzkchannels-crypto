@@ -72,6 +72,15 @@ pub struct State {
 #[derive(Debug)]
 pub struct PreviousState(State);
 
+impl PreviousState {
+    /// Forms a commitment (and corresponding blinding factor) to the `PreviousState`'s [`RevocationLock`].
+    pub fn get_revocation_lock_commitment(
+        &self,
+    ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
+        todo!();
+    }
+}
+
 /// The closing state associated with a state.
 ///
 /// When signed by the merchant, this can be used by the customer to close the channel.

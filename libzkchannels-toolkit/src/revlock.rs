@@ -4,13 +4,18 @@
 //!
 //! *Correctness*: A correctly generated revocation pair will always verify.
 //!
-//! ```
-//! use libzkchannels_toolkit::{revlock::*, types::Verification};
-//! use rand;
-//! let rs = RevocationSecret::new(&mut rand::thread_rng());
+//! ```ignore
+//! # use libzkchannels_toolkit::{revlock::*, Verification};
+//! # use rand::thread_rng;
+//! let rs = RevocationSecret::new(&mut thread_rng());
 //! let rl = rs.revocation_lock();
-//! assert_eq!(rl.verify(&rs), Verification::verifies);
+//! match rl.verify(&rs) {
+//!     Verification::Verified => (),
+//!     Verification::Failed => assert!(false),
+//! }
 //! ```
+//!
+//! NOTE: un-ignore this doctest once things are implemented
 //!
 //! *Security*: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability (e.g. basically never)
 //!
@@ -36,7 +41,7 @@ pub struct RevocationSecret;
 /// *Hiding*: A `RevocationLockCommitment` does not reveal anything about the underlying [`RevocationLock`].
 ///
 /// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot efficiently generate a
-/// [`RevocationLock`] and [`RevocationLockCommitmentRandomness`] that [`verify()`](RevocationLockCommitment::verify())s with the commitment.
+/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that [`verify()`](RevocationLockCommitment::verify())s with the commitment.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct RevocationLockCommitment(/*Commitment*/);
 
@@ -62,7 +67,7 @@ impl RevocationLock {
         todo!();
     }
 
-    /// Form a commitment (and corresponding commitment randomness) to a RevocationLock.
+    /// Form a commitment (and corresponding blinding factor) to a RevocationLock.
     #[allow(unused)]
     pub(crate) fn commit(
         &self,
@@ -74,8 +79,9 @@ impl RevocationLock {
 }
 
 impl RevocationLockCommitment {
-    /// Validate a commitment to revocation lock against the given parameters and commitment
-    /// randomness.
+    /// Validate the [`RevocationLockCommitment`] against the given parameters and blinding factor.
+    ///
+    /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is derived from the [`RevocationSecret`].
     pub fn verify(
         &self,
         _parameters: &MerchantParameters,

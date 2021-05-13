@@ -284,6 +284,7 @@ impl CloseStateSignature {
 /// A `PayToken` allows a customer to initiate a new payment. It is tied to a specific channel
 /// [`State`].
 #[derive(Debug, Clone)]
+#[allow(missing_copy_implementations)]
 pub struct PayToken(Signature);
 
 /// Blinded signature on a [`PayToken`].

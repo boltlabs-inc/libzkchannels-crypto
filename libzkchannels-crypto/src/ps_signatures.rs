@@ -7,9 +7,8 @@
 use crate::{ps_keys::*, types::*};
 
 /// A `Signer` may be used to sign a message.
-///
-// FIXME(marcella): in what cases can this fail?
 pub trait Signer {
+    /// Try to sign a message. Fails if the keypair caller length does not match message length.
     fn try_sign(&self, rng: &mut impl Rng, msg: &Message) -> Result<Signature, String>;
 }
 

@@ -1,8 +1,18 @@
 //! This library describes revocation pairs, a formalization of hash locks.
-//!
+//! 
 //! A pair ([`RevocationLock`], [`RevocationSecret`]) satisfy two properties:
-//! - Correctness: A revocation pair generated with [`generate_pair`](RevocationLock::generate_pair()) will always [`verify`](RevocationLock::verify()) correctly.
-//! - Security: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability (e.g. basically never)
+//! 
+//! *Correctness*: A correctly generated revocation pair will always verify.
+//! 
+//! ```
+//! use libzkchannels_toolkit::{revlock::*, types::Verification};
+//! use rand;
+//! let rs = RevocationSecret::new(&mut rand::thread_rng());
+//! let rl = rs.revocation_lock();
+//! assert_eq!(rl.verify(&rs), Verification::verifies);
+//! ``` 
+//! 
+//! *Security*: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability (e.g. basically never)
 //!
 use serde::*;
 
@@ -18,6 +28,15 @@ pub struct RevocationLock;
 pub struct RevocationSecret;
 
 /// A commitment to a [`RevocationLock`].
+/// 
+/// This has the standard properties of a commitment scheme:
+/// 
+/// *Correctness*: A correctly-generated commitment will always verify.
+/// 
+/// *Hiding*: A `RevocationLockCommitment` does not reveal anything about the underlying [`RevocationLock`].
+/// 
+/// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot efficiently generate a 
+/// [`RevocationLock`] and [`RevocationLockCommitmentRandomness`] that [`verify()`](RevocationLockCommitment::verify())s with the commitment.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct RevocationLockCommitment(/*Commitment*/);
 

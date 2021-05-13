@@ -37,7 +37,7 @@ mod types {
 
     /// An owned value tied to a phantom `'a` lifetime, which can only be used while its
     /// corresponding state is still current.
-    #[derive(Debug)]
+    #[derive(Debug, Clone, Copy)]
     pub struct Current<'a, T> {
         lifetime: PhantomData<&'a ()>,
         inner: T,

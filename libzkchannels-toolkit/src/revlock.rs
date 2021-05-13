@@ -1,23 +1,23 @@
 //! This library describes revocation pairs, a formalization of hash locks.
-//! 
+//!
 //! A pair ([`RevocationLock`], [`RevocationSecret`]) satisfy two properties:
-//! 
+//!
 //! *Correctness*: A correctly generated revocation pair will always verify.
-//! 
+//!
 //! ```
 //! use libzkchannels_toolkit::{revlock::*, types::Verification};
 //! use rand;
 //! let rs = RevocationSecret::new(&mut rand::thread_rng());
 //! let rl = rs.revocation_lock();
 //! assert_eq!(rl.verify(&rs), Verification::verifies);
-//! ``` 
-//! 
+//! ```
+//!
 //! *Security*: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability (e.g. basically never)
 //!
 use serde::*;
 
 use crate::parameters::*;
-use crate::types::*;
+use crate::{Rng, Verification};
 
 /// A revocation lock.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -28,21 +28,21 @@ pub struct RevocationLock;
 pub struct RevocationSecret;
 
 /// A commitment to a [`RevocationLock`].
-/// 
+///
 /// This has the standard properties of a commitment scheme:
-/// 
+///
 /// *Correctness*: A correctly-generated commitment will always verify.
-/// 
+///
 /// *Hiding*: A `RevocationLockCommitment` does not reveal anything about the underlying [`RevocationLock`].
-/// 
-/// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot efficiently generate a 
+///
+/// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot efficiently generate a
 /// [`RevocationLock`] and [`RevocationLockCommitmentRandomness`] that [`verify()`](RevocationLockCommitment::verify())s with the commitment.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct RevocationLockCommitment(/*Commitment*/);
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct RevocationLockCommitmentRandomness();
+pub struct RevocationLockBlindingFactor();
 
 impl RevocationSecret {
     /// Create a new, random revocation secret.
@@ -68,7 +68,7 @@ impl RevocationLock {
         &self,
         _rng: &mut impl Rng,
         _param: &CustomerParameters,
-    ) -> (RevocationLockCommitment, RevocationLockCommitmentRandomness) {
+    ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
         todo!();
     }
 }
@@ -81,7 +81,7 @@ impl RevocationLockCommitment {
         _parameters: &MerchantParameters,
         _revocation_secret: &RevocationSecret,
         _revocation_lock: &RevocationLock,
-        _revocation_lock_commitment_randomness: &RevocationLockCommitmentRandomness,
+        _revocation_lock_commitment_randomness: &RevocationLockBlindingFactor,
     ) -> Verification {
         todo!();
     }

@@ -1,7 +1,7 @@
 //! Cryptographically random nonces.
 use serde::*;
 
-use crate::types::*;
+use crate::Rng;
 
 #[allow(unused)]
 /// A random nonce.

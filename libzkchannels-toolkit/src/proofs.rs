@@ -10,23 +10,25 @@ use crate::nonce::*;
 use crate::parameters::*;
 use crate::revlock::*;
 use crate::states::*;
-use crate::types::*;
+use crate::{Current, Rng, Verification};
 
 /// An establish proof demonstrates that a customer is trying to initialize a channel correctly.
 ///
 /// This is a Schnorr proof that makes the following guarantees in zero knowledge:
-/// 
+///
 /// - The balances in the [`State`] match the previously-agreed-upon values.
-/// - The underlying [`State`] and [`CloseState`] from the [`StateCommitment`] and [`CloseStateCommitment`]
-/// are correctly formed relative to each other.
+/// - The underlying [`State`] and [`CloseState`] from the [`StateCommitment`] and
+///   [`CloseStateCommitment`] are correctly formed relative to each other.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EstablishProof;
 
 impl EstablishProof {
     /// Forms a new zero-knowledge [`EstablishProof`] object.
-    /// 
-    /// It takes the [`State`] and two current blinding factors. These should correspond to commitments made
-    /// from the given [`State`] and its associated [`CloseState`].
+    ///
+    /// It takes the [`State`] and two current blinding factors. These should correspond to
+    /// commitments made from the given [`State`] and its associated [`CloseState`].
+    ///
+    /// This function is typically called by the customer.
     pub fn new<'a>(
         _rng: &mut impl Rng,
         _params: &CustomerParameters,
@@ -38,6 +40,8 @@ impl EstablishProof {
     }
 
     /// Verifies the [`EstablishProof`] against the provided verification objects.
+    ///
+    /// This function is typically called by the merchant.
     pub fn verify(
         &self,
         _params: &MerchantParameters,
@@ -66,52 +70,67 @@ pub struct EstablishProofVerification {
 ///
 /// This is a Schnorr proof that makes the following guarantees in zero knowledge:
 ///
-/// - The customer holds a valid [`PayToken`](crate::states::PayToken) and knows its corresponding 
+/// - The customer holds a valid [`PayToken`](crate::states::PayToken) and knows its corresponding
 ///   [`State`] (the "old" or previous state of the channel).
-/// - The customer knows the opening of commitments to the [`RevocationLock`],  
-///   the new [`State`], and the corresponding `CloseState`.  
-/// - The new state from the commitment is correctly updated from the old state from the [`PayToken`] 
+/// - The customer knows the opening of commitments to the [`RevocationLock`],
+///   the new [`State`], and the corresponding `CloseState`.
+/// - The new state from the commitment is correctly updated from the old state from the [`PayToken`]
 ///   (that is, the balances are updated by an agreed-upon amount)
 /// - The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the old [`State`].
 /// - The balances in the new [`State`] are non-negative.
-/// 
+///
 /// Expected contents:
-/// 
+///
 /// - 4 commitments to commitment scalars.
 /// - 4 lists of response scalars.
-/// - 2 commitment scalars corresponding to revealed values. 
+/// - 2 commitment scalars corresponding to revealed values.
 /// - 1 [`PayTokenCommitment`]: Signature-proof-style commitment to the [`State`] underlying the unused [`BlindedPayToken`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PayProof;
 
+/// Blinding factors for commitments associated with a particular state.
+#[derive(Debug)]
+pub struct BlindingFactors<'a> {
+    /// The blinding factor for a [`RevocationLockCommitment`].
+    pub for_revocation_lock: Current<'a, RevocationLockBlindingFactor>,
+    /// The blinding factor for a [`StateCommitment`].
+    pub for_pay_token: Current<'a, PayTokenBlindingFactor>,
+    /// The blinding factor for a [`CloseStateCommitment`]
+    pub for_close_state: Current<'a, CloseStateBlindingFactor>,
+}
+
 impl PayProof {
-    /// Forms a new zero-knowledge [`PayProof`] object. 
+    /// Forms a new zero-knowledge [`PayProof`] object.
     ///
-    /// It takes the old [`State`] and corresponding [`PayToken`], and the new [`State`].
-    /// It also requires the blinding factors corresponding to commitments made on the old [`State`]'s 
-    /// revocation lock, the given [`PayToken`], and the [`CloseState`] derived from the given new [`State`].
-    /// 
+    /// It takes the old [`State`] and corresponding [`PayToken`], and the new [`State`]. It also
+    /// requires the blinding factors corresponding to commitments made on the old [`State`]'s
+    /// revocation lock, the given [`PayToken`], and the [`CloseState`] derived from the given new
+    /// [`State`].
+    ///
     /// Internally, it also prepares the signature proof on the given [`PayToken`]:
     ///
-    /// - blinds and randomizes the [`PayToken`] to produce a [`PayTokenCommitment`] and corresponding
-    ///   [`PayTokenBlindingFactor`]
+    /// - blinds and randomizes the [`PayToken`] to produce a [`PayTokenCommitment`] and
+    ///   corresponding [`PayTokenBlindingFactor`], and
     /// - forms a commitment to the old [`State`] underlying the [`PayToken`]
-    /// 
-    /// This blinding factor is not used again during the protocol, so it doesn't leave this function.
+    ///
+    /// This blinding factor is not used again during the protocol, so it doesn't leave this
+    /// function.
+    ///
+    /// This function is typically called by the customer.
     pub fn new<'a>(
         _rng: &mut impl Rng,
         _params: &CustomerParameters,
-        _old_state: State,
+        _old_state: PreviousState,
         _pay_token: PayToken,
         _state: &'a State,
-        _revlock_commit_random: Current<'a, RevocationLockCommitmentRandomness>,
-        _pay_token_blinding_factor: Current<'a, PayTokenBlindingFactor>,
-        _close_state_blinding_factor: Current<'a, CloseStateBlindingFactor>,
+        _blinding_factors: BlindingFactors<'a>,
     ) -> Self {
         todo!();
     }
 
     /// Verifies a PayProof against the given verification objects.
+    ///
+    /// This function is typically called by the merchant.
     pub fn verify(
         &self,
         _params: &MerchantParameters,
@@ -124,7 +143,7 @@ impl PayProof {
 /// Commitment to the [`State`] underlying a [`PayToken`] for use in a [`PayProof`]
 ///
 /// Note: this is a commitment to the [`State`] for use in the proof of knowledge of the opening
-/// of a _signature_. This makes it different from a [`StateCommitment`], which is used in the 
+/// of a _signature_. This makes it different from a [`StateCommitment`], which is used in the
 /// proof of knowledge of the opening of a _commitment_.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PayTokenCommitment;
@@ -133,15 +152,15 @@ pub struct PayTokenCommitment;
 #[derive(Debug)]
 pub struct PayProofVerification {
     /// Blinded, unused pay token.
-    pub _pay_token: BlindedPayToken,
+    pub blinded_pay_token: BlindedPayToken,
     /// Commitment to the revocation lock in the old state.
-    pub _rl_com: RevocationLockCommitment,
+    pub revocation_lock_commitment: RevocationLockCommitment,
     /// Commitment to the new channel state.
-    pub _state_com: StateCommitment,
+    pub state_commitment: StateCommitment,
     /// Commitment to the new close state.
-    pub _close_state_com: CloseStateCommitment,
+    pub close_state_commitment: CloseStateCommitment,
     /// Expected nonce revealed at the beginning of Pay.
-    pub _nonce: Nonce,
+    pub nonce: Nonce,
     /// Expected payment amount.
-    pub _amount: PaymentAmount,
+    pub amount: PaymentAmount,
 }

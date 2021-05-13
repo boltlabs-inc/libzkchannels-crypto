@@ -23,7 +23,7 @@ use crate::{Current, Rng, Verification};
 pub struct EstablishProof;
 
 impl EstablishProof {
-    /// Forms a new zero-knowledge [`EstablishProof`] object.
+    /// Form a new zero-knowledge [`EstablishProof`] object.
     ///
     /// It takes the [`State`] and two current blinding factors. These should correspond to
     /// commitments made from the given [`State`] and its associated [`CloseState`].
@@ -39,7 +39,7 @@ impl EstablishProof {
         todo!();
     }
 
-    /// Verifies the [`EstablishProof`] against the provided verification objects.
+    /// Verify the [`EstablishProof`] against the provided verification objects.
     ///
     /// This function is typically called by the merchant.
     pub fn verify(
@@ -100,7 +100,7 @@ pub struct BlindingFactors<'a> {
 }
 
 impl PayProof {
-    /// Forms a new zero-knowledge [`PayProof`] object.
+    /// Form a new zero-knowledge [`PayProof`] object.
     ///
     /// It takes the old [`State`] and corresponding [`PayToken`], and the new [`State`]. It also
     /// requires the blinding factors corresponding to commitments made on the old [`State`]'s
@@ -128,7 +128,7 @@ impl PayProof {
         todo!();
     }
 
-    /// Verifies a PayProof against the given verification objects.
+    /// Verify a PayProof against the given verification objects.
     ///
     /// This function is typically called by the merchant.
     pub fn verify(

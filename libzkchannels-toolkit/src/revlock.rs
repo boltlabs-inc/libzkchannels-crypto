@@ -50,19 +50,19 @@ impl RevocationSecret {
         todo!()
     }
 
-    /// Derives the [`RevocationLock`]  corresponding to this [`RevocationSecret`]
+    /// Derive the [`RevocationLock`]  corresponding to this [`RevocationSecret`]
     pub fn revocation_lock(&self) -> RevocationLock {
         todo!();
     }
 }
 
 impl RevocationLock {
-    /// Validates a revocation pair.
+    /// Validate a revocation pair.
     pub fn verify(&self, _rs: &RevocationSecret) -> Verification {
         todo!();
     }
 
-    /// Forms a commitment (and corresponding commitment randomness) to a RevocationLock.
+    /// Form a commitment (and corresponding commitment randomness) to a RevocationLock.
     #[allow(unused)]
     pub(crate) fn commit(
         &self,
@@ -74,7 +74,7 @@ impl RevocationLock {
 }
 
 impl RevocationLockCommitment {
-    /// Validates a commitment to revocation lock against the given parameters and commitment
+    /// Validate a commitment to revocation lock against the given parameters and commitment
     /// randomness.
     pub fn verify(
         &self,

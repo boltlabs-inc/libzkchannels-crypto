@@ -1,12 +1,22 @@
-//! Defines various state types used in the libzkchannels protocol.
+//! Defines the state of a channel and transformations on that state used in the zkChannels protocol.
 //!
-//! The primary type is a [`State`], which describes a zkChannel at a point in time. This object
-//! is operated on throughout the protocol:
-//! - A [`PayToken`] is a merchant signature on a [`State`], and allows a customer to continue making payments on a channel.
-//! - A `CloseState` is a [`State`] with the payment-specific nonce removed. When signed, it can be used to claim funds on-chain
-//! while maintaining payment privacy. To avoid de-synchronizing the `State` and `CloseState`, this library never produces a
-//! `CloseState` directly.
-//!
+//! The primary type is a [`State`], which describes a zkChannel at a point in time. The protocol applies several
+//! transformations to this object to generate the correct outputs of the Pay subprotocol: a [`PayToken`] and a [`CloseStateSignature`].
+//! For each of these outputs, the flow goes as follows:
+//! 
+//! 1. The customer blinds an input
+//! 2. The merchant verifies (in zero knowledge) that the input is correctly formed
+//! 3. The merchant produces a blinded version of the output
+//! 4. The customer unblinds the output
+//! 
+//! To produce a [`PayToken`], the customer blinds the [`State`] with a [`PayTokenBlindingFactor`]. This produces a 
+//! [`StateCommitment`], which the merchant signs to produce a [`BlindedPayToken`].
+//! 
+//! To produce a [`CloseStateSignature`], the customer blinds the [`CloseState`] with a [`CloseStateBlindingFactor`].
+//! This produces a [`CloseStateCommitment`], which the merchant signs to produce a [`CloseStateBlindedSignature`].
+//! 
+//! The customer must blind the input and unblind the output with the _same_ blinding factor.
+//! 
 use serde::*;
 
 use crate::nonce::*;
@@ -55,7 +65,10 @@ pub struct State {
     customer_balance: CustomerBalance,
 }
 
-/// The closing state for a state.
+/// The closing state associated with a state.
+/// 
+/// When signed by the merchant, this can be used by the customer to close the channel. 
+/// It removes the nonce from the [`State`] to maintain on-chain payment privacy.
 #[derive(Debug, Clone, Copy)]
 pub struct CloseState<'a> {
     channel_id: &'a ChannelId,
@@ -100,7 +113,9 @@ impl State {
         &self.nonce
     }
 
-    /// Get the closing state for this state.
+    /// Get the [`CloseState`] corresponding to this `State`.
+    /// 
+    /// This is typically called by the customer.
     pub fn close_state(&self) -> CloseState<'_> {
         let State {
             channel_id,
@@ -123,6 +138,8 @@ impl State {
     /// A positive payment amount *deducts* from the [`CustomerBalance`] and *adds* to the
     /// [`MerchantBalance`]; a negative payment amount *adds* to the [`CustomerBalance`] and
     /// *deducts* from the [`MerchantBalance`].
+    /// 
+    /// This is typically called by the customer.
     pub fn apply_payment<'a>(
         &'a mut self,
         _rng: &mut impl Rng,
@@ -131,7 +148,9 @@ impl State {
         todo!();
     }
 
-    /// Forms a commitment (and corresponding commitment randomness) to a `State`.
+    /// Forms a commitment (and corresponding blinding factor) to the [`State`].
+    /// 
+    /// This is typically called by the customer.
     pub fn commit<'a>(
         &'a self,
         _rng: &mut impl Rng,
@@ -145,7 +164,9 @@ impl State {
 }
 
 impl CloseState<'_> {
-    /// Forms a commitment (and corresponding commitment randomness) to a `CloseState`
+    /// Forms a commitment (and corresponding blinding factor) to the [`CloseState`].
+    /// 
+    /// This is typically called by the customer.
     pub fn commit<'a>(
         &'a self,
         _rng: &mut impl Rng,
@@ -159,21 +180,45 @@ impl CloseState<'_> {
 }
 
 /// Commitment to a State.
+/// 
+/// This satisfies the standard properties of a commitment scheme:
+/// 
+/// *Correctness*: A correctly-generated commitment will always verify.
+/// 
+/// *Hiding*: A `StateCommitment` does not reveal anything about the underlying [`State`].
+/// 
+/// *Binding*: Given a `StateCommitment`, an adversary cannot efficiently generate a 
+/// [`State`] and [`PayTokenBlindingFactor`] that verify with the commitment.
+/// 
+/// Note that there is no direct verification function on `StateCommitment`s. They are 
+/// used to generate [`BlindedPayToken`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct StateCommitment(/*Commitment*/);
 
 /// Commitment to a CloseState.
+/// 
+/// This satisfies the standard properties of a commitment scheme:
+/// 
+/// *Correctness*: A correctly-generated commitment will always verify.
+/// 
+/// *Hiding*: A `CloseStateCommitment` does not reveal anything about the underlying [`CloseState`].
+/// 
+/// *Binding*: Given a `CloseStateCommitment`, an adversary cannot efficiently generate a 
+/// [`CloseState`] and [`CloseStateBlindingFactor`] that verify with the commitment.
+/// 
+/// Note that there is no direct verification function on `CloseStateCommitment`s. They are
+/// used to generate [`CloseStateBlindedSignature`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct CloseStateCommitment(/*Commitment*/);
 
-/// Signature on a CloseState - can be posted on-chain to close a channel.
+/// Signature on a [`CloseState`]. Used as on-chain evidence to close a channel.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
 pub struct CloseStateSignature;
 
-/// Blinded signature on a CloseState.
+/// Blinded signature on a [`CloseState`].
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct CloseStateBlindedSignature;
@@ -184,7 +229,7 @@ pub struct CloseStateBlindedSignature;
 pub struct CloseStateBlindingFactor;
 
 impl CloseStateBlindedSignature {
-    /// Produces a signed close state so the customer can close a channel.
+    /// Produces a [`CloseStateBlindedSignature`] by blindly signing the given [`CloseStateCommitment`].
     ///
     /// This is typically called by the merchant.
     pub fn new(
@@ -196,7 +241,7 @@ impl CloseStateBlindedSignature {
     }
 
     /// Unblinds a [`CloseStateBlindedSignature`] to get an (unblinded) [`CloseStateSignature`]
-    /// using the given blinding factor.
+    /// using the given [`CloseStateBlindingFactor`].
     ///
     /// This is typically called by the customer.
     pub fn unblind<'a>(
@@ -208,7 +253,7 @@ impl CloseStateBlindedSignature {
 }
 
 impl CloseStateSignature {
-    /// Verifies the merchant signature on a closing state (derived from the given [`CloseState`]).
+    /// Verifies the merchant signature against the given [`CloseState`].
     ///
     /// This is typically called by the customer.
     pub fn verify(
@@ -220,9 +265,8 @@ impl CloseStateSignature {
     }
 }
 
-/// Pay token allows a customer to make a payment; it is tied to a specific State and merchant
-///
-/// (via [`CustomerParameters`](crate::parameters::CustomerParameters::merchant_signing_pk)).
+/// A `PayToken` allows a customer to initiate a new payment. It is tied to a specific channel
+/// [`State`].
 #[derive(Debug, Clone)]
 pub struct PayToken(Signature);
 
@@ -230,18 +274,12 @@ pub struct PayToken(Signature);
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedPayToken(/*BlindedSignature*/);
 
-/// Blinding factor for a [`PayTokenCommitment`] and corresponding [`BlindedPayToken`]
+/// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
 #[derive(Debug, Clone, Copy)]
 pub struct PayTokenBlindingFactor(BlindingFactor);
 
-/// Commitment to a [`PayToken`], used to validate a [`BlindedPayToken`]
-///
-/// Note: this is a commitment to the message in the form for a _signature_ proof
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct PayTokenCommitment;
-
 impl BlindedPayToken {
-    /// Produces a [`BlindedPayToken`] by blindly signing the `State` in the given commitment.
+    /// Produces a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
     pub fn new(_rng: &mut impl Rng, _param: &MerchantParameters, _com: StateCommitment) -> Self {
@@ -257,7 +295,9 @@ impl BlindedPayToken {
 }
 
 impl PayToken {
-    /// Verifies a `PayToken` against its corresponding [`State`].
+    /// Verifies a `PayToken` against the given [`State`].
+    /// 
+    /// This is typically called by the customer.
     pub fn verify(&self, _param: &CustomerParameters, _state: &State) -> Verification {
         todo!();
     }

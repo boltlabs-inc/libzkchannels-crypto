@@ -10,7 +10,7 @@ pub struct Nonce;
 
 #[allow(unused)]
 impl Nonce {
-    /// Generates a new cryptographically random nonce with the given random number generator.
+    /// Generate a new cryptographically random nonce with the given random number generator.
     pub fn new(_rng: &mut impl Rng) -> Self {
         todo!();
     }

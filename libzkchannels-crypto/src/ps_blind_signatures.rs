@@ -4,9 +4,7 @@ Implementation of Pointcheval-Sanders blind signatures with efficient protocols 
 More information on the constructs involved can be found in the documentation for the
 [`ps_signatures`](crate::ps_signatures) module.
 */
-use crate::{
-    pedersen_commitments::PedersenParameters, ps_keys::*, ps_signatures::Signature, types::*,
-};
+use crate::{ps_keys::*, ps_signatures::Signature, types::*};
 
 /**
 A message, blinded for use in PS blind signature protocols.
@@ -26,6 +24,7 @@ pub struct BlindedMessage;
 pub struct BlindedSignature(Signature);
 
 impl BlindedSignature {
+    /// Convert to a bytewise representation
     pub fn to_bytes(&self) -> [u8; 96] {
         self.0.to_bytes()
     }
@@ -74,17 +73,6 @@ impl SecretKey {
 }
 
 impl PublicKey {
-    /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
-    // FIXME(marcella): where should this go?
-    pub fn as_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective> {
-        todo!();
-    }
-
-    /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
-    pub fn as_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective> {
-        todo!();
-    }
-
     /// Blind a message using the given blinding factor.
     pub fn blind_message(_msg: &Message, _bf: BlindingFactor) -> BlindedMessage {
         todo!();
@@ -116,7 +104,7 @@ impl KeyPair {
         rng: &mut impl Rng,
         msg: &BlindedMessage,
     ) -> Result<BlindedSignature, String> {
-        self.sk.try_blind_sign(rng, msg)
+        self.secret_key().try_blind_sign(rng, msg)
     }
 
     /// Given the blinding factor, verify that the given signature is valid with respect to the
@@ -127,6 +115,6 @@ impl KeyPair {
         sig: &BlindedSignature,
         bf: BlindingFactor,
     ) -> bool {
-        self.pk.verify_blinded(msg, sig, bf)
+        self.public_key().verify_blinded(msg, sig, bf)
     }
 }

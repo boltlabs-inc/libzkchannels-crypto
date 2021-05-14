@@ -11,7 +11,7 @@
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 //!
 
-use crate::types::*;
+use crate::{pedersen_commitments::PedersenParameters, types::*};
 
 /// Pointcheval-Sanders secret key for multi-message operations.
 #[derive(Debug)]
@@ -36,13 +36,13 @@ pub struct PublicKey {
     pub y2s: Vec<G2Affine>,
 }
 
-/// A keypair formed from a `SecretKey` and a [`PublicKey`].
+/// A keypair formed from a `SecretKey` and a [`PublicKey`] for multi-message operations.
 #[derive(Debug)]
 pub struct KeyPair {
-    /// Pointcheval-Sanders secret key.
-    pub(crate) sk: SecretKey,
-    /// Pointcheval-Sanders public key.
-    pub pk: PublicKey,
+    /// Secret key for multi-message operations.
+    sk: SecretKey,
+    /// Public key for multi-message operations.
+    pk: PublicKey,
 }
 
 #[allow(unused)]
@@ -60,11 +60,41 @@ impl PublicKey {
     fn from_secret_key(_rng: &mut impl Rng, _sk: &SecretKey, _g1: &G1Projective) -> Self {
         todo!();
     }
+
+    /// Return the message length that this keypair can operate on.
+    pub fn message_len(&self) -> usize {
+        self.y1s.len()
+    }
+
+    /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
+    pub fn to_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective> {
+        todo!();
+    }
+
+    /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
+    pub fn to_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective> {
+        todo!();
+    }
 }
 
 impl KeyPair {
     /// Generate a new random `KeyPair` of a given length..
     pub fn new(_length: usize, _rng: &mut impl Rng) -> Self {
         todo!();
+    }
+
+    /// Get the public portion of the `KeyPair`
+    pub fn public_key(&self) -> &PublicKey {
+        &self.pk
+    }
+
+    /// Get the secret portion of the `KeyPair`
+    pub(crate) fn secret_key(&self) -> &SecretKey {
+        &self.sk
+    }
+
+    /// Return the message length that this keypair can operate on.
+    pub fn message_len(&self) -> usize {
+        self.sk.ys.len()
     }
 }

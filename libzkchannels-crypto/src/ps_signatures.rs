@@ -41,6 +41,7 @@ impl Signature {
         todo!()
     }
 
+    /// Convert to a bytewise representation
     pub fn to_bytes(&self) -> [u8; 96] {
         let mut buf: [u8; 96] = [0; 96];
         buf[..48].copy_from_slice(&self.sigma1.to_compressed());
@@ -63,12 +64,12 @@ impl Verifier for PublicKey {
 
 impl Signer for KeyPair {
     fn try_sign(&self, rng: &mut impl Rng, msg: &Message) -> Result<Signature, String> {
-        self.sk.try_sign(rng, msg)
+        self.secret_key().try_sign(rng, msg)
     }
 }
 
 impl Verifier for KeyPair {
     fn verify(&self, msg: &Message, sig: &Signature) -> bool {
-        self.pk.verify(msg, sig)
+        self.public_key().verify(msg, sig)
     }
 }

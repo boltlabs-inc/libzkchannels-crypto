@@ -1,16 +1,16 @@
 //! Functionality for building challenge scalars.
 
 use crate::{
-    pedersen_commitments::CommitmentProofBuilder, signature_proof::SignatureProofBuilder, types::*,
+    commitment_proof::CommitmentProofBuilder, signature_proof::SignatureProofBuilder, types::*,
 };
 use group::{Group, GroupEncoding};
 use sha3::{Digest, Sha3_512};
 
 /// A challenge scalar for use in a Schnorr-style proof
 #[derive(Debug, Clone, Copy)]
-pub struct ChallengeScalar(pub Scalar);
+pub struct Challenge(pub Scalar);
 
-/// Holds state used when building a [`ChallengeScalar`] by hashing, as in a non-interactive Schnorr
+/// Holds state used when building a [`Challenge`] by hashing, as in a non-interactive Schnorr
 /// proof.
 #[derive(Debug)]
 pub struct ChallengeBuilder {
@@ -52,11 +52,11 @@ impl ChallengeBuilder {
         self
     }
 
-    /// Consume the builder and generate a [`ChallengeScalar`] from the accumulated data.
-    pub fn finish(self) -> ChallengeScalar {
+    /// Consume the builder and generate a [`Challenge`] from the accumulated data.
+    pub fn finish(self) -> Challenge {
         let mut digested = [0; 64];
         digested.copy_from_slice(self.hasher.finalize().as_ref());
         let scalar = Scalar::from_bytes_wide(&digested);
-        ChallengeScalar(scalar)
+        Challenge(scalar)
     }
 }

@@ -14,6 +14,7 @@ This crate provides an implementation of the following cryptographic primitives 
 #![forbid(broken_intra_doc_links)]
 
 pub mod challenge;
+pub mod commitment_proof;
 pub mod message;
 pub mod pedersen_commitments;
 pub mod ps_blind_signatures;

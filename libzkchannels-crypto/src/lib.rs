@@ -21,6 +21,15 @@ pub mod ps_blind_signatures;
 pub mod ps_keys;
 pub mod ps_signatures;
 pub mod signature_proof;
+pub mod range_proof;
+
+use thiserror::*;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("tried to build a range proof on a negative value ({0})")]
+    OutsideRange(i64),
+}
 
 mod types {
     pub use crate::message::*;

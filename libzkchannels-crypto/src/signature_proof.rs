@@ -27,9 +27,9 @@ pub struct SignatureProof {
 ///
 /// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
-pub struct SignatureProofBuilder<'a> {
+pub struct SignatureProofBuilder {
     /// Underlying message in the signature.
-    pub message: &'a Message,
+    pub message: Message,
     /// Commitment to the message.
     pub message_commitment: Commitment<G2Projective>,
     /// Commitment randomness corresponding to the `message_commitment`.
@@ -40,7 +40,7 @@ pub struct SignatureProofBuilder<'a> {
     pub commitment_proof_builder: CommitmentProofBuilder<G2Projective>,
 }
 
-impl<'a> SignatureProofBuilder<'a> {
+impl SignatureProofBuilder {
     /// Run the commitment phase of a Schnorr-style signature proof.
     ///
     /// The `maybe_commitment_scalars` argument allows the caller to choose particular commitment
@@ -48,7 +48,7 @@ impl<'a> SignatureProofBuilder<'a> {
     /// implementing equality or linear combination constraints on top of the proof.
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
-        message: &'a Message,
+        message: Message,
         signature: Signature,
         maybe_commitment_scalars: &[Option<Scalar>],
         params: &PublicKey,
@@ -69,7 +69,7 @@ impl<'a> SignatureProofBuilder<'a> {
 
         // Form commitment to blinding factor + message
         let message_commitment_randomness = CommitmentRandomness(blinding_factor.0);
-        let message_commitment = params.commit(message, message_commitment_randomness);
+        let message_commitment = params.commit(&message, message_commitment_randomness);
 
         Self {
             message,
@@ -84,7 +84,7 @@ impl<'a> SignatureProofBuilder<'a> {
     pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof {
         // Run response phase for PoK of opening of commitment to message
         let commitment_proof = self.commitment_proof_builder.generate_proof_response(
-            self.message,
+            &self.message,
             self.message_commitment_randomness,
             challenge_scalar,
         );

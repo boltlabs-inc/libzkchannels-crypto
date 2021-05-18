@@ -79,6 +79,11 @@ impl PreviousState {
     ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
         todo!();
     }
+
+    /// Retrieves the nonce from the `PreviousState`, to be revealed to the merchant.
+    pub fn get_nonce(&self) -> Nonce {
+        &self.0.nonce();
+    }
 }
 
 /// The closing state associated with a state.

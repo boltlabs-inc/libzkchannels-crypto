@@ -25,8 +25,10 @@ pub mod range_proof;
 
 use thiserror::*;
 
-#[derive(Debug, Error)]
+/// Error types that may arise from cryptographic operations.
+#[derive(Debug, Error, Clone, Copy)]
 pub enum Error {
+    /// Raised when a range proof is constructed on an out-of-range value.
     #[error("tried to build a range proof on a negative value ({0})")]
     OutsideRange(i64),
 }

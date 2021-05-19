@@ -21,16 +21,22 @@ pub trait Verifier {
 /// A signature on a message, generated using Pointcheval-Sanders.
 #[derive(Debug, Clone)]
 pub struct Signature {
-    /// AKA h
-    // FIXME: is there a better way to describe this?
+    /**
+    First part of a signature.
+
+    In some papers, this is denoted `h`.
+    */
     sigma1: G1Affine,
-    /// AKA H
-    // FIXME: is there a better way to describe this?,
+    /**
+    Second part of a signature.
+
+    In some papers, this is denoted `H`.
+    */
     sigma2: G1Affine,
 }
 
 impl Signature {
-    /// Randomize a signature in-place.
+    /// Randomize a signature in place.
     pub fn randomize(&mut self, _rng: &mut impl Rng) {
         todo!()
     }

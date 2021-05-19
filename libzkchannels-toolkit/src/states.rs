@@ -1,24 +1,26 @@
-//! Defines the state of a channel and transformations on that state used in the zkChannels
-//! protocol.
-//!
-//! The primary type is a [`State`], which describes a zkChannel at a point in time. The protocol
-//! applies several transformations to this object to generate the correct outputs of the Pay
-//! subprotocol: a [`PayToken`] and a [`CloseStateSignature`]. For each of these outputs, the flow
-//! goes as follows:
-//!
-//! 1. the customer blinds an input,
-//! 2. the merchant verifies (in zero knowledge) that the input is correctly formed,
-//! 3. the merchant produces a blinded version of the output, and
-//! 4. the customer unblinds the output.
-//!
-//! To produce a [`PayToken`], the customer blinds the [`State`] with a [`PayTokenBlindingFactor`].
-//! This produces a [`StateCommitment`], which the merchant signs to produce a [`BlindedPayToken`].
-//!
-//! To produce a [`CloseStateSignature`], the customer blinds the [`CloseState`] with a
-//! [`CloseStateBlindingFactor`]. This produces a [`CloseStateCommitment`], which the merchant signs
-//! to produce a [`CloseStateBlindedSignature`].
-//!
-//! The customer must blind the input and unblind the output with the _same_ blinding factor.
+/*!
+Defines the state of a channel and transformations on that state used in the zkAbacus
+protocol.
+
+The primary type is a [`State`], which describes a zkChannel at a point in time. The protocol
+applies several transformations to this object to generate the customer outputs of the zkAbacus.Pay
+subprotocol: a [`PayToken`] and a [`CloseStateSignature`]. For each of these outputs, the flow
+goes as follows:
+
+1. the customer blinds an input,
+2. the merchant verifies (in zero knowledge) that the input is correctly formed,
+3. the merchant produces a blinded version of the output, and
+4. the customer unblinds the output.
+
+To produce a [`PayToken`], the customer blinds the [`State`] with a [`PayTokenBlindingFactor`].
+This produces a [`StateCommitment`], which the merchant signs to produce a [`BlindedPayToken`].
+
+To produce a [`CloseStateSignature`], the customer blinds the [`CloseState`] with a
+[`CloseStateBlindingFactor`]. This produces a [`CloseStateCommitment`], which the merchant signs
+to produce a [`CloseStateBlindedSignature`].
+
+The customer must blind the input and unblind the output with the _same_ blinding factor.
+*/
 use serde::*;
 
 use crate::nonce::*;
@@ -79,7 +81,7 @@ impl Previous<'_, State> {
     pub fn commit_to_revocation<'a>(
         &'a self,
         _rng: &mut impl Rng,
-        _param: &CustomerParameters,
+        _param: &ZkAbacusCustomerChannelParameters,
     ) -> (
         Previous<'a, RevocationLockCommitment>,
         Previous<'a, RevocationLockBlindingFactor>,
@@ -178,7 +180,7 @@ impl State {
     pub fn commit<'a>(
         &'a self,
         _rng: &mut impl Rng,
-        _param: &CustomerParameters,
+        _param: &ZkAbacusCustomerChannelParameters,
     ) -> (
         Current<'a, StateCommitment>,
         Current<'a, PayTokenBlindingFactor>,
@@ -194,7 +196,7 @@ impl CloseState<'_> {
     pub fn commit<'a>(
         &'a self,
         _rng: &mut impl Rng,
-        _param: &CustomerParameters,
+        _param: &ZkAbacusCustomerChannelParameters,
     ) -> (
         Current<'a, CloseStateCommitment>,
         Current<'a, CloseStateBlindingFactor>,
@@ -237,7 +239,7 @@ pub struct StateCommitment(/*Commitment*/);
 #[allow(missing_copy_implementations)]
 pub struct CloseStateCommitment(/*Commitment*/);
 
-/// Signature on a [`CloseState`]. Used as on-chain evidence to close a channel.
+/// Signature on a [`CloseState`]. Used to close a channel.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
 pub struct CloseStateSignature;
@@ -258,7 +260,7 @@ impl CloseStateBlindedSignature {
     /// This is typically called by the merchant.
     pub fn new(
         _rng: &mut impl Rng,
-        _param: &MerchantParameters,
+        _param: &ZkAbacusMerchantChannelParameters,
         _com: CloseStateCommitment,
     ) -> CloseStateBlindedSignature {
         todo!();
@@ -282,7 +284,7 @@ impl CloseStateSignature {
     /// This is typically called by the customer.
     pub fn verify(
         &self,
-        _param: &CustomerParameters,
+        _param: &ZkAbacusCustomerChannelParameters,
         _close_state: CloseState<'_>,
     ) -> Verification {
         todo!();
@@ -295,7 +297,7 @@ impl CloseStateSignature {
 #[allow(missing_copy_implementations)]
 pub struct PayToken(Signature);
 
-/// Blinded signature on a [`PayToken`].
+/// Blinded [`PayToken`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedPayToken(/*BlindedSignature*/);
 
@@ -307,7 +309,11 @@ impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub fn new(_rng: &mut impl Rng, _param: &MerchantParameters, _com: StateCommitment) -> Self {
+    pub fn new(
+        _rng: &mut impl Rng,
+        _param: &ZkAbacusMerchantChannelParameters,
+        _com: StateCommitment,
+    ) -> Self {
         todo!();
     }
 
@@ -323,7 +329,11 @@ impl PayToken {
     /// Verify a `PayToken` against the given [`State`].
     ///
     /// This is typically called by the customer.
-    pub fn verify(&self, _param: &CustomerParameters, _state: &State) -> Verification {
+    pub fn verify(
+        &self,
+        _param: &ZkAbacusCustomerChannelParameters,
+        _state: &State,
+    ) -> Verification {
         todo!();
     }
 }
@@ -333,9 +343,10 @@ mod test {
     use super::*;
 
     #[test]
+    #[should_panic]
     fn apply_payment_works() {
         let mut rng = rand::thread_rng();
         let mut s = State::new(&mut rng, ChannelId, MerchantBalance, CustomerBalance);
-        let s_prev = s.apply_payment(&mut rng, &PaymentAmount::pay_merchant(1));
+        let _s_prev = s.apply_payment(&mut rng, &PaymentAmount::pay_merchant(1));
     }
 }

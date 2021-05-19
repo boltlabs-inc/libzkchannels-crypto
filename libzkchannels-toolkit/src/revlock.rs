@@ -1,24 +1,26 @@
-//! This library describes revocation pairs, a formalization of hash locks.
-//!
-//! A pair ([`RevocationLock`], [`RevocationSecret`]) satisfy two properties:
-//!
-//! *Correctness*: A correctly generated revocation pair will always verify.
-//!
-//! ```ignore
-//! # use libzkchannels_toolkit::{revlock::*, Verification};
-//! # use rand::thread_rng;
-//! let rs = RevocationSecret::new(&mut thread_rng());
-//! let rl = rs.revocation_lock();
-//! match rl.verify(&rs) {
-//!     Verification::Verified => (),
-//!     Verification::Failed => assert!(false),
-//! }
-//! ```
-//!
-//! NOTE: un-ignore this doctest once things are implemented
-//!
-//! *Security*: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability (e.g. basically never)
-//!
+/*!
+This library describes revocation pairs, a formalization of hash locks.
+
+A pair ([`RevocationLock`], [`RevocationSecret`]) satisfy two properties:
+
+*Correctness*: A correctly generated revocation pair will always verify.
+
+```ignore
+# use libzkchannels_toolkit::{revlock::*, Verification};
+# use rand::thread_rng;
+let rs = RevocationSecret::new(&mut thread_rng());
+let rl = rs.revocation_lock();
+match rl.verify(&rs) {
+    Verification::Verified => (),
+    Verification::Failed => assert!(false),
+}
+```
+
+NOTE: un-ignore this doctest once things are implemented
+
+*Security*: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability (e.g. basically never)
+
+*/
 use serde::*;
 
 use crate::parameters::*;
@@ -55,6 +57,7 @@ pub struct RevocationLockCommitment(());
 #[allow(missing_copy_implementations)]
 pub struct RevocationLockBlindingFactor(());
 
+#[allow(unused)]
 impl RevocationSecret {
     /// Create a new, random revocation secret.
     pub(crate) fn new(_rng: &mut impl Rng) -> Self {
@@ -80,7 +83,7 @@ impl RevocationLockCommitment {
     /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is derived from the [`RevocationSecret`].
     pub fn verify(
         &self,
-        _parameters: &MerchantParameters,
+        _parameters: &ZkAbacusMerchantChannelParameters,
         _revocation_secret: &RevocationSecret,
         _revocation_lock: &RevocationLock,
         _revocation_lock_commitment_randomness: &RevocationLockBlindingFactor,

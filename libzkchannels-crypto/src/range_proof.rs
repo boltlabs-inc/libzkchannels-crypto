@@ -2,14 +2,14 @@
 Implementation of Schnorr-style proofs of knowledge that a value lies within the range `[0, 2^63)`.
 
 **This range proof cannot be used alone!** It is only meaningful when used in conjunction with a [`CommitmentProof`](crate::commitment_proof::CommitmentProof)
-or [`SignatureProof`], to show that the message _in that proof_ lies within the given range. 
+or [`SignatureProof`], to show that the message _in that proof_ lies within the given range.
 
-These are Schnorr-style zero knowledge proofs that prove a value is in range `[0, u^l)`, for some parameters 
+These are Schnorr-style zero knowledge proofs that prove a value is in range `[0, u^l)`, for some parameters
 `u` and `l`. This implementation selects `u`, `l` to produce proofs for the range `[0, 2^63)`
 
 
 ## Intuition
-This implements range proofs by Camenisch, Chaabouni, and shelat \[1\], using single-message Pointcheval-Sanders 
+This implements range proofs by Camenisch, Chaabouni, and shelat \[1\], using single-message Pointcheval-Sanders
 signatures \[2\] instead of the signature scheme in \[1\]. It uses the pairing group defined in BLS12-381 \[3\].
 
 The general technique breaks down the given value into `u`-nary digits. The prover shows they know the opening of signatures
@@ -19,7 +19,7 @@ publishes them.
 
 This module provides tools to produce a PoK over the digit signatures for a given value. However, it alone *does not* show that the digits
 compose into a meaningful value! This step requires a conjunction with a [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or
-[`SignatureProof`]. 
+[`SignatureProof`].
 
 Of course, this special structure requires additional parameters and a more computationally intensive setup phase by the verifier. Luckily,
 this only has to be done once over the lifetime of _all_ range proofs. It is important that the verifier does not reuse the range proof key
@@ -32,14 +32,14 @@ Suppose you wish to show that the `j`th message element in a [`CommitmentProof`]
 1. *Initiate the range proof.*
 Call [`RangeProofBuilder::generate_proof_commitments()`], passing the value you wish to show is in a range.
 
-2. *Link to the commitment proof*. 
+2. *Link to the commitment proof*.
 The resulting [`RangeProofBuilder`] contains a field called `commitment_scalar`. Place this element in the `j`th
 index of `maybe_commitment_scalars` and use it to [generate the `CommitmentProof` commitments](crate::commitment_proof::CommitmentProofBuilder::generate_proof_commitments()).
 
 3. *Generate a challenge.*
 There are several acceptable ways to do so; see [`Challenge`] for details.
 
-4. *Complete the proofs*. 
+4. *Complete the proofs*.
 Call the `generate_proof_response()` function for the [commitment proof](crate::commitment_proof::CommitmentProofBuilder::generate_proof_response())
 and the [range proof](RangeProofBuilder::generate_proof_response()).
 
@@ -50,7 +50,7 @@ To verify a range proof, the verifier must check the following:
 3. The value in the commitment proof corresponds to the digits in the range proof: select the `j`th response scalar from the [`CommitmentProof`](crate::commitment_proof::CommitmentProof) and pass it
 to [`verify_range_proof_value()`](RangeProof::verify_range_proof_value())
 
-The approach for a signature proof is similar. 
+The approach for a signature proof is similar.
 
 ## References
 
@@ -61,14 +61,17 @@ In Josef Pieprzyk, editor, Advances in Cryptology - ASIACRYPT 2008, pages 234–
 2: David Pointcheval and Olivier Sanders. Short Randomizable Signatures. In Kazue Sako, editor, Topics in
 Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International Publishing, Cham, 2016.
 
-3: Dan Boneh, Sergey Gorbunov, Riad S. Wahby, Hoeteck Wee, and Zhenfei Zhang. BLS Signatures, revision 4. 
+3: Dan Boneh, Sergey Gorbunov, Riad S. Wahby, Hoeteck Wee, and Zhenfei Zhang. BLS Signatures, revision 4.
 Internet draft, Internet Engineering Task Force, 2020.
 https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 
 */
 
+use crate::{
+    challenge::Challenge, ps_keys::PublicKey, ps_signatures::Signature, signature_proof::*,
+};
 use crate::{types::*, Error};
-use crate::{ps_signatures::Signature, signature_proof::*, ps_keys::PublicKey, challenge::Challenge};
+use arrayvec::ArrayVec;
 
 /// The arity of our digits used in the range proof.
 const RP_PARAMETER_U: u64 = 128;
@@ -83,7 +86,7 @@ const RP_PARAMETER_L: usize = 7;
 #[derive(Debug)]
 pub struct RangeProofParameters {
     /// A signature on every `u`-nary digit
-    digit_signatures: [Signature; RP_PARAMETER_U as usize], 
+    digit_signatures: [Signature; RP_PARAMETER_U as usize],
     /// Public key corresponding _exclusively with the signatures above.
     public_key: PublicKey,
 }
@@ -107,9 +110,9 @@ impl RangeProofParameters {
 #[derive(Debug)]
 pub struct RangeProofBuilder {
     /// Partially-constructed PoK of the opening of signatures on each of the digits of the value.
-    digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L], 
+    digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L],
     /// Commitment scalar for the value being proven in the range.
-    pub commitment_scalar: Scalar, 
+    pub commitment_scalar: Scalar,
 }
 
 /// Proof of knowledge of a set of digits that compose a value within the range. This is **not** a complete range proof
@@ -124,20 +127,60 @@ pub struct RangeProof {
 #[allow(unused)]
 impl RangeProofBuilder {
     /// Run the commitment phase of a Schnorr-style range proof, to show that `0 < n < u^l`.
-    pub fn generate_proof_commitments(n: i64, _params: &RangeProofParameters, _rng: &mut impl Rng) -> Result<Self, Error> {
+    pub fn generate_proof_commitments(
+        n: i64,
+        params: &RangeProofParameters,
+        rng: &mut impl Rng,
+    ) -> Result<Self, Error> {
         if n.is_negative() {
             return Err(Error::OutsideRange(n));
         }
-        
+
+        // break n into digits
         let mut digits = [0; RP_PARAMETER_L];
         let mut u = n as u64;
         for i in 0..RP_PARAMETER_L {
-        // for digit in digits.iter_mut().take(RP_PARAMETER_L) { 
+            // for digit in digits.iter_mut().take(RP_PARAMETER_L) {
             digits[i] = u % RP_PARAMETER_U;
             u /= RP_PARAMETER_U;
         }
 
-        todo!();
+        fn to_scalar(digit: u64) -> Scalar {
+            todo!()
+        }
+
+        // compute signature proof builders on each digit
+        let digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L]= digits
+            .iter()
+            .map(|&digit| {
+                SignatureProofBuilder::generate_proof_commitments(
+                    rng,
+                    Message::new(vec![to_scalar(digit)]),
+                    params.digit_signatures[digit as usize],
+                    &[None],
+                    &params.public_key,
+                )
+            })
+            .collect::<ArrayVec<_, RP_PARAMETER_L>>()
+            .into_inner()
+            .unwrap(); // this should never throw: the underlying digits array is of the same length.
+
+        // construct cumulative commitment scalar for n from the c.s.'s of its digits
+        let mut commitment_scalar = Scalar::zero();
+        let mut u_pow = Scalar::one();
+        for j in 0..RP_PARAMETER_L {
+            commitment_scalar += u_pow
+                * digit_proof_builders[j]
+                    .commitment_proof_builder
+                    .commitment_scalars[1];
+            u_pow *= Scalar::from(RP_PARAMETER_U);
+        }
+
+
+        Ok(Self {
+            digit_proof_builders,
+            commitment_scalar,
+        })
     }
 
     /// Run the response phase of a Schnorr-style proof of knowledge that a value is in a range.
@@ -157,5 +200,4 @@ impl RangeProof {
     pub fn verify_range_proof_value(response_scalar: Scalar) -> bool {
         todo!();
     }
-    
 }

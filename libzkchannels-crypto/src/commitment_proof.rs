@@ -5,7 +5,7 @@ These are Schnorr zero-knowledge proofs that use a commitment and response phase
 that the prover knows the opening of a commitment, without revealing the underlying [`Message`].
 
 ## Intuition
-This implements the original Schnorr protocol \[1\], leaving the challenge phase undefined. 
+This implements the original Schnorr protocol \[1\], leaving the challenge phase undefined.
 
 The protocol has three phases.
 1. *Commit*. The prover chooses a random mask for each block in the message (as well as for the commitment randomness).
@@ -16,13 +16,13 @@ The output of this step is described by [`CommitmentProofBuilder`].
 
 3. *Response*. The prover constructs masked versions of each message block, incorporating the commitment randomness and the challenge.
 
-The [`CommitmentProof`] consists of the commitment to randomness and the masked responses.  
+The [`CommitmentProof`] consists of the commitment to randomness and the masked responses.
 
 Given the proof and the commitment, the verifier checks the consistency of the commitment (to the original message), the commitment to randomness,
 the challenge, and the responses. The protocol promises that a malicious prover cannot produce a consistent set of objects without knowing the underlying
 message.
 
-## References 
+## References
 1. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology, 4(3):161–174, Jan 1991.
 
 */

@@ -20,8 +20,8 @@ pub mod pedersen_commitments;
 pub mod ps_blind_signatures;
 pub mod ps_keys;
 pub mod ps_signatures;
-pub mod signature_proof;
 pub mod range_proof;
+pub mod signature_proof;
 
 use thiserror::*;
 

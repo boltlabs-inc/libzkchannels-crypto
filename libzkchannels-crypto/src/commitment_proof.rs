@@ -79,8 +79,7 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
         }
     }
 
-    /// Run the challenge and response phases of the Schnorr-style commitment proof to complete
-    /// the proof.
+    /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
     pub fn generate_proof_response(
         self,
         msg: &Message,

@@ -1,6 +1,11 @@
 /*!
- * This crate describes the cryptographic toolkit used directly by the libzkchannels protocol.
- * It defines contextual types as wrappers for the basic cryptographic primitives defined in `libzkchannels-crypto`.
+This crate describes the zkAbacus protocol [1] and the cryptographic toolkit used to construct it.
+It defines contextual types as wrappers for the basic cryptographic primitives defined in `libzkchannels-crypto`.
+
+ # References
+
+ 1: zkChannels Private Payments Protocol. Ch 3.3: Off-network channel protocol zkAbacus.
+ URL: https://github.com/boltlabs-inc/blindsigs-protocol
  */
 #![warn(missing_docs)]
 #![warn(missing_copy_implementations, missing_debug_implementations)]
@@ -45,9 +50,9 @@ pub struct Current<'a, T> {
     inner: T,
 }
 
+#[allow(unused)]
 impl<'a, T> Current<'a, T> {
     /// Create a new [`Current`] value (not exposed in public API).
-    #[allow(unused)]
     pub(crate) fn new(inner: T) -> Current<'a, T> {
         Current {
             lifetime: PhantomData,
@@ -77,9 +82,9 @@ pub struct Previous<'a, T> {
     inner: T,
 }
 
+#[allow(unused)]
 impl<'a, T> Previous<'a, T> {
     /// Create a new [`Previous`] value (not exposed in public API).
-    #[allow(unused)]
     pub(crate) fn new(inner: T) -> Previous<'a, T> {
         Previous {
             lifetime: PhantomData,

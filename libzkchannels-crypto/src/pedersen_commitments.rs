@@ -1,8 +1,14 @@
-//! Implements Pedersen commitments in a prime order group.
-//!
-//! This commitment scheme is from Torben Pryds Pedersen's 1992 paper,
-//! "Non-interactive and information-theoretic secure verifiable secret sharing"
-//! Available at: https://www.cs.cornell.edu/courses/cs754/2001fa/129.PDF .*/
+/*!
+Implements Pedersen commitments [1] over the prime-order pairing groups from BLS12-381 [2].
+
+## References
+
+1. Torben Pyrds Pedersen. "Non-interactive and information-theoretic secure verifiable secret sharing".
+1992. URL: https://www.cs.cornell.edu/courses/cs754/2001fa/129.PDF
+
+2. D. Boneh, S. Gorbunov, R. Wahby, H. Wee, and Z. Zhang. "BLS Signatures, Version 4". Internet-draft, IETF.
+2021. URL: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
+*/
 use crate::types::*;
 use group::Group;
 
@@ -15,7 +21,7 @@ pub struct Commitment;
 pub struct CommitmentRandomness(pub Scalar);
 
 impl CommitmentRandomness {
-    /// Creates suitably random commitment randomness.
+    /// Choose commitment randomness uniformly at random from the set of possible scalars.
     pub fn new(_rng: &mut impl Rng) -> Self {
         todo!();
     }
@@ -24,8 +30,7 @@ impl CommitmentRandomness {
 #[allow(unused)]
 /// Parameters for Pedersen commitments.
 /// 
-/// These must be defined over a suitable group, written additively.
-/// In practice, this should only be used with the groups from BLS12-381.
+/// These are defined over the prime-order pairing groups from BLS12-381.
 #[derive(Debug)]
 pub struct PedersenParameters<G>
 where
@@ -36,7 +41,13 @@ where
 }
 
 impl<G: Group<Scalar = Scalar>> PedersenParameters<G> {
-    /// Generates random, new parameters for commitments to messages of given length.
+    /**
+    Generate a new set of parameters for making commitments to messages of given
+    length.
+
+    These are chosen uniformly at random, such that no discrete logarithm relationships
+    are known among the generators.
+    */
     pub fn new(_length: usize, _rng: &mut impl Rng) -> Self {
         todo!();
     }

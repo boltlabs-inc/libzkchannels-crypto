@@ -21,7 +21,7 @@ pub struct BlindedMessage;
 ///
 /// This has the same representation as a regular [`Signature`], but different semantics.
 #[derive(Debug, Clone, Copy)]
-pub struct BlindedSignature(Signature);
+pub struct BlindedSignature(pub(crate) Signature);
 
 impl BlindedSignature {
     /// Convert to a bytewise representation
@@ -57,6 +57,12 @@ impl BlindedSignature {
     /// Randomize a signature in place.
     pub fn randomize(&mut self, _rng: &mut impl Rng) {
         todo!()
+    }
+
+    /// Check to ensure a blinded signature is "valid", meaning that the first element is not the
+    /// identity element.
+    pub fn is_valid(&self) -> bool {
+        self.0.is_valid()
     }
 }
 

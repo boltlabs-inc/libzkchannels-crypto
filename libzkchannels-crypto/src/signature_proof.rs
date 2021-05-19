@@ -4,13 +4,13 @@ These are Schnorr zero-knowledge proofs that use a commitment and response phase
 that the prover knows the opening of a signature, without revealing the underlying [`Message`].
 
 ## Intuition
-This is a Schnorr-style protocol, built off of Pointcheval-Sanders signatures \[1\], a randomizable, blindable signature scheme. 
+This is a Schnorr-style protocol, built off of Pointcheval-Sanders signatures \[1\], a randomizable, blindable signature scheme.
 The proof itself is based on the Schnorr proof of knowledge of the opening of a commitment \[2\], but adds an additional preparation
 step to adapt it for signatures.
 
 The protocol has four phases to prove knowledge of a signature.
 
-0. *Setup*. The prover blinds and randomizes the signature and forms a commitment to the underlying message. To link these two items together, 
+0. *Setup*. The prover blinds and randomizes the signature and forms a commitment to the underlying message. To link these two items together,
 they use the signature blinding factor as the commitment randomness.
 
 1. *Commit*. The prover chooses a random mask for each block in the message and the blinding factor.
@@ -21,7 +21,7 @@ The outputs of steps 0 and 1 is described by [`SignatureProofBuilder`].
 
 3. *Response*. The prover constructs masked versions of each message block, incorporating the blinding factor and the challenge.
 
-Note that steps 1-3 are identical to those for a [commitment proof](crate::commitment_proof). 
+Note that steps 1-3 are identical to those for a [commitment proof](crate::commitment_proof).
 The [`SignatureProof`] consists of the commitment to randomness and the masked responses, plus the blinded, randomized signature and corresponding commitment from step 0.
 
 Given the proof, the verifier checks the following:
@@ -32,7 +32,7 @@ Given the proof, the verifier checks the following:
 The protocol promises that a malicious prover cannot produce a valid, consistent set of objects without knowing the underlying
 message.
 
-## References 
+## References
 1: David Pointcheval and Olivier Sanders. Short Randomizable Signatures. In Kazue Sako, editor, Topics in
 Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International Publishing, Cham, 2016.
 
@@ -134,5 +134,32 @@ impl SignatureProofBuilder {
             blinded_signature: self.blinded_signature,
             commitment_proof,
         }
+    }
+}
+
+impl SignatureProof {
+    pub fn verify_knowledge_of_opening_of_signature(
+        &self,
+        params: &PublicKey,
+        challenge: Challenge,
+    ) -> bool {
+        // signature is valid
+        let valid_signature = self.blinded_signature.is_valid();
+
+        // commitment proof is valid
+        let valid_commitment_proof = self
+            .commitment_proof
+            .verify_knowledge_of_opening_of_commitment(
+                &params.to_g2_pedersen_parameters(),
+                self.message_commitment,
+                challenge,
+            );
+
+        // commitment proof matches blinded signature
+        let Signature { sigma1, sigma2 } = self.blinded_signature.0;
+        let commitment_proof_matches_signature =
+            pairing(&sigma1, &(params.x2 + self.message_commitment.0).into()) == pairing(&sigma2, &params.g2);
+
+        valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }
 }

@@ -26,13 +26,13 @@ pub struct Signature {
 
     In some papers, this is denoted `h`.
     */
-    sigma1: G1Affine,
+    pub(crate) sigma1: G1Affine,
     /**
     Second part of a signature.
 
     In some papers, this is denoted `H`.
     */
-    sigma2: G1Affine,
+    pub(crate) sigma2: G1Affine,
 }
 
 impl Signature {
@@ -47,6 +47,11 @@ impl Signature {
         buf[..48].copy_from_slice(&self.sigma1.to_compressed());
         buf[48..].copy_from_slice(&self.sigma2.to_compressed());
         buf
+    }
+
+    /// Check whether the signature is valid, meaning the first element is not the identity element.
+    pub fn is_valid(&self) -> bool {
+        !bool::from(self.sigma1.is_identity())
     }
 }
 

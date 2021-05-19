@@ -10,7 +10,7 @@ use crate::nonce::*;
 use crate::parameters::*;
 use crate::revlock::*;
 use crate::states::*;
-use crate::{Current, Rng, Verification};
+use crate::{Current, Previous, Rng, Verification};
 
 /// An establish proof demonstrates that a customer is trying to initialize a channel correctly.
 ///
@@ -86,13 +86,13 @@ pub struct EstablishProofVerification {
 /// - 2 commitment scalars corresponding to revealed values.
 /// - 1 [`PayTokenCommitment`]: Signature-proof-style commitment to the [`State`] underlying the unused [`BlindedPayToken`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct PayProof;
+pub struct PayProof(());
 
 /// Blinding factors for commitments associated with a particular payment.
 #[derive(Debug)]
 pub struct BlindingFactors<'a> {
     /// The blinding factor for a [`RevocationLockCommitment`] (associated with the [`PreviousState`])
-    pub for_revocation_lock: RevocationLockBlindingFactor,
+    pub for_revocation_lock: Previous<'a, RevocationLockBlindingFactor>,
     /// The blinding factor for a [`StateCommitment`] (associated with the current [`State`]).
     pub for_pay_token: Current<'a, PayTokenBlindingFactor>,
     /// The blinding factor for a [`CloseStateCommitment`] (associated with the current [`CloseState`]).
@@ -119,8 +119,8 @@ impl PayProof {
     pub fn new<'a>(
         _rng: &mut impl Rng,
         _params: &CustomerParameters,
-        _old_state: PreviousState,
         _pay_token: PayToken,
+        _old_state: Previous<'a, State>,
         _state: &'a State,
         _blinding_factors: BlindingFactors<'a>,
     ) -> Self {

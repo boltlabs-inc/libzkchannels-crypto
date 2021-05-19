@@ -25,11 +25,11 @@ use crate::nonce::*;
 use crate::parameters::*;
 use crate::revlock::*;
 use crate::types::*;
-use crate::{Current, Rng, Verification};
+use crate::{Current, Previous, Rng, Verification};
 use ps_blind_signatures::*;
 use ps_signatures::Signature;
 
-/// Channel identifier, binds each transaction to a specific customer.
+/// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]
 pub struct ChannelId;
 
@@ -63,37 +63,40 @@ impl PaymentAmount {
 pub struct State {
     channel_id: ChannelId,
     nonce: Nonce,
-    revocation_lock: RevocationLock,
+    revocation_secret: RevocationSecret,
     merchant_balance: MerchantBalance,
     customer_balance: CustomerBalance,
 }
 
-/// A previous state in the protocol.
-#[derive(Debug)]
-pub struct PreviousState(State);
-
-impl PreviousState {
-    /// Form a commitment (and corresponding blinding factor) to the `PreviousState`'s [`RevocationLock`].
-    pub fn get_revocation_lock_commitment(
-        &self,
-    ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
-        todo!();
+impl Previous<'_, State> {
+    /// Get the revocation secret for this previous state.
+    pub fn revocation_secret(&self) -> &RevocationSecret {
+        &self.revocation_secret
     }
 
-    /// Retrieves the nonce from the `PreviousState`, to be revealed to the merchant.
-    pub fn get_nonce(&self) -> Nonce {
-        &self.0.nonce();
+    /// Form a commitment (and corresponding blinding factor) to the `PreviousState`'s
+    /// [`RevocationLock`].
+    pub fn commit_to_revocation<'a>(
+        &'a self,
+        _rng: &mut impl Rng,
+        _param: &CustomerParameters,
+    ) -> (
+        Previous<'a, RevocationLockCommitment>,
+        Previous<'a, RevocationLockBlindingFactor>,
+    ) {
+        todo!();
     }
 }
 
 /// The closing state associated with a state.
 ///
 /// When signed by the merchant, this can be used by the customer to close the channel.
-/// It removes the nonce from the [`State`] to maintain on-chain payment privacy.
-#[derive(Debug, Clone, Copy)]
+/// It removes the nonce from the [`State`] to maintain privacy during closing, even in the case of
+/// merchant abort during payment.
+#[derive(Debug)]
 pub struct CloseState<'a> {
     channel_id: &'a ChannelId,
-    revocation_lock: &'a RevocationLock,
+    revocation_lock: RevocationLock,
     merchant_balance: &'a MerchantBalance,
     customer_balance: &'a CustomerBalance,
 }
@@ -119,14 +122,14 @@ impl State {
         &self.merchant_balance
     }
 
-    /// Get the customer's current [`CustomerBalance] for this state.
+    /// Get the customer's current [`CustomerBalance`] for this state.
     pub fn customer_balance(&self) -> &CustomerBalance {
         &self.customer_balance
     }
 
     /// Get the current [`RevocationLock`] for this state.
-    pub fn revocation_lock(&self) -> &RevocationLock {
-        &self.revocation_lock
+    pub fn revocation_lock(&self) -> Current<'_, RevocationLock> {
+        Current::new(self.revocation_secret.revocation_lock())
     }
 
     /// Get the current [`Nonce`] for this state.
@@ -140,14 +143,14 @@ impl State {
     pub fn close_state(&self) -> CloseState<'_> {
         let State {
             channel_id,
-            revocation_lock,
+            revocation_secret,
             merchant_balance,
             customer_balance,
             ..
         } = self;
         CloseState {
             channel_id,
-            revocation_lock,
+            revocation_lock: revocation_secret.revocation_lock(),
             merchant_balance,
             customer_balance,
         }
@@ -165,7 +168,7 @@ impl State {
         &'a mut self,
         _rng: &mut impl Rng,
         _amt: &PaymentAmount,
-    ) -> (Current<'a, RevocationSecret>, PreviousState) {
+    ) -> Previous<'a, State> {
         todo!();
     }
 
@@ -311,7 +314,7 @@ impl BlindedPayToken {
     /// Unblind a [`BlindedPayToken`] to get an (unblinded) [`PayToken`].
     ///
     /// This is typically called by the customer.
-    pub fn unblind(self, _bf: Current<'_, PayTokenBlindingFactor>) -> Current<'_, PayToken> {
+    pub fn unblind(self, _bf: Current<'_, PayTokenBlindingFactor>) -> PayToken {
         todo!();
     }
 }
@@ -322,5 +325,17 @@ impl PayToken {
     /// This is typically called by the customer.
     pub fn verify(&self, _param: &CustomerParameters, _state: &State) -> Verification {
         todo!();
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn apply_payment_works() {
+        let mut rng = rand::thread_rng();
+        let mut s = State::new(&mut rng, ChannelId, MerchantBalance, CustomerBalance);
+        let s_prev = s.apply_payment(&mut rng, &PaymentAmount::pay_merchant(1));
     }
 }

@@ -6,7 +6,7 @@ use crate::Rng;
 #[allow(unused)]
 /// A random nonce.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct Nonce;
+pub struct Nonce(());
 
 #[allow(unused)]
 impl Nonce {

@@ -56,12 +56,44 @@ impl<'a, T> Current<'a, T> {
     }
 
     /// Remember a [`Current`] value after this iteration of the state.
-    pub fn remember(this: Current<'a, T>) -> T {
+    pub(crate) fn remember(this: Current<'a, T>) -> T {
         this.inner
     }
 }
 
 impl<'a, T> Deref for Current<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+/// An owned value tied to a phantom `'a` lifetime, which can only be used while its
+/// corresponding state is still current.
+#[derive(Debug, Clone, Copy)]
+pub struct Previous<'a, T> {
+    lifetime: PhantomData<&'a ()>,
+    inner: T,
+}
+
+impl<'a, T> Previous<'a, T> {
+    /// Create a new [`Previous`] value (not exposed in public API).
+    #[allow(unused)]
+    pub(crate) fn new(inner: T) -> Previous<'a, T> {
+        Previous {
+            lifetime: PhantomData,
+            inner,
+        }
+    }
+
+    /// Remember a [`Current`] value after this iteration of the state.
+    pub(crate) fn remember(this: Previous<'a, T>) -> T {
+        this.inner
+    }
+}
+
+impl<'a, T> Deref for Previous<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {

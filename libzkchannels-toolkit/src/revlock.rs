@@ -25,12 +25,14 @@ use crate::parameters::*;
 use crate::{Rng, Verification};
 
 /// A revocation lock.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct RevocationLock;
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(missing_copy_implementations)]
+pub struct RevocationLock(());
 
 /// A revocation secret.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct RevocationSecret;
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(missing_copy_implementations)]
+pub struct RevocationSecret(());
 
 /// A commitment to a [`RevocationLock`].
 ///
@@ -38,20 +40,24 @@ pub struct RevocationSecret;
 ///
 /// *Correctness*: A correctly-generated commitment will always verify.
 ///
-/// *Hiding*: A `RevocationLockCommitment` does not reveal anything about the underlying [`RevocationLock`].
+/// *Hiding*: A `RevocationLockCommitment` does not reveal anything about the underlying
+/// [`RevocationLock`].
 ///
 /// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot efficiently generate a
-/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that [`verify()`](RevocationLockCommitment::verify())s with the commitment.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct RevocationLockCommitment(/*Commitment*/);
+/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that
+/// [`verify()`](RevocationLockCommitment::verify())s with the commitment.
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(missing_copy_implementations)]
+pub struct RevocationLockCommitment(());
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct RevocationLockBlindingFactor();
+#[derive(Debug, Serialize, Deserialize)]
+#[allow(missing_copy_implementations)]
+pub struct RevocationLockBlindingFactor(());
 
 impl RevocationSecret {
     /// Create a new, random revocation secret.
-    pub fn new(_rng: &mut impl Rng) -> Self {
+    pub(crate) fn new(_rng: &mut impl Rng) -> Self {
         todo!()
     }
 
@@ -64,16 +70,6 @@ impl RevocationSecret {
 impl RevocationLock {
     /// Validate a revocation pair.
     pub fn verify(&self, _rs: &RevocationSecret) -> Verification {
-        todo!();
-    }
-
-    /// Form a commitment (and corresponding blinding factor) to a RevocationLock.
-    #[allow(unused)]
-    pub(crate) fn commit(
-        &self,
-        _rng: &mut impl Rng,
-        _param: &CustomerParameters,
-    ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
         todo!();
     }
 }

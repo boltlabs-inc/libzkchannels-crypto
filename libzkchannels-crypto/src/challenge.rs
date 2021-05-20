@@ -1,8 +1,6 @@
 //! Functionality for building challenge scalars.
 
-use crate::{
-    commitment_proof::CommitmentProofBuilder, signature_proof::SignatureProofBuilder, types::*,
-};
+use crate::{commitment_proof::CommitmentProofBuilder, pedersen_commitments::{Commitment, PedersenParameters}, ps_keys::PublicKey, range_proof::RangeProofBuilder, signature_proof::SignatureProofBuilder, types::*};
 use group::{Group, GroupEncoding};
 use sha3::{Digest, Sha3_512};
 
@@ -31,6 +29,14 @@ impl ChallengeBuilder {
         }
     }
 
+    /// Incorporate a commitment into the challenge.
+    pub fn with_commitment<G>(self, _com: &Commitment<G>) -> Self
+    where
+        G: Group<Scalar = Scalar> + GroupEncoding,
+    {
+        todo!();
+    }
+
     /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge.
     pub fn with_commitment_proof<G>(self, com: &CommitmentProofBuilder<G>) -> Self
     where
@@ -44,6 +50,29 @@ impl ChallengeBuilder {
         self.with_bytes(signature_proof_builder.message_commitment.0.to_bytes())
             .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
             .with_commitment_proof(&signature_proof_builder.commitment_proof_builder)
+    }
+
+    /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
+    pub fn with_range_proof(self, _range_proof_builder: RangeProofBuilder) -> Self {
+        todo!();
+    }
+
+    /// Incorporate public key material into the challenge.
+    pub fn with_public_key(self, _public_key: &PublicKey) -> Self {
+        todo!();
+    }
+
+    /// Incorporate shared Pedersen parameter key material into the challenge.
+    pub fn with_pedersen_parameters<G>(self, _params: &PedersenParameters<G>) -> Self
+    where
+        G: Group<Scalar = Scalar>,
+    {
+        todo!();
+    }
+
+    /// Incorporate a BLS12-381 [`Scalar`] into the challenge.
+    pub fn with_scalar(self, _scalar: Scalar) -> Self {
+        todo!();
     }
 
     /// Incorporate arbitrary bytes into the challenge.

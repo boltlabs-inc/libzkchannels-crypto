@@ -138,6 +138,15 @@ impl SignatureProofBuilder {
 }
 
 impl SignatureProof {
+    /**
+    Checks that a [`SignatureProof`] is valid.
+
+    Checks that:
+
+    - the blinded signature is correctly formed (first element is non-identity)
+    - the internal commitment proof is valid
+    - the commitment proof is formed on the same message as the blinded signature
+    */
     pub fn verify_knowledge_of_opening_of_signature(
         &self,
         params: &PublicKey,
@@ -161,5 +170,10 @@ impl SignatureProof {
             pairing(&sigma1, &(params.x2 + self.message_commitment.0).into()) == pairing(&sigma2, &params.g2);
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
+    }
+
+    /// Retrieves the response scalar corresponding to the `i`th message block.
+    pub fn get_response_scalar(&self, _i: usize) -> Scalar {
+        todo!();
     }
 }

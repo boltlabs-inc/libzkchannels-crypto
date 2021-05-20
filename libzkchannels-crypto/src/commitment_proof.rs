@@ -59,6 +59,11 @@ impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
         let lhs = self.scalar_commitment.0 + (commitment.0 * challenge.0);
         rhs.0 == lhs
     }
+
+    /// Retrieves the response scalar corresponding to the `i`th message block.
+    pub fn get_response_scalar(&self, _i: usize) -> Scalar {
+        todo!();
+    }
 }
 
 /**

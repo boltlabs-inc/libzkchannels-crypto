@@ -7,6 +7,7 @@ license = "MIT"
 description = "implementation of a randomizable signature scheme with efficient zero knowledge protocols"
 
 [dependencies]
+rust-crypto = "0.2"
 arrayvec = "0.7"
 bls12_381 = "0.4.0"
 ff = "0.9"

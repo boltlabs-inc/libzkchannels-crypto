@@ -1,5 +1,5 @@
 /*!
-This crate describes the zkAbacus protocol [1] and the cryptographic toolkit used to construct it.
+This crate describes the zkAbacus protocol \[1\] and the cryptographic toolkit used to construct it.
 It defines contextual types as wrappers for the basic cryptographic primitives defined in `libzkchannels-crypto`.
 
  # References

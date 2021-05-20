@@ -19,7 +19,7 @@ impl ZkAbacusMerchantChannelParameters {
         ZkAbacusMerchantChannelParameters {}
     }
 
-    /// Extracts public keys from the merchant parameters to produce [`CustomerParameters`]
+    /// Extracts public keys from the merchant parameters to produce [`ZkAbacusCustomerChannelParameters`]
     pub fn extract_customer_parameters(&self) -> ZkAbacusCustomerChannelParameters {
         ZkAbacusCustomerChannelParameters {}
     }

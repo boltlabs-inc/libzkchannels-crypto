@@ -36,7 +36,7 @@ pub struct PublicKey {
     pub y2s: Vec<G2Affine>,
 }
 
-/// A keypair formed from a [`SecretKey`] and a [`PublicKey`].
+/// A keypair formed from a `SecretKey` and a [`PublicKey`].
 #[derive(Debug)]
 pub struct KeyPair {
     /// Pointcheval-Sanders secret key.

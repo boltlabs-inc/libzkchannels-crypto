@@ -4,7 +4,8 @@
 //! (https://eprint.iacr.org/2015/525.pdf); The BLS12-381 curve is defined in the (now expired) IRTF
 //! draft titled ["BLS
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
-use crate::{ps_keys::*, types::*};
+use crate::{ps_keys::*, serde::*, types::*};
+use serde::*;
 
 /// A `Signer` may be used to sign a message.
 pub trait Signer {
@@ -19,19 +20,21 @@ pub trait Verifier {
 }
 
 /// A signature on a message, generated using Pointcheval-Sanders.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Signature {
     /**
     First part of a signature.
 
     In some papers, this is denoted `h`.
     */
+    #[serde(with = "SerializeElement")]
     pub(crate) sigma1: G1Affine,
     /**
     Second part of a signature.
 
     In some papers, this is denoted `H`.
     */
+    #[serde(with = "SerializeElement")]
     pub(crate) sigma2: G1Affine,
 }
 

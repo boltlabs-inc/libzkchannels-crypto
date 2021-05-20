@@ -1,5 +1,6 @@
 //! Defines a fixed-length message type for use across schemes in this crate.
-use crate::types::*;
+use crate::{types::*, SerializeElement};
+use serde::*;
 use std::ops::Deref;
 
 /// Fixed-length message type used across schemes.
@@ -22,8 +23,8 @@ impl Message {
 }
 
 /// Blinding factor for a commitment, message, or signature.
-#[derive(Debug, Clone, Copy)]
-pub struct BlindingFactor(pub(crate) Scalar);
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct BlindingFactor(#[serde(with = "SerializeElement")] pub(crate) Scalar);
 
 impl BlindingFactor {
     /// Generate a new blinding factor uniformly at random from the set of possible [`Scalar`]s.

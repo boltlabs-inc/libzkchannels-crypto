@@ -5,6 +5,7 @@ More information on the constructs involved can be found in the documentation fo
 [`ps_signatures`](crate::ps_signatures) module.
 */
 use crate::{ps_keys::*, ps_signatures::Signature, types::*};
+use serde::*;
 
 /**
 A message, blinded for use in PS blind signature protocols.
@@ -20,7 +21,7 @@ pub struct BlindedMessage;
 /// A signature on a blinded message, generated using PS blind signing protocols.
 ///
 /// This has the same representation as a regular [`Signature`], but different semantics.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedSignature(pub(crate) Signature);
 
 impl BlindedSignature {

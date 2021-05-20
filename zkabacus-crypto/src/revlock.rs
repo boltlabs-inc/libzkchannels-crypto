@@ -22,20 +22,22 @@ FIXME(Marcella): un-ignore this doctest once things are implemented
 with only negligible probability (e.g. basically never).
 
 */
+use crate::types::*;
 use serde::*;
 
 use crate::customer;
 use crate::{Rng, Verification};
+use libzkchannels_crypto::{message::BlindingFactor, pedersen_commitments::Commitment};
 
 /// A revocation lock.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLock(());
+pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 
 /// A revocation secret.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationSecret(());
+pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
 
 /// A commitment to a [`RevocationLock`].
 ///
@@ -47,15 +49,15 @@ pub struct RevocationSecret(());
 /// [`RevocationLock`].
 ///
 /// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot feasibly generate a
-/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that /// verifies with the commitment.
+/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that verifies with the commitment.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLockCommitment(());
+pub struct RevocationLockCommitment(Commitment<G1Projective>);
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLockBlindingFactor(());
+pub struct RevocationLockBlindingFactor(BlindingFactor);
 
 #[allow(unused)]
 impl RevocationSecret {

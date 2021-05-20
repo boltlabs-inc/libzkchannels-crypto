@@ -33,6 +33,10 @@ pub enum Error {
     OutsideRange(i64),
 }
 
+mod serde;
+
+pub use crate::serde::{SerializeElement, SerializeG1, SerializeG2};
+
 mod types {
     pub use crate::message::*;
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};

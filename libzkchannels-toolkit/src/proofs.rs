@@ -78,12 +78,12 @@ A payment proof demonstrates that a customer is trying to make a valid payment o
 This is a Schnorr proof that makes the following guarantees in zero knowledge:
 
 - The customer holds a valid [`PayToken`](crate::states::PayToken) and knows its corresponding
-  [`PreviousState`] (crate::states::PreviousState).
+  previous [`State`].
 - The customer knows the opening of commitments to the [`RevocationLock`],
   the new [`State`], and the corresponding `CloseState`.
 - The new state from the commitment is correctly updated from the previous state
   (that is, the balances are updated by an agreed-upon amount)
-- The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the [`PreviousState`](crate::states::PreviousState).
+- The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the previous [`State`].
 - The balances in the new [`State`] are non-negative.
 
 */
@@ -93,7 +93,7 @@ pub struct PayProof(());
 /// Blinding factors for commitments associated with a particular payment.
 #[derive(Debug)]
 pub struct BlindingFactors<'a> {
-    /// The blinding factor for a [`RevocationLockCommitment`] (associated with the [`PreviousState`])
+    /// The blinding factor for a [`RevocationLockCommitment`] (associated with the previous [`State`])
     pub for_revocation_lock: Previous<'a, RevocationLockBlindingFactor>,
     /// The blinding factor for a [`StateCommitment`] (associated with the current [`State`]).
     pub for_pay_token: Current<'a, PayTokenBlindingFactor>,
@@ -105,8 +105,8 @@ impl PayProof {
     /**
     Form a new zero-knowledge [`PayProof`] object.
 
-    It takes the [`PreviousState`] and corresponding [`PayToken`], and the new [`State`]. It also
-    requires the blinding factors corresponding to commitments made on the [`PreviousState`]'s
+    It takes the previous [`State`] and corresponding [`PayToken`], and the new [`State`]. It also
+    requires the blinding factors corresponding to commitments made on the previous [`State`]'s
     revocation lock, the [`PayToken`], and the [`CloseState`] derived from the given [`State`].
 
     Internally, it also prepares the signature proof on the given [`PayToken`]:
@@ -158,9 +158,9 @@ pub struct PayTokenCommitment;
 /// Collects the information a merchant needs to verify a [`PayProof`].
 #[derive(Debug)]
 pub struct PayProofVerification {
-    /// Blinded, unused pay token from the [`PreviousState`].
+    /// Blinded, unused pay token from the previous [`State`].
     pub blinded_pay_token: BlindedPayToken,
-    /// Commitment to the revocation lock in the [`PreviousState`].
+    /// Commitment to the revocation lock in the previous [`State`].
     pub revocation_lock_commitment: RevocationLockCommitment,
     /// Commitment to the new channel [`State`].
     pub state_commitment: StateCommitment,

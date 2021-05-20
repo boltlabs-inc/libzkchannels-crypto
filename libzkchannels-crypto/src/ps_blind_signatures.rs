@@ -30,7 +30,7 @@ pub struct BlindedSignature;
 pub struct BlindingFactor(pub(crate) Scalar);
 
 impl BlindingFactor {
-    /// Generate a new blinding factor uniformly at random from the set of possible [`Scalars`].
+    /// Generate a new blinding factor uniformly at random from the set of possible [`Scalar`]s.
     pub fn new(_rng: &mut impl Rng) -> Self {
         todo!();
     }

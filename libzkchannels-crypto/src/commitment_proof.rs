@@ -27,7 +27,6 @@ message.
 
 */
 use crate::{challenge::Challenge, pedersen_commitments::*, types::*};
-use ff::Field;
 use group::Group;
 use std::iter;
 
@@ -44,23 +43,14 @@ impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
     /// Verify knowledge of the opening of a commitment.
     pub fn verify_knowledge_of_opening_of_commitment(
         &self,
-        params: &PedersenParameters<G>,
-        commitment: Commitment<G>,
-        challenge: Challenge,
+        _params: &PedersenParameters<G>,
+        _commitment: Commitment<G>,
+        _challenge: Challenge,
     ) -> bool {
-        // Construct commitment to response scalars.
-        // [c*bf + cs0]h + [c * m1 + cs1]g1 + ...
-        let rhs = params.commit(
-            &Message::new(self.response_scalars[1..].to_owned()),
-            CommitmentRandomness(self.response_scalars[0]),
-        );
-
-        // Compare to challenge, commitments to message, scalars
-        let lhs = self.scalar_commitment.0 + (commitment.0 * challenge.0);
-        rhs.0 == lhs
+        todo!();
     }
 
-    /// Get the response scalars of this commitment proof, not including the blinding factor.
+    /// Get the response scalars of this commitment proof corresponding to the message (e.g. not including the blinding factor)
     pub fn response_scalars(&self) -> &[Scalar] {
         &self.response_scalars[1..]
     }
@@ -88,35 +78,14 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     implementing equality or linear combination constraints on top of the proof.
     */
     pub fn generate_proof_commitments(
-        rng: &mut dyn Rng,
-        maybe_commitment_scalars: &[Option<Scalar>],
-        params: &PedersenParameters<G>,
+        _rng: &mut dyn Rng,
+        _maybe_commitment_scalars: &[Option<Scalar>],
+        _params: &PedersenParameters<G>,
     ) -> Self {
-        assert_eq!(params.message_len(), maybe_commitment_scalars.len());
-
-        // Choose commitment scalars (that haven't already been specified)
-        let commitment_scalars = iter::once(Scalar::random(&mut *rng))
-            .chain(
-                maybe_commitment_scalars
-                    .iter()
-                    .map(|&maybe_scalar| maybe_scalar.unwrap_or_else(|| Scalar::random(&mut *rng))),
-            )
-            .collect::<Vec<_>>();
-
-        // Commit to the scalars
-        let scalar_commitment = params.commit(
-            &Message::new(commitment_scalars[1..].to_owned()),
-            CommitmentRandomness(commitment_scalars[0]),
-        );
-
-        Self {
-            scalar_commitment,
-            commitment_scalars,
-        }
+        todo!();
     }
 
-    /// Get the commitment scalars of the commitment proof being built, not including the blinding
-    /// factor.
+    /// Get the commitment scalars corresponding to the message (e.g. not including the scalar corresponding to the blinding factor)
     pub fn commitment_scalars(&self) -> &[Scalar] {
         &self.commitment_scalars[1..]
     }
@@ -139,14 +108,5 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
             scalar_commitment: self.scalar_commitment,
             response_scalars,
         }
-
-        /*
-            [bf]*h + [m1]*g1 + ... + [ml]*gl        <-- original commitment
-
-            [cs0]*h + [cs1]*g1 + ... + [csl]*gl     <-- scalar commitment
-
-            c * bf + cs0, c * m1 + cs1, ...         <-- response scalars - ties together two commitment values!
-
-        */
     }
 }

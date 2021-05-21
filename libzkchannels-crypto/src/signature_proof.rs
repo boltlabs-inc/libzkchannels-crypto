@@ -42,7 +42,7 @@ use crate::{
     challenge::Challenge,
     commitment_proof::{CommitmentProof, CommitmentProofBuilder},
     pedersen_commitments::{Commitment, CommitmentRandomness},
-    ps_blind_signatures::{BlindedSignature, BlindingFactor},
+    ps_blind_signatures::BlindedSignature,
     ps_keys::PublicKey,
     ps_signatures::Signature,
     types::*,
@@ -87,58 +87,23 @@ impl SignatureProofBuilder {
     implementing equality or linear combination constraints on top of the proof.
     */
     pub fn generate_proof_commitments(
-        rng: &mut impl Rng,
-        message: Message,
-        signature: Signature,
-        maybe_commitment_scalars: &[Option<Scalar>],
-        params: &PublicKey,
+        _rng: &mut impl Rng,
+        _message: Message,
+        _signature: Signature,
+        _maybe_commitment_scalars: &[Option<Scalar>],
+        _params: &PublicKey,
     ) -> Self {
-        // Run commitment phase for PoK of opening of commitment to message.
-        let params = params.to_g2_pedersen_parameters();
-        let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-            rng,
-            maybe_commitment_scalars,
-            &params,
-        );
-
-        // Run signature proof setup phase:
-        // Blind and randomize signature
-        let blinding_factor = BlindingFactor::new(rng);
-        let mut blinded_signature = BlindedSignature::from_signature(&signature, blinding_factor);
-        blinded_signature.randomize(rng);
-
-        // Form commitment to blinding factor + message
-        let message_commitment_randomness = CommitmentRandomness(blinding_factor.0);
-        let message_commitment = params.commit(&message, message_commitment_randomness);
-
-        Self {
-            message,
-            message_commitment,
-            message_commitment_randomness,
-            blinded_signature,
-            commitment_proof_builder,
-        }
+        todo!();
     }
 
-    /// Get the commitment scalars for the signature proof being built, not including the blinding factor.
+    /// Get the commitment scalars corresponding to the message for the signature proof being built (e.g. not including the blinding factor).
     pub fn commitment_scalars(&self) -> &[Scalar] {
         &self.commitment_proof_builder.commitment_scalars()
     }
 
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
-    pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof {
-        // Run response phase for PoK of opening of commitment to message
-        let commitment_proof = self.commitment_proof_builder.generate_proof_response(
-            &self.message,
-            self.message_commitment_randomness,
-            challenge_scalar,
-        );
-
-        SignatureProof {
-            message_commitment: self.message_commitment,
-            blinded_signature: self.blinded_signature,
-            commitment_proof,
-        }
+    pub fn generate_proof_response(self, _challenge: Challenge) -> SignatureProof {
+        todo!();
     }
 }
 
@@ -154,28 +119,10 @@ impl SignatureProof {
     */
     pub fn verify_knowledge_of_opening_of_signature(
         &self,
-        params: &PublicKey,
-        challenge: Challenge,
+        _params: &PublicKey,
+        _challenge: Challenge,
     ) -> bool {
-        // signature is valid
-        let valid_signature = self.blinded_signature.is_valid();
-
-        // commitment proof is valid
-        let valid_commitment_proof = self
-            .commitment_proof
-            .verify_knowledge_of_opening_of_commitment(
-                &params.to_g2_pedersen_parameters(),
-                self.message_commitment,
-                challenge,
-            );
-
-        // commitment proof matches blinded signature
-        let Signature { sigma1, sigma2 } = self.blinded_signature.0;
-        let commitment_proof_matches_signature =
-            pairing(&sigma1, &(params.x2 + self.message_commitment.0).into())
-                == pairing(&sigma2, &params.g2);
-
-        valid_signature && valid_commitment_proof && commitment_proof_matches_signature
+        todo!();
     }
 
     /// Retrieves the response scalars for the signature proof, not including the blinding factor.

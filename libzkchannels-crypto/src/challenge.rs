@@ -45,18 +45,16 @@ impl ChallengeBuilder {
     }
 
     /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge.
-    pub fn with_commitment_proof<G>(self, com: &CommitmentProofBuilder<G>) -> Self
+    pub fn with_commitment_proof<G>(self, _com: &CommitmentProofBuilder<G>) -> Self
     where
         G: Group<Scalar = Scalar> + GroupEncoding,
     {
-        self.with_bytes(com.scalar_commitment.0.to_bytes())
+        todo!();
     }
 
     /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge.
-    pub fn with_signature_proof(self, signature_proof_builder: SignatureProofBuilder) -> Self {
-        self.with_bytes(signature_proof_builder.message_commitment.0.to_bytes())
-            .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
-            .with_commitment_proof(&signature_proof_builder.commitment_proof_builder)
+    pub fn with_signature_proof(self, _signature_proof_builder: SignatureProofBuilder) -> Self {
+        todo!();
     }
 
     /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
@@ -90,9 +88,6 @@ impl ChallengeBuilder {
 
     /// Consume the builder and generate a [`Challenge`] from the accumulated data.
     pub fn finish(self) -> Challenge {
-        let mut digested = [0; 64];
-        digested.copy_from_slice(self.hasher.finalize().as_ref());
-        let scalar = Scalar::from_bytes_wide(&digested);
-        Challenge(scalar)
+        todo!();
     }
 }

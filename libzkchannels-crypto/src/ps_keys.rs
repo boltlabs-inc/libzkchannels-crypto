@@ -1,7 +1,7 @@
 //! This defines a class of keys for use across the schemes in this crate.
 //!
 //! The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over BLS12-381.
-//! They can also be used for non-blind PS signatures and to generate some Schnorr proofs.
+//! They can also be used for non-blind PS signatures.
 //!
 //! The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
 //! (https://eprint.iacr.org/2015/525.pdf). 
@@ -47,7 +47,8 @@ pub struct KeyPair {
 
 #[allow(unused)]
 impl SecretKey {
-    /// Generate a new random `SecretKey` of a given length uniformly at random from the set of non-identity elements of G1.
+    /// Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at random
+    /// and the given generator from G1, which should also be chosen uniformly at random.
     fn new(_rng: &mut impl Rng, _length: usize, _g1: &G1Projective) -> Self {
         todo!();
     }

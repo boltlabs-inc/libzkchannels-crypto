@@ -29,7 +29,7 @@ impl CommitmentRandomness {
 
 #[allow(unused)]
 /// Parameters for Pedersen commitments.
-/// 
+///
 /// These are defined over the prime-order pairing groups from BLS12-381.
 #[derive(Debug)]
 pub struct PedersenParameters<G>

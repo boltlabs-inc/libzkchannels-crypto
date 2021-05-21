@@ -156,9 +156,8 @@ impl RangeProofBuilder {
         // break n into digits
         let mut digits = [0; RP_PARAMETER_L];
         let mut u = n as u64;
-        for i in 0..RP_PARAMETER_L {
-            // for digit in digits.iter_mut().take(RP_PARAMETER_L) {
-            digits[i] = u % RP_PARAMETER_U;
+        for digit in &mut digits {
+            *digit = u % RP_PARAMETER_U;
             u /= RP_PARAMETER_U;
         }
 
@@ -183,8 +182,8 @@ impl RangeProofBuilder {
         // construct cumulative commitment scalar for n from the c.s.'s of its digits
         let mut commitment_scalar = Scalar::zero();
         let mut u_pow = Scalar::one();
-        for j in 0..RP_PARAMETER_L {
-            commitment_scalar += u_pow * digit_proof_builders[j].commitment_scalars()[0];
+        for proof_builder in &digit_proof_builders {
+            commitment_scalar += u_pow * proof_builder.commitment_scalars()[0];
             u_pow *= Scalar::from(RP_PARAMETER_U);
         }
 
@@ -232,8 +231,8 @@ impl RangeProof {
         // sum u^j t_{j,1}
         let mut response_scalar = Scalar::zero();
         let mut u_pow = Scalar::one();
-        for j in 0..RP_PARAMETER_L {
-            response_scalar += u_pow * self.digit_proofs[j].response_scalars()[0];
+        for proof in &self.digit_proofs {
+            response_scalar += u_pow * proof.response_scalars()[0];
             u_pow *= Scalar::from(RP_PARAMETER_U);
         }
 

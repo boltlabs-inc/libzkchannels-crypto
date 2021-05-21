@@ -67,8 +67,12 @@ https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 
 */
 
+use crate::ps_signatures::Signer;
 use crate::{
-    challenge::Challenge, ps_keys::PublicKey, ps_signatures::Signature, signature_proof::*,
+    challenge::Challenge,
+    ps_keys::{KeyPair, PublicKey},
+    ps_signatures::Signature,
+    signature_proof::*,
 };
 use crate::{types::*, Error};
 use arrayvec::ArrayVec;
@@ -98,8 +102,21 @@ impl RangeProofParameters {
     Note that this generates a [`KeyPair`](crate::ps_keys::KeyPair) to produce the `digit_signatures`,
     but discards the secret half after use. This is to prevent misuse; it should never be used again.
     */
-    pub fn new(_rng: &mut impl Rng) -> Self {
-        todo!();
+    pub fn new(rng: &mut impl Rng) -> Self {
+        let keypair = KeyPair::new(1, rng);
+        let mut digit_signatures = ArrayVec::new();
+        for i in 0..RP_PARAMETER_U {
+            let digit = Message::new(vec![Scalar::from(i)]);
+            let sig = keypair
+                .try_sign(rng, &digit)
+                .expect("message/keypair length will always be 1");
+            digit_signatures.push(sig);
+        }
+
+        Self {
+            digit_signatures: digit_signatures.into_inner().expect("known length"),
+            public_key: keypair.public_key().clone(),
+        }
     }
 }
 

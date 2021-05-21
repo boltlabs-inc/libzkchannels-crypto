@@ -120,6 +120,11 @@ impl SignatureProofBuilder {
         }
     }
 
+    /// Get the commitment scalars for the signature proof being built, not including the blinding factor.
+    pub fn commitment_scalars(&self) -> &[Scalar] {
+        &self.commitment_proof_builder.commitment_scalars()
+    }
+
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
     pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof {
         // Run response phase for PoK of opening of commitment to message
@@ -167,13 +172,14 @@ impl SignatureProof {
         // commitment proof matches blinded signature
         let Signature { sigma1, sigma2 } = self.blinded_signature.0;
         let commitment_proof_matches_signature =
-            pairing(&sigma1, &(params.x2 + self.message_commitment.0).into()) == pairing(&sigma2, &params.g2);
+            pairing(&sigma1, &(params.x2 + self.message_commitment.0).into())
+                == pairing(&sigma2, &params.g2);
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }
 
-    /// Retrieves the response scalar corresponding to the `i`th message block.
-    pub fn get_response_scalar(&self, _i: usize) -> Scalar {
-        todo!();
+    /// Retrieves the response scalars for the signature proof, not including the blinding factor.
+    pub fn response_scalars(&self) -> &[Scalar] {
+        &self.commitment_proof.response_scalars()
     }
 }

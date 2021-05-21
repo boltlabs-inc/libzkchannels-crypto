@@ -36,8 +36,8 @@ use std::iter;
 pub struct CommitmentProof<G: Group<Scalar = Scalar>> {
     /// The commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
-    /// The response scalars.   
-    pub response_scalars: Vec<Scalar>,
+    /// The response scalars, with the blinding factor prepended.   
+    response_scalars: Vec<Scalar>,
 }
 
 impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
@@ -60,9 +60,9 @@ impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
         rhs.0 == lhs
     }
 
-    /// Retrieves the response scalar corresponding to the `i`th message block.
-    pub fn get_response_scalar(&self, _i: usize) -> Scalar {
-        todo!();
+    /// Get the response scalars of this commitment proof, not including the blinding factor.
+    pub fn response_scalars(&self) -> &[Scalar] {
+        &self.response_scalars[1..]
     }
 }
 
@@ -75,8 +75,8 @@ Built up to (but not including) the challenge phase of a Schnorr proof.
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>> {
     /// Commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
-    /// The commitment scalars.
-    pub commitment_scalars: Vec<Scalar>,
+    /// The commitment scalars, with the blinding factor prepended.
+    commitment_scalars: Vec<Scalar>,
 }
 
 impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
@@ -113,6 +113,12 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
             scalar_commitment,
             commitment_scalars,
         }
+    }
+
+    /// Get the commitment scalars of the commitment proof being built, not including the blinding
+    /// factor.
+    pub fn commitment_scalars(&self) -> &[Scalar] {
+        &self.commitment_scalars[1..]
     }
 
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.

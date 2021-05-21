@@ -145,17 +145,15 @@ impl RangeProofBuilder {
             u /= RP_PARAMETER_U;
         }
 
-        fn to_scalar(digit: u64) -> Scalar {
-            todo!()
-        }
-
         // compute signature proof builders on each digit
-        let digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L]= digits
+        let digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L] = digits
             .iter()
             .map(|&digit| {
                 SignatureProofBuilder::generate_proof_commitments(
                     rng,
-                    Message::new(vec![to_scalar(digit)]),
+                    // N.B. u64s are being encoded to `Scalar`s using the builtin bls12_381
+                    // `From<u64>` implementation. We may want to reconsider this later.
+                    Message::new(vec![Scalar::from(digit)]),
                     params.digit_signatures[digit as usize],
                     &[None],
                     &params.public_key,
@@ -163,19 +161,15 @@ impl RangeProofBuilder {
             })
             .collect::<ArrayVec<_, RP_PARAMETER_L>>()
             .into_inner()
-            .unwrap(); // this should never throw: the underlying digits array is of the same length.
+            .expect("impossible; len will always be RP_PARAMETER_L");
 
         // construct cumulative commitment scalar for n from the c.s.'s of its digits
         let mut commitment_scalar = Scalar::zero();
         let mut u_pow = Scalar::one();
         for j in 0..RP_PARAMETER_L {
-            commitment_scalar += u_pow
-                * digit_proof_builders[j]
-                    .commitment_proof_builder
-                    .commitment_scalars[1];
+            commitment_scalar += u_pow * digit_proof_builders[j].commitment_scalars()[0];
             u_pow *= Scalar::from(RP_PARAMETER_U);
         }
-
 
         Ok(Self {
             digit_proof_builders,
@@ -184,20 +178,48 @@ impl RangeProofBuilder {
     }
 
     /// Run the response phase of a Schnorr-style proof of knowledge that a value is in a range.
-    pub fn generate_proof_response(&self, challenge: Challenge) -> RangeProof {
-        todo!();
+    pub fn generate_proof_response(self, challenge: Challenge) -> RangeProof {
+        let digit_proofs = ArrayVec::from(self.digit_proof_builders)
+            .into_iter()
+            .map(|builder| builder.generate_proof_response(challenge))
+            .collect::<ArrayVec<_, RP_PARAMETER_L>>()
+            .into_inner()
+            .expect("impossible; len will always be RP_PARAMETER_L");
+
+        RangeProof { digit_proofs }
     }
 }
 
 #[allow(unused)]
 impl RangeProof {
     /// Verify that the PoKs on the opening of signatures for each digit are valid.
-    pub fn verify_range_proof_digits() -> bool {
-        todo!();
+    fn verify_range_proof_digits(
+        &self,
+        params: &RangeProofParameters,
+        challenge: Challenge,
+    ) -> bool {
+        self.digit_proofs.iter().all(|proof| {
+            proof.verify_knowledge_of_opening_of_signature(&params.public_key, challenge)
+        })
     }
 
     /// Verify that the response scalar for a given value is correctly constructed from the range proof digits.
-    pub fn verify_range_proof_value(response_scalar: Scalar) -> bool {
-        todo!();
+    pub fn verify_range_proof(
+        &self,
+        params: &RangeProofParameters,
+        challenge: Challenge,
+        expected_response_scalar: Scalar,
+    ) -> bool {
+        let valid_digits = self.verify_range_proof_digits(params, challenge);
+
+        // sum u^j t_{j,1}
+        let mut response_scalar = Scalar::zero();
+        let mut u_pow = Scalar::one();
+        for j in 0..RP_PARAMETER_L {
+            response_scalar += u_pow * self.digit_proofs[j].response_scalars()[0];
+            u_pow *= Scalar::from(RP_PARAMETER_U);
+        }
+
+        valid_digits && response_scalar == expected_response_scalar
     }
 }

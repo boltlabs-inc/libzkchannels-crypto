@@ -1,6 +1,13 @@
 //! Functionality for building challenge scalars.
 
-use crate::{commitment_proof::CommitmentProofBuilder, pedersen_commitments::{Commitment, PedersenParameters}, ps_keys::PublicKey, range_proof::RangeProofBuilder, signature_proof::SignatureProofBuilder, types::*};
+use crate::{
+    commitment_proof::CommitmentProofBuilder,
+    pedersen_commitments::{Commitment, PedersenParameters},
+    ps_keys::PublicKey,
+    range_proof::RangeProofBuilder,
+    signature_proof::SignatureProofBuilder,
+    types::*,
+};
 use group::{Group, GroupEncoding};
 use sha3::{Digest, Sha3_512};
 

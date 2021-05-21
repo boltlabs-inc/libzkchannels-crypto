@@ -13,8 +13,9 @@ It defines contextual types as wrappers for the basic cryptographic primitives d
 #![warn(future_incompatible)]
 #![warn(unused)]
 #![forbid(broken_intra_doc_links)]
+pub mod customer;
+pub mod merchant;
 pub mod nonce;
-pub mod parameters;
 pub mod proofs;
 pub mod revlock;
 pub mod states;
@@ -37,6 +38,22 @@ pub enum Verification {
     Verified,
     /// A verification failed.
     Failed,
+}
+
+/// Amount of a single payment.
+#[derive(Debug, Clone, Copy)]
+pub struct PaymentAmount;
+
+impl PaymentAmount {
+    /// Construct a *positive* payment amount from the customer to the merchant.
+    pub fn pay_merchant(_amount: usize) -> Self {
+        todo!()
+    }
+
+    /// Construct a *negative* payment amount from the merchant to the customer (i.e. a refund).
+    pub fn pay_customer(_amount: usize) -> Self {
+        todo!()
+    }
 }
 
 #[cfg(test)]

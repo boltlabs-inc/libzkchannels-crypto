@@ -24,11 +24,12 @@ The customer must blind the input and unblind the output with the _same_ blindin
 use serde::*;
 
 use crate::nonce::*;
-use crate::parameters::*;
 use crate::revlock::*;
 use crate::types::*;
 use message::BlindingFactor;
 use crate::{Rng, Verification};
+use crate::{customer, merchant};
+use crate::PaymentAmount;
 use ps_signatures::Signature;
 
 /// Channel identifier, binds each payment to a specific channel.
@@ -42,22 +43,6 @@ pub struct MerchantBalance;
 /// Channel balance for customer.
 #[derive(Debug, Clone, Copy)]
 pub struct CustomerBalance;
-
-/// Amount of a single payment.
-#[derive(Debug, Clone, Copy)]
-pub struct PaymentAmount;
-
-impl PaymentAmount {
-    /// Construct a *positive* payment amount from the customer to the merchant.
-    pub fn pay_merchant(_amount: usize) -> Self {
-        todo!()
-    }
-
-    /// Construct a *negative* payment amount from the merchant to the customer (i.e. a refund).
-    pub fn pay_customer(_amount: usize) -> Self {
-        todo!()
-    }
-}
 
 /// Describes the complete state of the channel with the given ID.
 #[allow(missing_copy_implementations)]
@@ -129,7 +114,7 @@ impl State {
     pub fn commit_to_revocation<'a>(
         &'a self,
         _rng: &mut impl Rng,
-        _param: &ZkAbacusCustomerChannelParameters,
+        _param: &customer::Config,
     ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
         todo!();
     }
@@ -171,7 +156,7 @@ impl State {
     pub fn commit<'a>(
         &'a self,
         _rng: &mut impl Rng,
-        _param: &ZkAbacusCustomerChannelParameters,
+        _param: &customer::Config,
     ) -> (StateCommitment, PayTokenBlindingFactor) {
         todo!();
     }
@@ -184,7 +169,7 @@ impl CloseState<'_> {
     pub fn commit<'a>(
         &'a self,
         _rng: &mut impl Rng,
-        _param: &ZkAbacusCustomerChannelParameters,
+        _param: &customer::Config,
     ) -> (CloseStateCommitment, CloseStateBlindingFactor) {
         todo!();
     }
@@ -245,7 +230,7 @@ impl CloseStateBlindedSignature {
     /// This is typically called by the merchant.
     pub fn new(
         _rng: &mut impl Rng,
-        _param: &ZkAbacusMerchantChannelParameters,
+        _param: &merchant::Config,
         _com: CloseStateCommitment,
     ) -> CloseStateBlindedSignature {
         todo!();
@@ -264,11 +249,7 @@ impl CloseStateSignature {
     /// Verify the merchant signature against the given [`CloseState`].
     ///
     /// This is typically called by the customer.
-    pub fn verify(
-        &self,
-        _param: &ZkAbacusCustomerChannelParameters,
-        _close_state: CloseState<'_>,
-    ) -> Verification {
+    pub fn verify(&self, _param: &customer::Config, _close_state: CloseState<'_>) -> Verification {
         todo!();
     }
 }
@@ -291,11 +272,7 @@ impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub fn new(
-        _rng: &mut impl Rng,
-        _param: &ZkAbacusMerchantChannelParameters,
-        _com: StateCommitment,
-    ) -> Self {
+    pub fn new(_rng: &mut impl Rng, _param: &merchant::Config, _com: StateCommitment) -> Self {
         todo!();
     }
 
@@ -311,11 +288,7 @@ impl PayToken {
     /// Verify a `PayToken` against the given [`State`].
     ///
     /// This is typically called by the customer.
-    pub fn verify(
-        &self,
-        _param: &ZkAbacusCustomerChannelParameters,
-        _state: &State,
-    ) -> Verification {
+    pub fn verify(&self, _param: &customer::Config, _state: &State) -> Verification {
         todo!();
     }
 }

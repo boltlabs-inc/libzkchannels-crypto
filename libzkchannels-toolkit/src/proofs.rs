@@ -9,9 +9,9 @@ the customer is behaving correctly without learning any additional information a
 use serde::*;
 
 use crate::nonce::*;
-use crate::parameters::*;
 use crate::revlock::*;
 use crate::states::*;
+use crate::{customer, merchant};
 use crate::{Rng, Verification};
 
 /**
@@ -37,7 +37,7 @@ impl EstablishProof {
     */
     pub fn new(
         _rng: &mut impl Rng,
-        _params: &ZkAbacusCustomerChannelParameters,
+        _params: &customer::Config,
         _state: &State,
         _close_state_blinding_factor: CloseStateBlindingFactor,
         _pay_token_blinding_factor: PayTokenBlindingFactor,
@@ -50,7 +50,7 @@ impl EstablishProof {
     /// This function is typically called by the merchant.
     pub fn verify(
         &self,
-        _params: &ZkAbacusMerchantChannelParameters,
+        _params: &merchant::Config,
         _verification_objects: &EstablishProofVerification,
     ) -> Verification {
         todo!();
@@ -122,7 +122,7 @@ impl PayProof {
     */
     pub fn new(
         _rng: &mut impl Rng,
-        _params: &ZkAbacusCustomerChannelParameters,
+        _params: &customer::Config,
         _pay_token: PayToken,
         _old_state: State,
         _state: &State,
@@ -138,7 +138,7 @@ impl PayProof {
     */
     pub fn verify(
         &self,
-        _params: &ZkAbacusMerchantChannelParameters,
+        _params: &merchant::Config,
         _verification_objects: &PayProofVerification,
     ) -> Verification {
         todo!();
@@ -169,5 +169,5 @@ pub struct PayProofVerification {
     /// Expected nonce revealed at the beginning of Pay.
     pub nonce: Nonce,
     /// Expected payment amount.
-    pub amount: PaymentAmount,
+    pub amount: crate::PaymentAmount,
 }

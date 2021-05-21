@@ -23,7 +23,7 @@ NOTE: un-ignore this doctest once things are implemented
 */
 use serde::*;
 
-use crate::parameters::*;
+use crate::customer;
 use crate::{Rng, Verification};
 
 /// A revocation lock.
@@ -83,7 +83,7 @@ impl RevocationLockCommitment {
     /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is derived from the [`RevocationSecret`].
     pub fn verify(
         &self,
-        _parameters: &ZkAbacusMerchantChannelParameters,
+        _parameters: &customer::Config,
         _revocation_secret: &RevocationSecret,
         _revocation_lock: &RevocationLock,
         _revocation_lock_commitment_randomness: &RevocationLockBlindingFactor,

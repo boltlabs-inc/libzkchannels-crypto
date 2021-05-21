@@ -12,7 +12,7 @@ use crate::nonce::*;
 use crate::parameters::*;
 use crate::revlock::*;
 use crate::states::*;
-use crate::{Current, Previous, Rng, Verification};
+use crate::{Rng, Verification};
 
 /**
 An establish proof demonstrates that a customer is trying to initialize a channel correctly.
@@ -35,12 +35,12 @@ impl EstablishProof {
 
     This function is typically called by the customer.
     */
-    pub fn new<'a>(
+    pub fn new(
         _rng: &mut impl Rng,
         _params: &ZkAbacusCustomerChannelParameters,
-        _state: &'a State,
-        _close_state_blinding_factor: Current<'a, CloseStateBlindingFactor>,
-        _pay_token_blinding_factor: Current<'a, PayTokenBlindingFactor>,
+        _state: &State,
+        _close_state_blinding_factor: CloseStateBlindingFactor,
+        _pay_token_blinding_factor: PayTokenBlindingFactor,
     ) -> Self {
         todo!();
     }
@@ -92,13 +92,13 @@ pub struct PayProof(());
 
 /// Blinding factors for commitments associated with a particular payment.
 #[derive(Debug)]
-pub struct BlindingFactors<'a> {
+pub struct BlindingFactors {
     /// The blinding factor for a [`RevocationLockCommitment`] (associated with the previous [`State`])
-    pub for_revocation_lock: Previous<'a, RevocationLockBlindingFactor>,
+    pub for_revocation_lock: RevocationLockBlindingFactor,
     /// The blinding factor for a [`StateCommitment`] (associated with the current [`State`]).
-    pub for_pay_token: Current<'a, PayTokenBlindingFactor>,
+    pub for_pay_token: PayTokenBlindingFactor,
     /// The blinding factor for a [`CloseStateCommitment`] (associated with the current [`CloseState`]).
-    pub for_close_state: Current<'a, CloseStateBlindingFactor>,
+    pub for_close_state: CloseStateBlindingFactor,
 }
 
 impl PayProof {
@@ -120,13 +120,13 @@ impl PayProof {
 
     This function is typically called by the customer.
     */
-    pub fn new<'a>(
+    pub fn new(
         _rng: &mut impl Rng,
         _params: &ZkAbacusCustomerChannelParameters,
         _pay_token: PayToken,
-        _old_state: Previous<'a, State>,
-        _state: &'a State,
-        _blinding_factors: BlindingFactors<'a>,
+        _old_state: State,
+        _state: &State,
+        _blinding_factors: BlindingFactors,
     ) -> Self {
         todo!();
     }

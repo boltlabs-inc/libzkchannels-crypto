@@ -27,8 +27,8 @@ use crate::nonce::*;
 use crate::parameters::*;
 use crate::revlock::*;
 use crate::types::*;
-use crate::{Current, Previous, Rng, Verification};
 use message::BlindingFactor;
+use crate::{Rng, Verification};
 use ps_signatures::Signature;
 
 /// Channel identifier, binds each payment to a specific channel.
@@ -68,26 +68,6 @@ pub struct State {
     revocation_secret: RevocationSecret,
     merchant_balance: MerchantBalance,
     customer_balance: CustomerBalance,
-}
-
-impl Previous<'_, State> {
-    /// Get the revocation secret for this previous state.
-    pub fn revocation_secret(&self) -> &RevocationSecret {
-        &self.revocation_secret
-    }
-
-    /// Form a commitment (and corresponding blinding factor) to the `PreviousState`'s
-    /// [`RevocationLock`].
-    pub fn commit_to_revocation<'a>(
-        &'a self,
-        _rng: &mut impl Rng,
-        _param: &ZkAbacusCustomerChannelParameters,
-    ) -> (
-        Previous<'a, RevocationLockCommitment>,
-        Previous<'a, RevocationLockBlindingFactor>,
-    ) {
-        todo!();
-    }
 }
 
 /// The closing state associated with a state.
@@ -130,13 +110,28 @@ impl State {
     }
 
     /// Get the current [`RevocationLock`] for this state.
-    pub fn revocation_lock(&self) -> Current<'_, RevocationLock> {
-        Current::new(self.revocation_secret.revocation_lock())
+    pub fn revocation_lock(&self) -> RevocationLock {
+        self.revocation_secret.revocation_lock()
     }
 
     /// Get the current [`Nonce`] for this state.
     pub fn nonce(&self) -> &Nonce {
         &self.nonce
+    }
+
+    /// Get the revocation secret for this state.
+    pub fn revocation_secret(&self) -> &RevocationSecret {
+        &self.revocation_secret
+    }
+
+    /// Form a commitment (and corresponding blinding factor) to the `State`'s
+    /// [`RevocationLock`].
+    pub fn commit_to_revocation<'a>(
+        &'a self,
+        _rng: &mut impl Rng,
+        _param: &ZkAbacusCustomerChannelParameters,
+    ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
+        todo!();
     }
 
     /// Get the [`CloseState`] corresponding to this `State`.
@@ -166,11 +161,7 @@ impl State {
     /// *deducts* from the [`MerchantBalance`].
     ///
     /// This is typically called by the customer.
-    pub fn apply_payment<'a>(
-        &'a mut self,
-        _rng: &mut impl Rng,
-        _amt: &PaymentAmount,
-    ) -> Previous<'a, State> {
+    pub fn apply_payment<'a>(&'a mut self, _rng: &mut impl Rng, _amt: &PaymentAmount) -> State {
         todo!();
     }
 
@@ -181,10 +172,7 @@ impl State {
         &'a self,
         _rng: &mut impl Rng,
         _param: &ZkAbacusCustomerChannelParameters,
-    ) -> (
-        Current<'a, StateCommitment>,
-        Current<'a, PayTokenBlindingFactor>,
-    ) {
+    ) -> (StateCommitment, PayTokenBlindingFactor) {
         todo!();
     }
 }
@@ -197,10 +185,7 @@ impl CloseState<'_> {
         &'a self,
         _rng: &mut impl Rng,
         _param: &ZkAbacusCustomerChannelParameters,
-    ) -> (
-        Current<'a, CloseStateCommitment>,
-        Current<'a, CloseStateBlindingFactor>,
-    ) {
+    ) -> (CloseStateCommitment, CloseStateBlindingFactor) {
         todo!();
     }
 }
@@ -270,10 +255,7 @@ impl CloseStateBlindedSignature {
     /// using the given [`CloseStateBlindingFactor`].
     ///
     /// This is typically called by the customer.
-    pub fn unblind(
-        self,
-        _bf: Current<'_, CloseStateBlindingFactor>,
-    ) -> Current<'_, CloseStateSignature> {
+    pub fn unblind(self, _bf: CloseStateBlindingFactor) -> CloseStateSignature {
         todo!();
     }
 }
@@ -320,7 +302,7 @@ impl BlindedPayToken {
     /// Unblind a [`BlindedPayToken`] to get an (unblinded) [`PayToken`].
     ///
     /// This is typically called by the customer.
-    pub fn unblind(self, _bf: Current<'_, PayTokenBlindingFactor>) -> PayToken {
+    pub fn unblind(self, _bf: PayTokenBlindingFactor) -> PayToken {
         todo!();
     }
 }

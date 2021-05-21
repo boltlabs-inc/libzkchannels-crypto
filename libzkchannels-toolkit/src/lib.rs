@@ -25,9 +25,6 @@ mod types {
     pub use libzkchannels_crypto::*;
 }
 
-use std::marker::PhantomData;
-use std::ops::Deref;
-
 /// Trait synonym for a cryptographically secure random number generator.
 pub trait Rng: rand::CryptoRng + rand::RngCore {}
 impl<T: rand::CryptoRng + rand::RngCore> Rng for T {}
@@ -40,70 +37,6 @@ pub enum Verification {
     Verified,
     /// A verification failed.
     Failed,
-}
-
-/// An owned value tied to a phantom `'a` lifetime, which can only be used while its
-/// corresponding state is still current.
-#[derive(Debug, Clone, Copy)]
-pub struct Current<'a, T> {
-    lifetime: PhantomData<&'a ()>,
-    inner: T,
-}
-
-#[allow(unused)]
-impl<'a, T> Current<'a, T> {
-    /// Create a new [`Current`] value (not exposed in public API).
-    pub(crate) fn new(inner: T) -> Current<'a, T> {
-        Current {
-            lifetime: PhantomData,
-            inner,
-        }
-    }
-
-    /// Remember a [`Current`] value after this iteration of the state.
-    pub(crate) fn remember(this: Current<'a, T>) -> T {
-        this.inner
-    }
-}
-
-impl<'a, T> Deref for Current<'a, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-/// An owned value tied to a phantom `'a` lifetime, which can only be used while its
-/// corresponding state is still current.
-#[derive(Debug, Clone, Copy)]
-pub struct Previous<'a, T> {
-    lifetime: PhantomData<&'a ()>,
-    inner: T,
-}
-
-#[allow(unused)]
-impl<'a, T> Previous<'a, T> {
-    /// Create a new [`Previous`] value (not exposed in public API).
-    pub(crate) fn new(inner: T) -> Previous<'a, T> {
-        Previous {
-            lifetime: PhantomData,
-            inner,
-        }
-    }
-
-    /// Remember a [`Current`] value after this iteration of the state.
-    pub(crate) fn remember(this: Previous<'a, T>) -> T {
-        this.inner
-    }
-}
-
-impl<'a, T> Deref for Previous<'a, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
 }
 
 #[cfg(test)]

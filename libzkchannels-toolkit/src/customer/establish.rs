@@ -5,7 +5,7 @@ use crate::{customer::Config, proofs::EstablishProof};
 /// Public parameters for a requested channel (i.e. that has not been accepted by the merchant).
 #[derive(Debug)]
 #[allow(missing_copy_implementations)]
-pub struct Request {
+pub struct Requested {
     config: Config,
     channel_id: ChannelId,
     merchant_balance: MerchantBalance,
@@ -23,7 +23,7 @@ pub struct RequestMessage {
     proof: EstablishProof,
 }
 
-impl Request {
+impl Requested {
     /// Generate a new channel request from public parameters.
     ///
     /// @Kenny: It may be better to pass config as the set of its parts. not sure yet.
@@ -37,13 +37,10 @@ impl Request {
     }
 
     /// Complete a payment request: validate approval received from the merchant.
-    ///
-    /// @Kenny: Is it better to return a string describing the error or define an new error type?
-    /// There is only one failure case and it should abort the establish.
     pub fn complete(
         self,
         _blinded_signature: CloseStateBlindedSignature,
-    ) -> Result<Inactive, String> {
+    ) -> Result<Inactive, Requested> {
         todo!();
     }
 }
@@ -60,9 +57,7 @@ pub struct Inactive {
 
 impl Inactive {
     /// Activate the channel with the fresh pay token from the merchant.
-    ///
-    /// @Kenny: ditto as above. Only one failure case that aborts.
-    pub fn activate(self, _pay_token: BlindedPayToken) -> Result<Ready, String> {
+    pub fn activate(self, _pay_token: BlindedPayToken) -> Result<Ready, Inactive> {
         todo!();
     }
 }

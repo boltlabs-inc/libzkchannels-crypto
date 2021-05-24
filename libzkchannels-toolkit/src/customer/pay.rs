@@ -1,3 +1,7 @@
+/*!
+Cryptographic functionality for the pay protocol as described in zkAbacus.
+
+*/
 use crate::customer::Config;
 use crate::nonce::Nonce;
 use crate::proofs::*;

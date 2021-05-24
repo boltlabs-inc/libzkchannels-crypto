@@ -2,4 +2,5 @@
 #[derive(Debug, Clone, Copy)]
 pub struct Config {}
 
+pub mod establish;
 pub mod pay;

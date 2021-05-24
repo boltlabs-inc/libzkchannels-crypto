@@ -1,5 +1,6 @@
 //! Defines a fixed-length message type for use across schemes in this crate.
 use crate::{types::*, SerializeElement};
+use ff::Field;
 use serde::*;
 use std::ops::Deref;
 
@@ -28,7 +29,7 @@ pub struct BlindingFactor(#[serde(with = "SerializeElement")] pub(crate) Scalar)
 
 impl BlindingFactor {
     /// Generate a new blinding factor uniformly at random from the set of possible [`Scalar`]s.
-    pub fn new(_rng: &mut impl Rng) -> Self {
-        todo!();
+    pub fn new(rng: &mut impl Rng) -> Self {
+        Self(Scalar::random(rng))
     }
 }

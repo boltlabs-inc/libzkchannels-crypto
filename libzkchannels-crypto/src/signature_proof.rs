@@ -44,7 +44,7 @@ message.
 1: David Pointcheval and Olivier Sanders. Short Randomizable Signatures. In Kazue Sako, editor, Topics in
 Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International Publishing, Cham, 2016.
 
-2. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology, 4(3):161–174, Jan 1991.
+i. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology, 4(3):161–174, Jan 1991.
 */
 use crate::{
     challenge::Challenge,
@@ -130,7 +130,7 @@ impl SignatureProof {
     - the internal commitment proof is valid
     - the commitment proof is formed on the same message as the blinded signature
     */
-    pub fn verify_knowledge_of_opening_of_signature(
+    pub fn verify_knowledge_of_signature(
         &self,
         _params: &PublicKey,
         _challenge: Challenge,

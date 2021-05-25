@@ -10,19 +10,20 @@ They prove a value is in range `[0, u^l)`, for some parameters `u` and `l`. This
 selects `u`, `l` to produce proofs for the range `[0, 2^63)`
 It also uses single-message Pointcheval-Sanders signatures \[2\] instead of the signature scheme
 in \[1\]. It uses the pairing group defined in BLS12-381 \[3\].
+Note that this implementation only supports the range `[0, 2^63]`; \[1\] provides a technique to
+show a value lies in an arbitrary interval `[a,b]`, but that is not supported here.
 
 ## Intuition
-The general technique writes the value in `u`-ary digits. That is, a value `B` has digits
-`B0 .. Bl`, where each `Bi` is in the range `[0,u)`. The digits componse to `B`; that is, they
-have the property `B = sum( u^i * Bi )`.
+The prover writes the value in `u`-ary. That is, a value `B` is written `B0 .. Bl`, where each
+`Bi` is in the range `[0,u)`. These have the property that `B = sum( u^i * Bi )`.
 
-The prover shows they know a signature on each digit and that the digits
-compose into the original value. Signatures on each possible digit are provided by the
+The prover shows they know a signature on each digit and that the digits are a correct `u`-ary
+representation of the corresponding value. Signatures on each possible digit are provided by the
 verifier: they use a one-time-use range proof key to sign the values 0 to `u` and publish them.
 
 This module provides tools to produce a PoK over the digit signatures for a given value. However,
-it alone *does not* show that the digits compose into a meaningful value! This step requires a
-conjunction with a [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or
+it alone *does not* show that the `u`-ary representation matches a meaningful value! This step
+requires a conjunction with a [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or
 [`SignatureProof`].
 
 This type of proof requires additional parameters (a range proof public key) and a more
@@ -64,7 +65,7 @@ To do so, the verifier should first reconstruct the challenge.
 Verify 1 using the standard commitment proof
 [verification function](crate::commitment_proof::CommitmentProof::verify_knowledge_of_opening_of_commitment()).
 To verify 2 and 3, retrieve the `j`th response scalar using
-[`CommitmentProof::response_scalars()`](crate::commitment_proof::CommitmentProof::response_scalars())
+[`CommitmentProof::conjunction_response_scalars()`](crate::commitment_proof::CommitmentProof::conjunction_response_scalars())
 and pass it to [`verify_range_proof()`](RangeProof::verify_range_proof())
 
 The approach for a signature proof is similar.
@@ -131,8 +132,8 @@ pub struct RangeProofBuilder {
     pub commitment_scalar: Scalar,
 }
 
-/// Proof of knowledge of a set of digits that compose a value within the range. This is **not** a
-/// complete range proof unless supplied in conjunction with a
+/// Proof of knowledge that a `u`-ary representation of a value falls within the given range.
+/// This is **not** a complete range proof unless supplied in conjunction with a
 /// [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or a [`SignatureProof`].
 #[allow(unused)]
 #[derive(Debug)]

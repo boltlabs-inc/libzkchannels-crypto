@@ -8,7 +8,8 @@ that the prover knows an opening of a commitment, without revealing the underlyi
 This implements the original Schnorr protocol \[1\], leaving the challenge phase undefined.
 
 The protocol has three phases.
-1. *Commit*. The prover chooses random masks for the message and commitment randomness. They
+1. *Commit*. The prover chooses random commitment scalars for each message in the tuple and the
+    commitment randomness. They
     form a commitment to this randomness with the same parameters that were used to form the
     original commitment. The output of this step is described by [`CommitmentProofBuilder`].
 
@@ -16,17 +17,20 @@ The protocol has three phases.
     However, it is standard practice to use the Fiat-Shamir heuristic to transform an interactive
     proof into a non-interactive proof; see [`Challenge`] for details.
 
-3. *Response*. The prover constructs a masked version of message, incorporating the
-    commitment randomness and the challenge.
+3. *Response*. The prover constructs response scalars, which mask each element of the message tuple
+    and the blinding factor with the corresponding commitment scalar and the challenge.
 
-The [`CommitmentProof`] consists of the commitment to randomness and the masked responses.
+The [`CommitmentProof`] consists of the commitment to the commitment scalars and the response 
+scalars.
 
 Given the proof and the commitment, the verifier checks the consistency of the commitment (to the
 original message), the commitment to randomness, the challenge, and the responses. A malicious
-prover cannot produce a consistent set of objects without knowing the underlying message.
+prover cannot produce a consistent set of objects without knowing the underlying message and
+blinding factor.
 
 ## References
-1. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology, 4(3):161–174, Jan 1991.
+1. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology,
+    4(3):161–174, Jan 1991.
 
 */
 use crate::{challenge::Challenge, pedersen_commitments::*, types::*};
@@ -76,13 +80,13 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     /**
     Run the commitment phase of a Schnorr-style commitment proof.
 
-    The `known_commitment_scalars` argument allows the caller to choose particular commitment
+    The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
     scalars in the case that they need to satisfy some sort of constraint, for example when
     implementing equality or linear combination constraints on top of the proof.
     */
     pub fn generate_proof_commitments(
         _rng: &mut impl Rng,
-        _known_commitment_scalars: &[Option<Scalar>],
+        _conjunction_commitment_scalars: &[Option<Scalar>],
         _params: &PedersenParameters<G>,
     ) -> Self {
         todo!();

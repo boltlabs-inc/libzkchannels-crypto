@@ -14,22 +14,22 @@ to adapt it for signatures.
 The protocol has four phases to prove knowledge of a signature.
 
 0. *Setup*. The prover blinds and randomizes the signature and forms a commitment to the underlying
-    message. They use the same value to blind the signature and as commitment randomness.
+    message. They use the same blinding factor to blind the signature and to form the commitment.
 
-1. *Commit*. The prover chooses random masks for the message and blinding factor. They form a
-    commitment to this randomness. The outputs of steps 0 and 1 is described by
-    [`SignatureProofBuilder`].
+1. *Commit*. The prover chooses random commitment scalars for each element in the message tuple and
+    for the blinding factor. They form a commitment to this randomness. The outputs of steps 0 and
+    1 is described by [`SignatureProofBuilder`].
 
 2. *Challenge*. In an interactive proof, the prover obtains a random challenge from the verifier.
     However, it is standard practice to use the Fiat-Shamir heuristic to transform an interactive
     proof into a non-interactive proof; see [`Challenge`] for details.
 
-3. *Response*. The prover constructs a masked versions of the message, incorporating the blinding
-    factor and the challenge.
+3. *Response*. The prover constructs response scalars, which mask each element of the message tuple
+    and the blinding factor with the corresponding commitment scalar and the challenge.
 
 Note that steps 1-3 are identical to those for a [commitment proof](crate::commitment_proof).
-The [`SignatureProof`] consists of the commitment to randomness and the masked responses, plus
-the blinded, randomized signature and corresponding commitment from step 0.
+The [`SignatureProof`] consists of the commitment to the commitment scalars; the response scalars; 
+the blinded, randomized signature; and the commitment to the message tuple from step 0.
 
 Given the proof, the verifier checks the following:
 1. The underlying commitment proof is consistent (i.e. with the commitment to randomness, the
@@ -90,7 +90,7 @@ impl SignatureProofBuilder {
     /**
     Run the commitment phase of a Schnorr-style signature proof.
 
-    The `known_commitment_scalars` argument allows the caller to choose particular commitment
+    The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
     scalars in the case that they need to satisfy some sort of constraint, for example when
     implementing equality or linear combination constraints on top of the proof.
     */
@@ -98,13 +98,14 @@ impl SignatureProofBuilder {
         _rng: &mut impl Rng,
         _message: Message,
         _signature: Signature,
-        _known_commitment_scalars: &[Option<Scalar>],
+        _conjunction_commitment_scalars: &[Option<Scalar>],
         _params: &PublicKey,
     ) -> Self {
         todo!();
     }
 
-    /// Get the commitment scalars corresponding to the message for the signature proof being built (e.g. not including the blinding factor).
+    /// Get the commitment scalars corresponding to the message for the signature proof being 
+    /// built (e.g. not including the commitment scalar corresponding to the blinding factor).
     pub fn commitment_scalars(&self) -> &[Scalar] {
         &self.commitment_proof_builder.commitment_scalars()
     }
@@ -133,7 +134,8 @@ impl SignatureProof {
         todo!();
     }
 
-    /// Retrieves the response scalars for the signature proof, not including the blinding factor.
+    /// Retrieves the response scalars for the signature proof, not including the response scalar
+    /// corresponding to the blinding factor.
     pub fn response_scalars(&self) -> &[Scalar] {
         &self.commitment_proof.response_scalars()
     }

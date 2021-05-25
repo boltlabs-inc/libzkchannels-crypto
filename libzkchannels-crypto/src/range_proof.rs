@@ -16,32 +16,33 @@ The general technique writes the value in `u`-ary digits. That is, a value `B` h
 `B0 .. Bl`, where each `Bi` is in the range `[0,u)`. The digits componse to `B`; that is, they
 have the property `B = sum( u^i * Bi )`.
 
-The prover shows they know the opening of signatures on each of these digits, and that the digits
-compose into the original value. The signatures of each possible digit are provided by the
-verifier, who uses a special range proof key to sign the values 0 to `u` and publishes them.
+The prover shows they know a signature on each digit and that the digits
+compose into the original value. Signatures on each possible digit are provided by the
+verifier: they use a one-time-use range proof key to sign the values 0 to `u` and publish them.
 
 This module provides tools to produce a PoK over the digit signatures for a given value. However,
 it alone *does not* show that the digits compose into a meaningful value! This step requires a
 conjunction with a [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or
 [`SignatureProof`].
 
-Of course, this special structure requires additional parameters and a more computationally
-intensive setup phase by the verifier. Luckily, this only has to be done once over the lifetime of
-_all_ range proofs. It is important that the verifier does not reuse the range proof key for any
-other operations, especially signing operations: the security of the proof depends on the fact
-that the digit signatures can _only_ be on valid `u`-nary digits.
+This type of proof requires additional parameters (a range proof public key) and a more 
+computationally intensive setup phase by the verifier (to generate `u` signatures). Luckily,
+this only has to be done once over the lifetime of _all_ range proofs. It is important that
+the verifier does not reuse the range proof key for any other operations, especially signing
+operations: the security of the proof depends on the fact that the digit signatures can _only_ be
+on valid `u`-ary digits.
 
 ## Expected use
 Suppose you wish to show that the `j`th message element in a
-[`CommitmentProof`](crate::commitment_proof::CommitmentProof) is within the range.
+[`CommitmentProof`](crate::commitment_proof::CommitmentProof) is within the given range.
 
 1. *Initiate the range proof.*
-Call [`RangeProofBuilder::generate_proof_commitments()`], passing the value you wish to show is
-in a range.
+    Call [`RangeProofBuilder::generate_proof_commitments()`], passing the value you wish to show is
+    in a range.
 
 2. *Link to the commitment proof*.
     The resulting [`RangeProofBuilder`] contains a field called `commitment_scalar`. Place this
-    element in the `j`th index of `known_commitment_scalars` and use it to [generate the 
+    element in the `j`th index of `conjunction_commitment_scalars` and use it to [generate the 
     CommitmentProof` commitments](crate::commitment_proof::CommitmentProofBuilder::generate_proof_commitments()).
 
 3. *Generate a challenge*. In an interactive proof, the prover obtains a random challenge from the
@@ -92,7 +93,7 @@ use crate::{types::*, Error};
 const RP_PARAMETER_U: u64 = 128;
 
 /// Number of digits used in the range proof.
-const RP_PARAMETER_L: usize = 7;
+const RP_PARAMETER_L: usize = 9;
 
 /// Parameters for use in a [`RangeProof`].
 ///
@@ -100,7 +101,7 @@ const RP_PARAMETER_L: usize = 7;
 #[allow(unused)]
 #[derive(Debug)]
 pub struct RangeProofParameters {
-    /// A signature on every `u`-nary digit
+    /// A signature on every `u`-ary digit
     digit_signatures: [Signature; RP_PARAMETER_U as usize],
     /// Public key corresponding _exclusively with the signatures above.
     public_key: PublicKey,
@@ -130,8 +131,9 @@ pub struct RangeProofBuilder {
     pub commitment_scalar: Scalar,
 }
 
-/// Proof of knowledge of a set of digits that compose a value within the range. This is **not** a complete range proof
-/// unless supplied in conjunction with a [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or a [`SignatureProof`].
+/// Proof of knowledge of a set of digits that compose a value within the range. This is **not** a
+/// complete range proof unless supplied in conjunction with a 
+/// [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or a [`SignatureProof`].
 #[allow(unused)]
 #[derive(Debug)]
 pub struct RangeProof {
@@ -141,7 +143,8 @@ pub struct RangeProof {
 
 #[allow(unused)]
 impl RangeProofBuilder {
-    /// Run the commitment phase of a Schnorr-style range proof on the value n, to show that `0 < n < u^l`.
+    /// Run the commitment phase of a Schnorr-style range proof on the value n, to show that 
+    /// `0 < n < u^l`.
     pub fn generate_proof_commitments(
         _n: i64,
         _params: &RangeProofParameters,
@@ -167,7 +170,8 @@ impl RangeProof {
         todo!();
     }
 
-    /// Verify that the response scalar for a given value is correctly constructed from the range proof digits.
+    /// Verify that the response scalar for a given value is correctly constructed from the range 
+    /// proof digits.
     pub fn verify_range_proof(
         &self,
         _params: &RangeProofParameters,

@@ -5,7 +5,6 @@ Supports challenges on proofs of knowledge of the opening of commitments, the op
 and range proofs, both individually and in conjunctions. There is also support for incorporating
 other public information into the challenge.
 
-
 */
 
 use crate::{
@@ -17,7 +16,6 @@ use crate::{
     types::*,
 };
 use group::{Group, GroupEncoding};
-use sha3::{Digest, Sha3_512};
 
 /// A challenge scalar for use in a Schnorr-style proof.
 #[derive(Debug, Clone, Copy)]
@@ -26,8 +24,9 @@ pub struct Challenge(pub Scalar);
 /// Holds state used when building a [`Challenge`] using the Fiat-Shamir heuristic, as in a
 /// non-interactive Schnorr proof.
 #[derive(Debug)]
+#[allow(missing_copy_implementations)]
 pub struct ChallengeBuilder {
-    hasher: Sha3_512,
+    // hasher: ?
 }
 
 impl Default for ChallengeBuilder {
@@ -39,9 +38,7 @@ impl Default for ChallengeBuilder {
 impl ChallengeBuilder {
     /// Initialize a new, empty challenge.
     pub fn new() -> Self {
-        Self {
-            hasher: Sha3_512::new(),
-        }
+        todo!();
     }
 
     /// Incorporate a commitment into the challenge.
@@ -52,7 +49,8 @@ impl ChallengeBuilder {
         todo!();
     }
 
-    /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge.
+    /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge
+    /// (e.g. the pieces that will also be in the finalized [`CommitmentProof`]).
     pub fn with_commitment_proof<G>(self, _com: &CommitmentProofBuilder<G>) -> Self
     where
         G: Group<Scalar = Scalar> + GroupEncoding,
@@ -60,12 +58,14 @@ impl ChallengeBuilder {
         todo!();
     }
 
-    /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge.
+    /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge
+    /// (e.g. the pieces that will also be in the finalized [`SignatureProof`]).
     pub fn with_signature_proof(self, _signature_proof_builder: SignatureProofBuilder) -> Self {
         todo!();
     }
 
     /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
+    /// (e.g. the pieces that will also be in the finalized [`RangeProof`]).
     pub fn with_range_proof(self, _range_proof_builder: RangeProofBuilder) -> Self {
         todo!();
     }
@@ -75,7 +75,7 @@ impl ChallengeBuilder {
         todo!();
     }
 
-    /// Incorporate shared Pedersen parameter key material into the challenge.
+    /// Incorporate Pedersen parameter key material into the challenge.
     pub fn with_pedersen_parameters<G>(self, _params: &PedersenParameters<G>) -> Self
     where
         G: Group<Scalar = Scalar>,
@@ -90,9 +90,8 @@ impl ChallengeBuilder {
     }
 
     /// Incorporate arbitrary bytes into the challenge.
-    pub fn with_bytes(mut self, bytes: impl AsRef<[u8]>) -> Self {
-        self.hasher.update(bytes);
-        self
+    pub fn with_bytes(self, _bytes: impl AsRef<[u8]>) -> Self {
+        todo!();
     }
 
     /// Consume the builder and generate a [`Challenge`] from the accumulated data.

@@ -59,9 +59,10 @@ impl BlindedSignature {
         todo!()
     }
 
-    /// Check to ensure a blinded signature is well-formed:
-    /// - The first element is not the identity element;
-    /// - Both elements are on the expected curve.
+    /// Check whether the signature is well-formed.
+    ///
+    /// This checks that first element is not the identity element. This implementation uses only
+    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
     pub fn is_valid(&self) -> bool {
         todo!();
     }

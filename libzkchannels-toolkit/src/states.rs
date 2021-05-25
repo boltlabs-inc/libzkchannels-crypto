@@ -28,7 +28,7 @@ use crate::parameters::*;
 use crate::revlock::*;
 use crate::types::*;
 use crate::{Current, Previous, Rng, Verification};
-use ps_blind_signatures::*;
+use message::BlindingFactor;
 use ps_signatures::Signature;
 
 /// Channel identifier, binds each payment to a specific channel.

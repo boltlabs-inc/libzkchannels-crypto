@@ -1,5 +1,5 @@
-/*! 
-Proofs of knowledge of a signature - that is, a proof that one knows the 
+/*!
+Proofs of knowledge of a signature - that is, a proof that one knows the
 underlying message.
 
 These are Schnorr zero-knowledge proofs that use a commitment and response phase to show
@@ -17,7 +17,7 @@ The protocol has four phases to prove knowledge of a signature.
     message. They use the same value to blind the signature and as commitment randomness.
 
 1. *Commit*. The prover chooses random masks for the message and blinding factor. They form a
-    commitment to this randomness. The outputs of steps 0 and 1 is described by 
+    commitment to this randomness. The outputs of steps 0 and 1 is described by
     [`SignatureProofBuilder`].
 
 2. *Challenge*. In an interactive proof, the prover obtains a random challenge from the verifier.

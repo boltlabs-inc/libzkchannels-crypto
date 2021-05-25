@@ -1,11 +1,9 @@
 /*!
-Implementation of Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381.
+Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381.
 
 More information on the constructs involved can be found in the documentation for the
 [`ps_signatures`](crate::ps_signatures) module.
 */
-use sha3::digest::generic_array::typenum::private::IsEqualPrivate;
-
 use crate::{ps_keys::*, ps_signatures::Signature, types::*};
 
 /**
@@ -61,7 +59,7 @@ impl BlindedSignature {
         todo!()
     }
 
-    /// Check to ensure a blinded signature is well-formed: 
+    /// Check to ensure a blinded signature is well-formed:
     /// - The first element is not the identity element;
     /// - Both elements are on the expected curve.
     pub fn is_valid(&self) -> bool {

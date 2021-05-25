@@ -1,55 +1,55 @@
 /*!
 Schnorr-style proofs of knowledge that a value lies within the range `[0, 2^63)`.
 
-**This range proof cannot be used alone!** It is only meaningful when used in conjunction with a 
-[`CommitmentProof`](crate::commitment_proof::CommitmentProof) or [`SignatureProof`], to show that 
+**This range proof cannot be used alone!** It is only meaningful when used in conjunction with a
+[`CommitmentProof`](crate::commitment_proof::CommitmentProof) or [`SignatureProof`], to show that
 the message _in that proof_ lies within the given range.
 
-These are Camenish, Chaabouni, and shelat-style range proofs \[1\] built using standard Schnorr. 
-They prove a value is in range `[0, u^l)`, for some parameters `u` and `l`. This implementation 
+These are Camenish, Chaabouni, and shelat-style range proofs \[1\] built using standard Schnorr.
+They prove a value is in range `[0, u^l)`, for some parameters `u` and `l`. This implementation
 selects `u`, `l` to produce proofs for the range `[0, 2^63)`
-It also uses single-message Pointcheval-Sanders signatures \[2\] instead of the signature scheme 
+It also uses single-message Pointcheval-Sanders signatures \[2\] instead of the signature scheme
 in \[1\]. It uses the pairing group defined in BLS12-381 \[3\].
 
 ## Intuition
-The general technique writes the value in `u`-ary digits. That is, a value `B` has digits 
-`B1 .. Bl`, where each `Bi` is in the range `[0,u)`. The digits componse to `B`; that is, they
+The general technique writes the value in `u`-ary digits. That is, a value `B` has digits
+`B0 .. Bl`, where each `Bi` is in the range `[0,u)`. The digits componse to `B`; that is, they
 have the property `B = sum( u^i * Bi )`.
 
-The prover shows they know the opening of signatures on each of these digits, and that the digits 
-compose into the original value. The signatures of each possible digit are provided by the 
+The prover shows they know the opening of signatures on each of these digits, and that the digits
+compose into the original value. The signatures of each possible digit are provided by the
 verifier, who uses a special range proof key to sign the values 0 to `u` and publishes them.
 
-This module provides tools to produce a PoK over the digit signatures for a given value. However, 
-it alone *does not* show that the digits compose into a meaningful value! This step requires a 
+This module provides tools to produce a PoK over the digit signatures for a given value. However,
+it alone *does not* show that the digits compose into a meaningful value! This step requires a
 conjunction with a [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or
 [`SignatureProof`].
 
-Of course, this special structure requires additional parameters and a more computationally 
+Of course, this special structure requires additional parameters and a more computationally
 intensive setup phase by the verifier. Luckily, this only has to be done once over the lifetime of
-_all_ range proofs. It is important that the verifier does not reuse the range proof key for any 
+_all_ range proofs. It is important that the verifier does not reuse the range proof key for any
 other operations, especially signing operations: the security of the proof depends on the fact
 that the digit signatures can _only_ be on valid `u`-nary digits.
 
 ## Expected use
-Suppose you wish to show that the `j`th message element in a 
+Suppose you wish to show that the `j`th message element in a
 [`CommitmentProof`](crate::commitment_proof::CommitmentProof) is within the range.
 
 1. *Initiate the range proof.*
-Call [`RangeProofBuilder::generate_proof_commitments()`], passing the value you wish to show is 
+Call [`RangeProofBuilder::generate_proof_commitments()`], passing the value you wish to show is
 in a range.
 
 2. *Link to the commitment proof*.
-    The resulting [`RangeProofBuilder`] contains a field called `commitment_scalar`. Place this 
-    element in the `j`th index of `known_commitment_scalars` and use it to [generate the `CommitmentProof`
-    commitments](crate::commitment_proof::CommitmentProofBuilder::generate_proof_commitments()).
+    The resulting [`RangeProofBuilder`] contains a field called `commitment_scalar`. Place this
+    element in the `j`th index of `known_commitment_scalars` and use it to [generate the 
+    CommitmentProof` commitments](crate::commitment_proof::CommitmentProofBuilder::generate_proof_commitments()).
 
-3. *Generate a challenge*. In an interactive proof, the prover obtains a random challenge from the verifier.
-    However, it is standard practice to use the Fiat-Shamir heuristic to transform an interactive
-    proof into a non-interactive proof; see [`Challenge`] for details.
+3. *Generate a challenge*. In an interactive proof, the prover obtains a random challenge from the
+    verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform an 
+    interactive proof into a non-interactive proof; see [`Challenge`] for details.
 
 4. *Complete the proofs*.
-    Call the `generate_proof_response()` function for the 
+    Call the `generate_proof_response()` function for the
     [commitment proof](crate::commitment_proof::CommitmentProofBuilder::generate_proof_response())
     and the [range proof](RangeProofBuilder::generate_proof_response()).
 
@@ -60,11 +60,11 @@ To verify a range proof, the verifier must check the following:
 3. The value in the commitment proof corresponds to the digits in the range proof.
 
 To do so, the verifier should first reconstruct the challenge.
-Verify 1 using the standard commitment proof 
+Verify 1 using the standard commitment proof
 [verification function](crate::commitment_proof::CommitmentProof::verify_knowledge_of_opening_of_commitment()).
-To verify 2 and 3, retrieve the `j`th response scalar using 
-[`CommitmentProof::response_scalars()`](crate::commitment_proof::CommitmentProof::response_scalars()) and pass it
-to [`verify_range_proof()`](RangeProof::verify_range_proof())
+To verify 2 and 3, retrieve the `j`th response scalar using
+[`CommitmentProof::response_scalars()`](crate::commitment_proof::CommitmentProof::response_scalars())
+and pass it to [`verify_range_proof()`](RangeProof::verify_range_proof())
 
 The approach for a signature proof is similar.
 

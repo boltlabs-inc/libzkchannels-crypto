@@ -8,21 +8,21 @@ that the prover knows an opening of a commitment, without revealing the underlyi
 This implements the original Schnorr protocol \[1\], leaving the challenge phase undefined.
 
 The protocol has three phases.
-1. *Commit*. The prover chooses random masks for the message and commitment randomness. They 
-    form a commitment to this randomness with the same parameters that were used to form the 
+1. *Commit*. The prover chooses random masks for the message and commitment randomness. They
+    form a commitment to this randomness with the same parameters that were used to form the
     original commitment. The output of this step is described by [`CommitmentProofBuilder`].
 
 2. *Challenge*. In an interactive proof, the prover obtains a random challenge from the verifier.
     However, it is standard practice to use the Fiat-Shamir heuristic to transform an interactive
     proof into a non-interactive proof; see [`Challenge`] for details.
 
-3. *Response*. The prover constructs a masked version of message, incorporating the 
+3. *Response*. The prover constructs a masked version of message, incorporating the
     commitment randomness and the challenge.
 
 The [`CommitmentProof`] consists of the commitment to randomness and the masked responses.
 
-Given the proof and the commitment, the verifier checks the consistency of the commitment (to the 
-original message), the commitment to randomness, the challenge, and the responses. A malicious 
+Given the proof and the commitment, the verifier checks the consistency of the commitment (to the
+original message), the commitment to randomness, the challenge, and the responses. A malicious
 prover cannot produce a consistent set of objects without knowing the underlying message.
 
 ## References
@@ -37,7 +37,7 @@ use group::Group;
 pub struct CommitmentProof<G: Group<Scalar = Scalar>> {
     /// The commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
-    /// The response scalars, with the response scalar for the commitment randomness prepended. 
+    /// The response scalars, with the response scalar for the commitment randomness prepended.
     response_scalars: Vec<Scalar>,
 }
 

@@ -1,4 +1,4 @@
-//! An implementation of randomizable multi-message Pointcheval-Sanders signatures over BLS12-381.
+//! Randomizable multi-message Pointcheval-Sanders signatures over BLS12-381.
 //!
 //! The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
 //! (https://eprint.iacr.org/2015/525.pdf); The BLS12-381 curve is defined in the (now expired) IRTF
@@ -49,9 +49,11 @@ impl Signature {
         buf
     }
 
-    /// Check whether the signature is valid, meaning the first element is not the identity element.
+    /// Check whether the signature is well-formed:
+    /// - The first element is not the identity element;
+    /// - Both elements are on the expected curve.
     pub fn is_valid(&self) -> bool {
-        !bool::from(self.sigma1.is_identity())
+        todo!();
     }
 }
 

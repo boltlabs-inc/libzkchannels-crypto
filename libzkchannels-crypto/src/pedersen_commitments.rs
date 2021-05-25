@@ -1,5 +1,5 @@
 /*!
-Implements Pedersen commitments \[1\] over the prime-order pairing groups from BLS12-381 \[2\].
+Pedersen commitments \[1\] over the prime-order pairing groups from BLS12-381 \[2\].
 
 ## References
 

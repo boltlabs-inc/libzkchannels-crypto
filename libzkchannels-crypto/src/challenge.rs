@@ -1,8 +1,8 @@
 /*!
-Functionality for building challenge scalars. 
+Functionality for building challenge scalars.
 
-Supports challenges on proofs of knowledge of the opening of commitments, the opening of signatures, 
-and range proofs, both individually and in conjunctions. There is also support for incorporating 
+Supports challenges on proofs of knowledge of the opening of commitments, the opening of signatures,
+and range proofs, both individually and in conjunctions. There is also support for incorporating
 other public information into the challenge.
 
 
@@ -23,7 +23,7 @@ use sha3::{Digest, Sha3_512};
 #[derive(Debug, Clone, Copy)]
 pub struct Challenge(pub Scalar);
 
-/// Holds state used when building a [`Challenge`] using the Fiat-Shamir heuristic, as in a 
+/// Holds state used when building a [`Challenge`] using the Fiat-Shamir heuristic, as in a
 /// non-interactive Schnorr proof.
 #[derive(Debug)]
 pub struct ChallengeBuilder {

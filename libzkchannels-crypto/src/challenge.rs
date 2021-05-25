@@ -50,7 +50,8 @@ impl ChallengeBuilder {
     }
 
     /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge
-    /// (e.g. the pieces that will also be in the finalized [`CommitmentProof`]).
+    /// (e.g. the pieces that will also be in the finalized
+    /// [`CommitmentProof`](crate::commitment_proof::CommitmentProof)).
     pub fn with_commitment_proof<G>(self, _com: &CommitmentProofBuilder<G>) -> Self
     where
         G: Group<Scalar = Scalar> + GroupEncoding,
@@ -59,13 +60,15 @@ impl ChallengeBuilder {
     }
 
     /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge
-    /// (e.g. the pieces that will also be in the finalized [`SignatureProof`]).
+    /// (e.g. the pieces that will also be in the finalized
+    /// [`SignatureProof`](crate::signature_proof::SignatureProof)).
     pub fn with_signature_proof(self, _signature_proof_builder: SignatureProofBuilder) -> Self {
         todo!();
     }
 
     /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
-    /// (e.g. the pieces that will also be in the finalized [`RangeProof`]).
+    /// (e.g. the pieces that will also be in the finalized
+    /// [`RangeProof`](crate::range_proof::RangeProof)).
     pub fn with_range_proof(self, _range_proof_builder: RangeProofBuilder) -> Self {
         todo!();
     }

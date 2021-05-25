@@ -30,17 +30,6 @@ impl BlindedSignature {
     }
 }
 
-/// Pointcheval-Sanders blinding factor for a message or signature.
-#[derive(Debug, Clone, Copy)]
-pub struct BlindingFactor(pub(crate) Scalar);
-
-impl BlindingFactor {
-    /// Generate a new blinding factor uniformly at random from the set of possible [`Scalar`]s.
-    pub fn new(_rng: &mut impl Rng) -> Self {
-        todo!();
-    }
-}
-
 impl BlindedSignature {
     /// Blind a [`Signature`] using the given [`BlindingFactor`].
     pub fn from_signature(_sig: &Signature, _bf: BlindingFactor) -> Self {

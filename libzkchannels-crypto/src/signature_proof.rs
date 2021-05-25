@@ -17,8 +17,8 @@ The protocol has four phases to prove knowledge of a signature.
     message. They use the same blinding factor to blind the signature and to form the commitment.
 
 1. *Commit*. The prover chooses random commitment scalars for each element in the message tuple and
-    for the blinding factor. They form a commitment to this randomness. The outputs of steps 0 and
-    1 is described by [`SignatureProofBuilder`].
+    for the blinding factor. They form a commitment to the commitment scalars. The outputs of steps
+    0 and 1 is described by [`SignatureProofBuilder`].
 
 2. *Challenge*. In an interactive proof, the prover obtains a random challenge from the verifier.
     However, it is standard practice to use the Fiat-Shamir heuristic to transform an interactive
@@ -28,12 +28,12 @@ The protocol has four phases to prove knowledge of a signature.
     and the blinding factor with the corresponding commitment scalar and the challenge.
 
 Note that steps 1-3 are identical to those for a [commitment proof](crate::commitment_proof).
-The [`SignatureProof`] consists of the commitment to the commitment scalars; the response scalars; 
+The [`SignatureProof`] consists of the commitment to the commitment scalars; the response scalars;
 the blinded, randomized signature; and the commitment to the message tuple from step 0.
 
 Given the proof, the verifier checks the following:
-1. The underlying commitment proof is consistent (i.e. with the commitment to randomness, the
-    challenge, and the responses).
+1. The underlying commitment proof is consistent (i.e. with the commitment to commitment scalars,
+    the challenge, and the responses scalars).
 2. The (blinded, randomized) signature is valid.
 3. The signature is consistent with the commitment to the message.
 
@@ -49,7 +49,7 @@ Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International P
 use crate::{
     challenge::Challenge,
     commitment_proof::{CommitmentProof, CommitmentProofBuilder},
-    pedersen_commitments::{Commitment, CommitmentRandomness},
+    pedersen_commitments::Commitment,
     ps_blind_signatures::BlindedSignature,
     ps_keys::PublicKey,
     ps_signatures::Signature,
@@ -78,8 +78,8 @@ pub struct SignatureProofBuilder {
     pub message: Message,
     /// Commitment to the message.
     pub message_commitment: Commitment<G2Projective>,
-    /// Commitment randomness corresponding to the `message_commitment`.
-    pub message_commitment_randomness: CommitmentRandomness,
+    /// Blinding factor for the `message_commitment`.
+    pub message_blinding_factor: BlindingFactor,
     /// Randomized and blinded version of the original signature.
     pub blinded_signature: BlindedSignature,
     /// Commitment phase output for the underlying proof of knowledge of the opening of the `message_commitment`.
@@ -104,7 +104,7 @@ impl SignatureProofBuilder {
         todo!();
     }
 
-    /// Get the commitment scalars corresponding to the message for the signature proof being 
+    /// Get the commitment scalars corresponding to the message for the signature proof being
     /// built (e.g. not including the commitment scalar corresponding to the blinding factor).
     pub fn commitment_scalars(&self) -> &[Scalar] {
         &self.commitment_proof_builder.commitment_scalars()

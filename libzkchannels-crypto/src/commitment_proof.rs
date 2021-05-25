@@ -20,7 +20,7 @@ The protocol has three phases.
 3. *Response*. The prover constructs response scalars, which mask each element of the message tuple
     and the blinding factor with the corresponding commitment scalar and the challenge.
 
-The [`CommitmentProof`] consists of the commitment to the commitment scalars and the response 
+The [`CommitmentProof`] consists of the commitment to the commitment scalars and the response
 scalars.
 
 Given the proof and the commitment, the verifier checks the consistency of the commitment (to the
@@ -41,7 +41,7 @@ use group::Group;
 pub struct CommitmentProof<G: Group<Scalar = Scalar>> {
     /// The commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
-    /// The response scalars, with the response scalar for the commitment randomness prepended.
+    /// The response scalars, with the response scalar for the blinding factor prepended.
     response_scalars: Vec<Scalar>,
 }
 
@@ -57,7 +57,7 @@ impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
     }
 
     /// Get the response scalars corresponding to the message (that is, not including the response
-    /// scalar for the commitment randomness).
+    /// scalar for the blinding factor).
     pub fn response_scalars(&self) -> &[Scalar] {
         &self.response_scalars[1..]
     }
@@ -72,7 +72,7 @@ Built up to (but not including) the challenge phase of a Schnorr proof.
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>> {
     /// Commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
-    /// The commitment scalars for the commitment randomness and message (in that order).
+    /// The commitment scalars for the blinding factor and message (in that order).
     commitment_scalars: Vec<Scalar>,
 }
 
@@ -93,7 +93,7 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     }
 
     /// Get the commitment scalars of the commitment proof being built, not including the commitment
-    /// scalar corresponding to the commitment randomness.
+    /// scalar corresponding to the blinding factor.
     pub fn commitment_scalars(&self) -> &[Scalar] {
         &self.commitment_scalars[1..]
     }
@@ -102,7 +102,7 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     pub fn generate_proof_response(
         self,
         _msg: &Message,
-        _commitment_randomness: CommitmentRandomness,
+        _blinding_factor: BlindingFactor,
         _challenge: Challenge,
     ) -> CommitmentProof<G> {
         todo!();

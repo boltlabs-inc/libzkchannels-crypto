@@ -25,7 +25,7 @@ it alone *does not* show that the digits compose into a meaningful value! This s
 conjunction with a [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or
 [`SignatureProof`].
 
-This type of proof requires additional parameters (a range proof public key) and a more 
+This type of proof requires additional parameters (a range proof public key) and a more
 computationally intensive setup phase by the verifier (to generate `u` signatures). Luckily,
 this only has to be done once over the lifetime of _all_ range proofs. It is important that
 the verifier does not reuse the range proof key for any other operations, especially signing
@@ -42,11 +42,11 @@ Suppose you wish to show that the `j`th message element in a
 
 2. *Link to the commitment proof*.
     The resulting [`RangeProofBuilder`] contains a field called `commitment_scalar`. Place this
-    element in the `j`th index of `conjunction_commitment_scalars` and use it to [generate the 
+    element in the `j`th index of `conjunction_commitment_scalars` and use it to [generate the
     CommitmentProof` commitments](crate::commitment_proof::CommitmentProofBuilder::generate_proof_commitments()).
 
 3. *Generate a challenge*. In an interactive proof, the prover obtains a random challenge from the
-    verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform an 
+    verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform an
     interactive proof into a non-interactive proof; see [`Challenge`] for details.
 
 4. *Complete the proofs*.
@@ -132,7 +132,7 @@ pub struct RangeProofBuilder {
 }
 
 /// Proof of knowledge of a set of digits that compose a value within the range. This is **not** a
-/// complete range proof unless supplied in conjunction with a 
+/// complete range proof unless supplied in conjunction with a
 /// [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or a [`SignatureProof`].
 #[allow(unused)]
 #[derive(Debug)]
@@ -143,7 +143,7 @@ pub struct RangeProof {
 
 #[allow(unused)]
 impl RangeProofBuilder {
-    /// Run the commitment phase of a Schnorr-style range proof on the value n, to show that 
+    /// Run the commitment phase of a Schnorr-style range proof on the value n, to show that
     /// `0 < n < u^l`.
     pub fn generate_proof_commitments(
         _n: i64,
@@ -170,7 +170,7 @@ impl RangeProof {
         todo!();
     }
 
-    /// Verify that the response scalar for a given value is correctly constructed from the range 
+    /// Verify that the response scalar for a given value is correctly constructed from the range
     /// proof digits.
     pub fn verify_range_proof(
         &self,

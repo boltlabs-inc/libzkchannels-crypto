@@ -10,23 +10,11 @@ Pedersen commitments \[1\] over the prime-order pairing groups from BLS12-381 \[
 2021. URL: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 */
 use crate::types::*;
-use ff::Field;
 use group::Group;
 
 /// A Pedersen commitment to a message.
 #[derive(Debug, Clone, Copy)]
 pub struct Commitment<G: Group<Scalar = Scalar>>(pub G);
-
-/// Randomness used to construct an information-theoretically hiding commitment.
-#[derive(Debug, Clone, Copy)]
-pub struct CommitmentRandomness(pub Scalar);
-
-impl CommitmentRandomness {
-    /// Choose commitment randomness uniformly at random from the set of possible scalars.
-    pub fn new(rng: &mut impl Rng) -> Self {
-        Self(Scalar::random(rng))
-    }
-}
 
 #[allow(unused)]
 /// Parameters for Pedersen commitments.
@@ -53,13 +41,13 @@ impl<G: Group<Scalar = Scalar>> PedersenParameters<G> {
         todo!();
     }
 
-    /// Commit to a message using the provided commitment randomness.
-    pub fn commit(&self, _msg: &Message, _cr: CommitmentRandomness) -> Commitment<G> {
+    /// Commit to a message using the provided blinding factor.
+    pub fn commit(&self, _msg: &Message, _bf: BlindingFactor) -> Commitment<G> {
         todo!();
     }
 
-    /// Verify a commitment to a message, using the given commitment randomness scalar.
-    pub fn decommit(&self, _com: Commitment<G>, _msg: &Message, _cr: CommitmentRandomness) -> bool {
+    /// Verify a commitment to a message, using the given blinding factor
+    pub fn decommit(&self, _com: Commitment<G>, _msg: &Message, _bf: BlindingFactor) -> bool {
         todo!();
     }
 

@@ -1,4 +1,12 @@
-//! Functionality for building challenge scalars.
+/*!
+Functionality for building challenge scalars. 
+
+Supports challenges on proofs of knowledge of the opening of commitments, the opening of signatures, 
+and range proofs, both individually and in conjunctions. There is also support for incorporating 
+other public information into the challenge.
+
+
+*/
 
 use crate::{
     commitment_proof::CommitmentProofBuilder,
@@ -11,12 +19,12 @@ use crate::{
 use group::{Group, GroupEncoding};
 use sha3::{Digest, Sha3_512};
 
-/// A challenge scalar for use in a Schnorr-style proof
+/// A challenge scalar for use in a Schnorr-style proof.
 #[derive(Debug, Clone, Copy)]
 pub struct Challenge(pub Scalar);
 
-/// Holds state used when building a [`Challenge`] by hashing, as in a non-interactive Schnorr
-/// proof.
+/// Holds state used when building a [`Challenge`] using the Fiat-Shamir heuristic, as in a 
+/// non-interactive Schnorr proof.
 #[derive(Debug)]
 pub struct ChallengeBuilder {
     hasher: Sha3_512,
@@ -75,7 +83,8 @@ impl ChallengeBuilder {
         todo!();
     }
 
-    /// Incorporate a BLS12-381 [`Scalar`] into the challenge.
+    /// Incorporate a [`Scalar`] into the challenge (that is, an element of the scalar fields
+    /// associated with the BLS12-381 pairing groups)
     pub fn with_scalar(self, _scalar: Scalar) -> Self {
         todo!();
     }

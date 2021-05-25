@@ -1,35 +1,43 @@
-/*! Generates a proof of knowledge of the opening of a signature - that is, a proof that one knows the underlying message.
+/*! 
+Proofs of knowledge of a signature - that is, a proof that one knows the 
+underlying message.
 
 These are Schnorr zero-knowledge proofs that use a commitment and response phase to show
 that the prover knows the opening of a signature, without revealing the underlying [`Message`].
 
 ## Intuition
-This is a Schnorr-style protocol, built off of Pointcheval-Sanders signatures \[1\], a randomizable, blindable signature scheme.
-The proof itself is based on the Schnorr proof of knowledge of the opening of a commitment \[2\], but adds an additional preparation
-step to adapt it for signatures.
+This is a Schnorr-style implementation of the efficient protocol from Pointcheval-Sanders \[1\],
+which defines a randomizable, blindable signature scheme. The proof itself is based on the Schnorr
+proof of knowledge of the opening of a commitment \[2\], but adds an additional preparation step
+to adapt it for signatures.
 
 The protocol has four phases to prove knowledge of a signature.
 
-0. *Setup*. The prover blinds and randomizes the signature and forms a commitment to the underlying message. To link these two items together,
-they use the signature blinding factor as the commitment randomness.
+0. *Setup*. The prover blinds and randomizes the signature and forms a commitment to the underlying
+    message. They use the same value to blind the signature and as commitment randomness.
 
-1. *Commit*. The prover chooses a random mask for each block in the message and the blinding factor.
-They form a commitment to this randomness.
-The outputs of steps 0 and 1 is described by [`SignatureProofBuilder`].
+1. *Commit*. The prover chooses random masks for the message and blinding factor. They form a
+    commitment to this randomness. The outputs of steps 0 and 1 is described by 
+    [`SignatureProofBuilder`].
 
-2. *Challenge*. The prover obtains a random challenge. There are several acceptable ways to generate this; see [`Challenge`] for details.
+2. *Challenge*. In an interactive proof, the prover obtains a random challenge from the verifier.
+    However, it is standard practice to use the Fiat-Shamir heuristic to transform an interactive
+    proof into a non-interactive proof; see [`Challenge`] for details.
 
-3. *Response*. The prover constructs masked versions of each message block, incorporating the blinding factor and the challenge.
+3. *Response*. The prover constructs a masked versions of the message, incorporating the blinding
+    factor and the challenge.
 
 Note that steps 1-3 are identical to those for a [commitment proof](crate::commitment_proof).
-The [`SignatureProof`] consists of the commitment to randomness and the masked responses, plus the blinded, randomized signature and corresponding commitment from step 0.
+The [`SignatureProof`] consists of the commitment to randomness and the masked responses, plus
+the blinded, randomized signature and corresponding commitment from step 0.
 
 Given the proof, the verifier checks the following:
-1. The underlying commitment proof is consistent (i.e. with the commitment to randomness, the challenge, and the responses).
+1. The underlying commitment proof is consistent (i.e. with the commitment to randomness, the
+    challenge, and the responses).
 2. The (blinded, randomized) signature is valid.
 3. The signature is consistent with the commitment to the message.
 
-The protocol promises that a malicious prover cannot produce a valid, consistent set of objects without knowing the underlying
+A malicious prover cannot produce a valid, consistent set of objects without knowing the underlying
 message.
 
 ## References
@@ -48,7 +56,7 @@ use crate::{
     types::*,
 };
 
-/// Fully constructed proof of knowledge of a signed message.
+/// Fully constructed proof of knowledge of a signature.
 #[derive(Debug, Clone)]
 pub struct SignatureProof {
     /// Commitment to the signed message.
@@ -82,7 +90,7 @@ impl SignatureProofBuilder {
     /**
     Run the commitment phase of a Schnorr-style signature proof.
 
-    The `maybe_commitment_scalars` argument allows the caller to choose particular commitment
+    The `known_commitment_scalars` argument allows the caller to choose particular commitment
     scalars in the case that they need to satisfy some sort of constraint, for example when
     implementing equality or linear combination constraints on top of the proof.
     */
@@ -90,7 +98,7 @@ impl SignatureProofBuilder {
         _rng: &mut impl Rng,
         _message: Message,
         _signature: Signature,
-        _maybe_commitment_scalars: &[Option<Scalar>],
+        _known_commitment_scalars: &[Option<Scalar>],
         _params: &PublicKey,
     ) -> Self {
         todo!();

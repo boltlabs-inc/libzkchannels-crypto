@@ -56,9 +56,10 @@ impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
         todo!();
     }
 
-    /// Get the response scalars corresponding to the message (that is, not including the response
-    /// scalar for the blinding factor).
-    pub fn response_scalars(&self) -> &[Scalar] {
+    /// Get the response scalars corresponding to the message to verify conjunctions of proofs.
+    ///
+    /// This does not include the response scalar for the blinding factor.
+    pub fn conjunction_response_scalars(&self) -> &[Scalar] {
         &self.response_scalars[1..]
     }
 }
@@ -92,9 +93,11 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
         todo!();
     }
 
-    /// Get the commitment scalars of the commitment proof being built, not including the commitment
-    /// scalar corresponding to the blinding factor.
-    pub fn commitment_scalars(&self) -> &[Scalar] {
+    /// Get the commitment scalars corresponding to the message tuple to use when constructing
+    /// conjunctions of proofs.
+    ///
+    /// This does not include the commitment scalar corresponding to the blinding factor.
+    pub fn conjunction_commitment_scalars(&self) -> &[Scalar] {
         &self.commitment_scalars[1..]
     }
 

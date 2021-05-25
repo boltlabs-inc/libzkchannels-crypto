@@ -104,10 +104,14 @@ impl SignatureProofBuilder {
         todo!();
     }
 
-    /// Get the commitment scalars corresponding to the message for the signature proof being
-    /// built (e.g. not including the commitment scalar corresponding to the blinding factor).
-    pub fn commitment_scalars(&self) -> &[Scalar] {
-        &self.commitment_proof_builder.commitment_scalars()
+    /// Get the commitment scalars corresponding to the message tuple to use when constructing
+    /// conjunctions of proofs.
+    ///
+    /// This does not include the commitment scalar corresponding to the blinding factor.
+    pub fn conjunction_commitment_scalars(&self) -> &[Scalar] {
+        &self
+            .commitment_proof_builder
+            .conjunction_commitment_scalars()
     }
 
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
@@ -118,7 +122,7 @@ impl SignatureProofBuilder {
 
 impl SignatureProof {
     /**
-    Checks that a [`SignatureProof`] is valid.
+    Check that a [`SignatureProof`] is valid.
 
     Checks that:
 
@@ -134,9 +138,10 @@ impl SignatureProof {
         todo!();
     }
 
-    /// Retrieves the response scalars for the signature proof, not including the response scalar
-    /// corresponding to the blinding factor.
-    pub fn response_scalars(&self) -> &[Scalar] {
-        &self.commitment_proof.response_scalars()
+    /// Get the response scalars corresponding to the message to verify conjunctions of proofs.
+    ///
+    /// This does not include the response scalar for the blinding factor.
+    pub fn conjunction_response_scalars(&self) -> &[Scalar] {
+        &self.commitment_proof.conjunction_response_scalars()
     }
 }

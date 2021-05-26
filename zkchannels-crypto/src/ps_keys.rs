@@ -111,12 +111,20 @@ impl PublicKey {
 
     /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
     pub fn to_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective> {
-        todo!();
+        let gs = self.y2s.iter().map(|y2| y2.into()).collect();
+        PedersenParameters {
+            h: self.g2.into(),
+            gs,
+        }
     }
 
     /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
     pub fn to_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective> {
-        todo!();
+        let gs = self.y1s.iter().map(|y1| y1.into()).collect();
+        PedersenParameters {
+            h: self.g1.into(),
+            gs,
+        }
     }
 }
 

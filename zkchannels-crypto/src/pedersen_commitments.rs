@@ -30,9 +30,9 @@ where
     G: Group<Scalar = Scalar>,
 {
     #[serde(with = "SerializeElement")]
-    h: G,
+    pub(crate) h: G,
     #[serde(with = "SerializeElement")]
-    gs: Vec<G>,
+    pub(crate) gs: Vec<G>,
 }
 
 impl<G: Group<Scalar = Scalar>> PedersenParameters<G> {

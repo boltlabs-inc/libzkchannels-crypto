@@ -145,7 +145,7 @@ impl RangeProofParameters {
 #[derive(Debug)]
 pub struct RangeProofBuilder {
     /// Partially-constructed PoK of the opening of signatures on each of the digits of the value.
-    digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L],
+    pub(crate) digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L],
     /// Commitment scalar for the value being proven in the range.
     pub commitment_scalar: Scalar,
 }

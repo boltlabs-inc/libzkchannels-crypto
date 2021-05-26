@@ -16,7 +16,8 @@ use crate::{
     types::*,
 };
 use group::{Group, GroupEncoding};
-use sha3::{Digest, Sha3_512};
+use sha3::{Digest, Sha3_256};
+use std::convert::TryFrom;
 
 /// A challenge scalar for use in a Schnorr-style proof.
 #[derive(Debug, Clone, Copy)]
@@ -27,7 +28,7 @@ pub struct Challenge(pub Scalar);
 #[derive(Debug)]
 #[allow(missing_copy_implementations)]
 pub struct ChallengeBuilder {
-    hasher: Sha3_512,
+    hasher: Sha3_256,
 }
 
 impl Default for ChallengeBuilder {
@@ -40,16 +41,16 @@ impl ChallengeBuilder {
     /// Initialize a new, empty challenge.
     pub fn new() -> Self {
         Self {
-            hasher: Sha3_512::new(),
+            hasher: Sha3_256::new(),
         }
     }
 
     /// Incorporate a commitment into the challenge.
-    pub fn with_commitment<G>(self, _com: &Commitment<G>) -> Self
+    pub fn with_commitment<G>(self, com: Commitment<G>) -> Self
     where
         G: Group<Scalar = Scalar> + GroupEncoding,
     {
-        todo!();
+        self.with_bytes(com.0.to_bytes())
     }
 
     /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge
@@ -66,7 +67,7 @@ impl ChallengeBuilder {
     /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge
     /// (e.g. the pieces that will also be in the finalized
     /// [`SignatureProof`](crate::signature_proof::SignatureProof)).
-    pub fn with_signature_proof(self, signature_proof_builder: SignatureProofBuilder) -> Self {
+    pub fn with_signature_proof(self, signature_proof_builder: &SignatureProofBuilder) -> Self {
         self.with_bytes(signature_proof_builder.message_commitment.0.to_bytes())
             .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
             .with_commitment_proof(&signature_proof_builder.commitment_proof_builder)
@@ -75,39 +76,65 @@ impl ChallengeBuilder {
     /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
     /// (e.g. the pieces that will also be in the finalized
     /// [`RangeProof`](crate::range_proof::RangeProof)).
-    pub fn with_range_proof(self, _range_proof_builder: RangeProofBuilder) -> Self {
-        todo!();
+    pub fn with_range_proof(self, range_proof_builder: &RangeProofBuilder) -> Self {
+        range_proof_builder
+            .digit_proof_builders
+            .iter()
+            .fold(self, |this, proof| this.with_signature_proof(proof))
     }
 
     /// Incorporate public key material into the challenge.
-    pub fn with_public_key(self, _public_key: &PublicKey) -> Self {
-        todo!();
+    pub fn with_public_key(mut self, pk: &PublicKey) -> Self {
+        self = self
+            .with_bytes(pk.g1.to_bytes())
+            .with_bytes(pk.g2.to_bytes())
+            .with_bytes(pk.x2.to_bytes());
+        self = pk
+            .y1s
+            .iter()
+            .fold(self, |this, y1| this.with_bytes(y1.to_bytes()));
+        self = pk
+            .y2s
+            .iter()
+            .fold(self, |this, y2| this.with_bytes(y2.to_bytes()));
+        self
     }
 
     /// Incorporate Pedersen parameter key material into the challenge.
-    pub fn with_pedersen_parameters<G>(self, _params: &PedersenParameters<G>) -> Self
+    pub fn with_pedersen_parameters<G>(self, params: &PedersenParameters<G>) -> Self
     where
-        G: Group<Scalar = Scalar>,
+        G: Group<Scalar = Scalar> + GroupEncoding,
     {
-        todo!();
+        params
+            .gs
+            .iter()
+            .fold(self.with_bytes(params.h.to_bytes()), |this, g| {
+                this.with_bytes(g.to_bytes())
+            })
     }
 
     /// Incorporate a [`Scalar`] into the challenge (that is, an element of the scalar fields
     /// associated with the BLS12-381 pairing groups)
-    pub fn with_scalar(self, _scalar: Scalar) -> Self {
-        todo!();
+    pub fn with_scalar(self, scalar: Scalar) -> Self {
+        self.with_bytes(scalar.to_bytes())
     }
 
     /// Incorporate arbitrary bytes into the challenge.
-    pub fn with_bytes(self, _bytes: impl AsRef<[u8]>) -> Self {
-        todo!();
+    pub fn with_bytes(mut self, bytes: impl AsRef<[u8]>) -> Self {
+        self.hasher.update(bytes);
+        self
     }
 
     /// Consume the builder and generate a [`Challenge`] from the accumulated data.
     pub fn finish(self) -> Challenge {
-        let mut digested = [0; 64];
+        let mut digested = [0; 32];
         digested.copy_from_slice(self.hasher.finalize().as_ref());
-        let scalar = Scalar::from_bytes_wide(&digested);
+        let scalar = Scalar::from_raw([
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[24..32]).unwrap()),
+        ]);
         Challenge(scalar)
     }
 }

@@ -19,13 +19,14 @@ An establish proof demonstrates that a customer is trying to initialize a channe
 
 This is a Schnorr proof that makes the following guarantees in zero knowledge:
 
-- The balances in the [`State`] match the previously-agreed-upon values.
-- The underlying [`State`] and [`CloseState`] from the [`StateCommitment`] and
-  [`CloseStateCommitment`] are correctly formed relative to each other.
+- The new balances match the previously-agreed-upon values.
+- The [`StateCommitment`] and [`CloseStateCommitment`] open to objects that are correctly formed
+  relative to each other.
 */
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EstablishProof;
 
+#[allow(unused)]
 impl EstablishProof {
     /**
     Form a new zero-knowledge [`EstablishProof`] object.
@@ -35,7 +36,7 @@ impl EstablishProof {
 
     This function is typically called by the customer.
     */
-    pub fn new(
+    pub(crate) fn new(
         _rng: &mut impl Rng,
         _params: &customer::Config,
         _state: &State,
@@ -77,14 +78,13 @@ A payment proof demonstrates that a customer is trying to make a valid payment o
 
 This is a Schnorr proof that makes the following guarantees in zero knowledge:
 
-- The customer holds a valid [`PayToken`](crate::states::PayToken) and knows its corresponding
-  previous [`State`].
-- The customer knows the opening of commitments to the [`RevocationLock`],
-  the new [`State`], and the corresponding `CloseState`.
+- The customer holds a valid `PayToken` and knows the state it corresponds to.
+- The customer knows the opening of the [`RevocationLockCommitment`], the [`StateCommitment`], and
+  the [`CloseStateCommitment`].
 - The new state from the commitment is correctly updated from the previous state
   (that is, the balances are updated by an agreed-upon amount)
-- The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the previous [`State`].
-- The balances in the new [`State`] are non-negative.
+- The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the previous `State`.
+- The new balances are non-negative.
 
 */
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -92,7 +92,7 @@ pub struct PayProof(());
 
 /// Blinding factors for commitments associated with a particular payment.
 #[derive(Debug)]
-pub struct BlindingFactors {
+pub(crate) struct BlindingFactors {
     /// The blinding factor for a [`RevocationLockCommitment`] (associated with the previous [`State`])
     pub for_revocation_lock: RevocationLockBlindingFactor,
     /// The blinding factor for a [`StateCommitment`] (associated with the current [`State`]).
@@ -101,6 +101,7 @@ pub struct BlindingFactors {
     pub for_close_state: CloseStateBlindingFactor,
 }
 
+#[allow(unused)]
 impl PayProof {
     /**
     Form a new zero-knowledge [`PayProof`] object.
@@ -120,7 +121,7 @@ impl PayProof {
 
     This function is typically called by the customer.
     */
-    pub fn new(
+    pub(crate) fn new(
         _rng: &mut impl Rng,
         _params: &customer::Config,
         _pay_token: PayToken,

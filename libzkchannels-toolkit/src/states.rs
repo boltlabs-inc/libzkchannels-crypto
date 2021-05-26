@@ -47,7 +47,7 @@ pub struct CustomerBalance;
 /// Describes the complete state of the channel with the given ID.
 #[allow(missing_copy_implementations)]
 #[derive(Debug)]
-pub struct State {
+pub(crate) struct State {
     channel_id: ChannelId,
     nonce: Nonce,
     revocation_secret: RevocationSecret,
@@ -61,13 +61,14 @@ pub struct State {
 /// It removes the nonce from the [`State`] to maintain privacy during closing, even in the case of
 /// merchant abort during payment.
 #[derive(Debug)]
-pub struct CloseState<'a> {
+pub(crate) struct CloseState<'a> {
     channel_id: &'a ChannelId,
     revocation_lock: RevocationLock,
     merchant_balance: &'a MerchantBalance,
     customer_balance: &'a CustomerBalance,
 }
 
+#[allow(unused)]
 impl State {
     /// Generate a new `State` with the given balances and ID.
     pub fn new(
@@ -95,7 +96,7 @@ impl State {
     }
 
     /// Get the current [`RevocationLock`] for this state.
-    pub fn revocation_lock(&self) -> RevocationLock {
+    pub(crate) fn revocation_lock(&self) -> RevocationLock {
         self.revocation_secret.revocation_lock()
     }
 
@@ -162,6 +163,7 @@ impl State {
     }
 }
 
+#[allow(unused)]
 impl CloseState<'_> {
     /// Form a commitment (and corresponding blinding factor) to the [`CloseState`].
     ///
@@ -181,10 +183,10 @@ impl CloseState<'_> {
 ///
 /// *Correctness*: A correctly-generated commitment will always verify.
 ///
-/// *Hiding*: A `StateCommitment` does not reveal anything about the underlying [`State`].
+/// *Hiding*: A `StateCommitment` does not reveal anything about the underlying state.
 ///
 /// *Binding*: Given a `StateCommitment`, an adversary cannot efficiently generate a
-/// [`State`] and [`PayTokenBlindingFactor`] that verify with the commitment.
+/// state and blinding factor that verify with the commitment.
 ///
 /// Note that there is no direct verification function on `StateCommitment`s. They are
 /// used to generate [`BlindedPayToken`]s.
@@ -198,10 +200,10 @@ pub struct StateCommitment(/*Commitment*/);
 ///
 /// *Correctness*: A correctly-generated commitment will always verify.
 ///
-/// *Hiding*: A `CloseStateCommitment` does not reveal anything about the underlying [`CloseState`].
+/// *Hiding*: A `CloseStateCommitment` does not reveal anything about the underlying state.
 ///
 /// *Binding*: Given a `CloseStateCommitment`, an adversary cannot efficiently generate a
-/// [`CloseState`] and [`CloseStateBlindingFactor`] that verify with the commitment.
+/// state and blinding factor that verify with the commitment.
 ///
 /// Note that there is no direct verification function on `CloseStateCommitment`s. They are
 /// used to generate [`CloseStateBlindedSignature`]s.
@@ -212,9 +214,9 @@ pub struct CloseStateCommitment(/*Commitment*/);
 /// Signature on a [`CloseState`]. Used to close a channel.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateSignature;
+pub(crate) struct CloseStateSignature;
 
-/// Blinded signature on a [`CloseState`].
+/// Blinded signature on a close state.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct CloseStateBlindedSignature;
@@ -222,13 +224,14 @@ pub struct CloseStateBlindedSignature;
 /// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
 #[derive(Debug)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateBlindingFactor;
+pub(crate) struct CloseStateBlindingFactor;
 
+#[allow(unused)]
 impl CloseStateBlindedSignature {
     /// Produce a [`CloseStateBlindedSignature`] by blindly signing the given [`CloseStateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub fn new(
+    pub(crate) fn new(
         _rng: &mut impl Rng,
         _param: &merchant::Config,
         _com: CloseStateCommitment,
@@ -240,16 +243,21 @@ impl CloseStateBlindedSignature {
     /// using the given [`CloseStateBlindingFactor`].
     ///
     /// This is typically called by the customer.
-    pub fn unblind(self, _bf: CloseStateBlindingFactor) -> CloseStateSignature {
+    pub(crate) fn unblind(self, _bf: CloseStateBlindingFactor) -> CloseStateSignature {
         todo!();
     }
 }
 
+#[allow(unused)]
 impl CloseStateSignature {
     /// Verify the merchant signature against the given [`CloseState`].
     ///
     /// This is typically called by the customer.
-    pub fn verify(&self, _param: &customer::Config, _close_state: CloseState<'_>) -> Verification {
+    pub(crate) fn verify(
+        &self,
+        _param: &customer::Config,
+        _close_state: CloseState<'_>,
+    ) -> Verification {
         todo!();
     }
 }
@@ -258,32 +266,38 @@ impl CloseStateSignature {
 /// [`State`].
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
-pub struct PayToken(Signature);
+pub(crate) struct PayToken(Signature);
 
-/// Blinded [`PayToken`].
+/// A blinded pay token.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedPayToken(/*BlindedSignature*/);
 
 /// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
 #[derive(Debug, Clone, Copy)]
-pub struct PayTokenBlindingFactor(BlindingFactor);
+pub(crate) struct PayTokenBlindingFactor(BlindingFactor);
 
+#[allow(unused)]
 impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub fn new(_rng: &mut impl Rng, _param: &merchant::Config, _com: StateCommitment) -> Self {
+    pub(crate) fn new(
+        _rng: &mut impl Rng,
+        _param: &merchant::Config,
+        _com: StateCommitment,
+    ) -> Self {
         todo!();
     }
 
     /// Unblind a [`BlindedPayToken`] to get an (unblinded) [`PayToken`].
     ///
     /// This is typically called by the customer.
-    pub fn unblind(self, _bf: PayTokenBlindingFactor) -> PayToken {
+    pub(crate) fn unblind(self, _bf: PayTokenBlindingFactor) -> PayToken {
         todo!();
     }
 }
 
+#[allow(unused)]
 impl PayToken {
     /// Verify a `PayToken` against the given [`State`].
     ///

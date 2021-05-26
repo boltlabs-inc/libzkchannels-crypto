@@ -16,9 +16,20 @@ It defines contextual types as wrappers for the basic cryptographic primitives d
 pub mod customer;
 pub mod merchant;
 pub mod nonce;
-pub mod proofs;
 pub mod revlock;
-pub mod states;
+
+pub use proofs::EstablishProof;
+pub use proofs::PayProof;
+/// Rename cryptographically correct `BlindedPayToken` to the semantic `PayToken`.
+pub use states::BlindedPayToken as PayToken;
+/// Rename cryptographically correct `CloseStateBlindedSignature` to the semantic `ClosingSignature`.
+pub use states::CloseStateBlindedSignature as ClosingSignature;
+pub use states::{
+    ChannelId, CloseStateCommitment, CustomerBalance, MerchantBalance, StateCommitment,
+};
+
+mod proofs;
+mod states;
 
 #[allow(unused)]
 mod types {

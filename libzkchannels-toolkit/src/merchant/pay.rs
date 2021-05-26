@@ -1,13 +1,11 @@
-/*!
-Cryptographic functionality for the merchant side of the pay protocol as described in zkAbacus.
-*/
+//! Cryptographic routines for processing payments on a channel.
 
 use crate::{
     merchant::Config,
     nonce::Nonce,
     proofs::PayProof,
     revlock::*,
-    states::{BlindedPayToken, CloseStateBlindedSignature, CloseStateCommitment, StateCommitment},
+    states::{CloseStateCommitment, StateCommitment},
 };
 
 /// A channel that has approved a new payment, but has not revoked the previous channel state.
@@ -20,7 +18,7 @@ pub struct Unrevoked<'a> {
 
 impl Config {
     /**
-    Issue a [`CloseStateBlindedSignature`] on the updated state, if the provided evidence is
+    Issue a [`ClosingSignature`](crate::ClosingSignature) on the updated state, if the provided evidence is
     valid.
 
     This should only be called if the [`Nonce`] has never been seen before.
@@ -35,7 +33,7 @@ impl Config {
         _revocation_commitment: RevocationLockCommitment,
         _state_commitment: StateCommitment,
         _close_state_commitment: CloseStateCommitment,
-    ) -> Option<(Unrevoked<'a>, CloseStateBlindedSignature)> {
+    ) -> Option<(Unrevoked<'a>, crate::ClosingSignature)> {
         todo!();
     }
 }
@@ -54,7 +52,7 @@ impl<'a> Unrevoked<'a> {
         _revocation_lock: &RevocationLock,
         _revocation_secret: &RevocationSecret,
         _revocation_blinding_factor: &RevocationLockBlindingFactor,
-    ) -> Result<BlindedPayToken, Unrevoked<'a>> {
+    ) -> Result<crate::PayToken, Unrevoked<'a>> {
         todo!();
     }
 }

@@ -40,7 +40,7 @@ impl Config {
         _state_commitment: &StateCommitment,
         _close_state_commitment: CloseStateCommitment,
         _proof: EstablishProof,
-    ) -> Option<CloseStateBlindedSignature> {
+    ) -> Option<crate::ClosingSignature> {
         todo!();
     }
 
@@ -54,7 +54,7 @@ impl Config {
         &self,
         _channel_id: &ChannelId,
         _state_commitment: &StateCommitment,
-    ) -> BlindedPayToken {
+    ) -> crate::PayToken {
         todo!();
     }
 }

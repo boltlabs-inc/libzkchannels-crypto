@@ -1,7 +1,8 @@
+//! Cryptographic routines for making payments on a channel.
+
 use crate::customer::pay::Ready;
 use crate::states::*;
 use crate::{customer::Config, proofs::EstablishProof};
-
 /// Public parameters for a requested channel (i.e. that has not been accepted by the merchant).
 #[derive(Debug)]
 #[allow(missing_copy_implementations)]
@@ -39,7 +40,7 @@ impl Requested {
     /// Complete a payment request: validate approval received from the merchant.
     pub fn complete(
         self,
-        _blinded_signature: CloseStateBlindedSignature,
+        _closing_signature: crate::ClosingSignature,
     ) -> Result<Inactive, Requested> {
         todo!();
     }
@@ -57,7 +58,7 @@ pub struct Inactive {
 
 impl Inactive {
     /// Activate the channel with the fresh pay token from the merchant.
-    pub fn activate(self, _pay_token: BlindedPayToken) -> Result<Ready, Inactive> {
+    pub fn activate(self, _pay_token: crate::PayToken) -> Result<Ready, Inactive> {
         todo!();
     }
 }

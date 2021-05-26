@@ -1,4 +1,8 @@
-/// Keys and parameters used by the customer throughout the lifetime of a merchant node, across all its zkChannels.
+//! Merchant's cryptographic routines for establish itself, establishing customer channels, and
+//! processing payments on channels.
+
+/// Keys and parameters used by the customer throughout the lifetime of a merchant node, across
+/// all its zkChannels.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
 pub struct Config;

@@ -76,7 +76,7 @@ impl Started {
     /// Revoke the ability to close the channel on the outdated balances.
     pub fn lock(
         self,
-        _blinded_close_signature: CloseStateBlindedSignature,
+        _closing_signature: crate::ClosingSignature,
     ) -> Result<(Locked, LockMessage), Started> {
         todo!();
     }
@@ -105,7 +105,7 @@ pub struct Locked {
 
 impl Locked {
     /// Unlock the channel by validating the merchant's approval message.
-    pub fn unlock(self, _blinded_pay_token: BlindedPayToken) -> Result<Ready, Locked> {
+    pub fn unlock(self, _pay_token: crate::PayToken) -> Result<Ready, Locked> {
         todo!()
     }
 

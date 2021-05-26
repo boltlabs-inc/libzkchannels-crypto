@@ -46,8 +46,7 @@ pub struct RevocationSecret(());
 /// [`RevocationLock`].
 ///
 /// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot efficiently generate a
-/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that
-/// [`verify()`](RevocationLockCommitment::verify())s with the commitment.
+/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that /// verifies with the commitment.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct RevocationLockCommitment(());
@@ -65,23 +64,25 @@ impl RevocationSecret {
     }
 
     /// Derive the [`RevocationLock`]  corresponding to this [`RevocationSecret`]
-    pub fn revocation_lock(&self) -> RevocationLock {
+    pub(crate) fn revocation_lock(&self) -> RevocationLock {
         todo!();
     }
 }
 
+#[allow(unused)]
 impl RevocationLock {
     /// Validate a revocation pair.
-    pub fn verify(&self, _rs: &RevocationSecret) -> Verification {
+    pub(crate) fn verify(&self, _rs: &RevocationSecret) -> Verification {
         todo!();
     }
 }
 
+#[allow(unused)]
 impl RevocationLockCommitment {
     /// Validate the [`RevocationLockCommitment`] against the given parameters and blinding factor.
     ///
     /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is derived from the [`RevocationSecret`].
-    pub fn verify(
+    pub(crate) fn verify(
         &self,
         _parameters: &customer::Config,
         _revocation_secret: &RevocationSecret,

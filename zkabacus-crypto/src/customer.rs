@@ -89,9 +89,9 @@ pub struct RequestMessage {
 impl Requested {
     /**
     Generate a new channel request from public parameters.
-    
+
     FIXME(Marcella). The API doesn't yet determine how `Config` is generated. It may be better
-    to pass the components here, rather than the generated object. 
+    to pass the components here, rather than the generated object.
     */
     pub fn new(
         _config: Config,

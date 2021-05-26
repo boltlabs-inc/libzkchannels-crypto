@@ -21,3 +21,4 @@ pub struct Ready {
 }
 
 pub mod establish;
+pub mod pay;

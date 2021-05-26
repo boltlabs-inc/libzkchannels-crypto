@@ -6,10 +6,13 @@ outside this module.
 
 */
 use crate::states::*;
-use crate::{
-    merchant::{Output, Ready},
-    proofs::EstablishProof,
-};
+use crate::{merchant::Ready, proofs::EstablishProof};
+
+impl Default for Ready {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Ready {
     /// Instantiate a new merchant in the `Ready` state.
@@ -17,17 +20,17 @@ impl Ready {
         todo!();
     }
 
-    /// Respond to a customer request to initialize a new channel.
-    ///
-    /// Fails in the case where the given [`EstablishProof`] does not verify with respect to the
-    /// public variables.
-    ///
-    /// The given `channel_id` *must* be fresh.
-    ///
-    /// @Kenny: there are two "sets" of inputs here. Channel id + balances are public inputs, should
-    /// be agreed on before receiving the commitments + proof. I think the public inputs should be
-    /// received and stored, then retrieved on receipt of the commitments (they will have to provide
-    /// a cid with the commitments + proof) 
+    /**
+    Respond to a customer request to initialize a new channel.
+
+    Fails in the case where the given [`EstablishProof`] does not verify with respect to the
+    public variables.
+
+    The given `channel_id` *must* be fresh.
+
+    Note: there are two "flavors" of inputs here. Channel id + balances are public inputs, should
+    be agreed on outside of zkAbacus. The commitments + proof are received from the customer.
+    */
     pub fn initialize(
         &self,
         _channel_id: &ChannelId,
@@ -36,16 +39,21 @@ impl Ready {
         _state_commitment: &StateCommitment,
         _close_state_commitment: CloseStateCommitment,
         _proof: EstablishProof,
-    ) -> Option<CloseStateBlindedSignature>
-    {
+    ) -> Option<CloseStateBlindedSignature> {
         todo!();
     }
 
-    /// Respond to a customer request to activate a channel.
-    /// 
-    /// The `channel_id` is provided by the customer. The `state_commitment` is drawn from the
-    /// merchant's database.
-    pub fn activate(&self, _channel_id: &ChannelId, _state_commitment: &StateCommitment) -> BlindedPayToken {
+    /**
+    Respond to a customer request to activate a channel.
+
+    This should only be called if the [`ChannelId`] is stored in the merchant database with
+    this [`StateCommitment`].
+    */
+    pub fn activate(
+        &self,
+        _channel_id: &ChannelId,
+        _state_commitment: &StateCommitment,
+    ) -> BlindedPayToken {
         todo!();
     }
 }

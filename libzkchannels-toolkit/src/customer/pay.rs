@@ -1,5 +1,5 @@
 /*!
-Cryptographic functionality for the pay protocol as described in zkAbacus.
+Cryptographic functionality for the customer side of the pay protocol as described in zkAbacus.
 
 */
 use crate::customer::Config;

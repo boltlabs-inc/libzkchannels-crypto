@@ -1,5 +1,5 @@
 [workspace]
 members = [
     "libzkchannels-crypto",
-    "libzkchannels-toolkit",
+    "zkabacus-crypto",
 ]

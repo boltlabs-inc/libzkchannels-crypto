@@ -79,4 +79,27 @@ mod tests {
             msg
         );
     }
+
+    /// FIXME: this should not panic once commitments are implemented
+    #[test]
+    #[should_panic] 
+    fn blind_signing_is_correct() {
+        let mut rng = rand::thread_rng();
+        let length = 3;
+        let kp = KeyPair::new(length, &mut rng);
+        let msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(length)
+                .collect(),
+        );
+
+        let bf = BlindingFactor(Scalar::random(&mut rng));
+        let blinded_msg = kp.public_key().blind_message(&msg, bf);
+        let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
+        let sig = blind_sig.unblind(bf);
+
+        assert!(
+            kp.verify(&msg, &sig),
+            "Signature didn't verify!!");
+    }
 }

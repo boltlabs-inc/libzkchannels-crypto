@@ -99,7 +99,7 @@ impl KeyPair {
     confidence that it is something they actually wish to sign. For example, a signer should verify a PoK
     of the opening of the blinded message, which may demonstrate that it satisfies some properties.
     */
-    pub fn try_blind_sign(&self, rng: &mut impl Rng, msg: &BlindedMessage) -> BlindedSignature {
+    pub fn blind_sign(&self, rng: &mut impl Rng, msg: &BlindedMessage) -> BlindedSignature {
         let u = Scalar::random(rng);
 
         BlindedSignature(Signature {

@@ -14,8 +14,6 @@
 use crate::{pedersen_commitments::PedersenParameters, types::*, SerializeElement};
 use ff::Field;
 use group::Group;
-use rand::CryptoRng;
-use rand_core::RngCore;
 use serde::*;
 use std::iter;
 
@@ -68,7 +66,7 @@ impl SecretKey {
         SecretKey { x, ys, x1 }
     }
 
-    fn get_nonzero_scalar(rng: &mut (impl CryptoRng + RngCore)) -> Scalar {
+    fn get_nonzero_scalar(rng: &mut impl Rng) -> Scalar {
         loop {
             let r = Scalar::random(&mut *rng);
             if !r.is_zero() {

@@ -1,9 +1,8 @@
 /*!
-This crate provides an implementation of the following cryptographic primitives over the pairing-friendly curve BLS12-381:
+This crate includes cryptographic primitives instantiated over the pairing-friendly curve BLS12-381:
 - Pedersen Commitments instantiated using G1 and G2.
-- Schnorr-style zero-knowledge proofs instantiated using G1 and G2.
-- Pointcheval Sanders signatures and zero-knowledge proof of knowledge of a signature (CT-RSA 2016).
-- Camenisch, Chaabouni, and shelat's range proofs (Asiacrypt 2008) instantiated using Pointcheval Sanders signatures.
+- Pointcheval Sanders signatures and blind signatures (CT-RSA 2016).
+- Schnorr-style zero-knowledge proofs for commitments, signatures, conjunctions, linear relationships, and ranges
 */
 
 #![warn(missing_docs)]
@@ -93,7 +92,7 @@ mod tests {
                 .collect(),
         );
 
-        let bf = BlindingFactor(Scalar::random(&mut rng));
+        let bf = BlindingFactor::new(&mut rng);
         let blinded_msg = kp.public_key().blind_message(&msg, bf);
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
         let sig = blind_sig.unblind(bf);

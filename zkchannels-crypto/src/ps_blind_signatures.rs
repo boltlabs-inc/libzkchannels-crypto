@@ -64,10 +64,12 @@ impl BlindedSignature {
         self.0.randomize(rng);
     }
 
-    /// Check whether the signature is well-formed.
-    ///
-    /// This checks that first element is not the identity element. This implementation uses only
-    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
+    /**
+    Check whether the signature is well-formed.
+
+    This checks that first element is not the identity element. This implementation uses only
+    checked APIs to ensure that both parts of the signature are in the expected group (G1).
+    */
     pub fn is_valid(&self) -> bool {
         self.0.is_valid()
     }
@@ -79,7 +81,11 @@ impl PublicKey {
         BlindedMessage(self.to_g1_pedersen_parameters().commit(msg, bf))
     }
 
-    /// Verify that the given signature is on the message, using the blinding factor.
+    /**
+    Verify that the given signature is on the message, using the blinding factor.
+
+    Note: this unblinds the signature!
+    */
     pub fn verify_blinded(
         &self,
         msg: &Message,
@@ -95,9 +101,10 @@ impl KeyPair {
     /**
     Sign a blinded message.
 
-    Note: this should be used judiciously. The signer should only sign a blinded message if they have great
-    confidence that it is something they actually wish to sign. For example, a signer should verify a PoK
-    of the opening of the blinded message, which may demonstrate that it satisfies some properties.
+    Note: this should be used judiciously. The signer should only sign a blinded message if they
+    have great confidence that it is something they actually wish to sign. For example, a signer
+    should verify a PoK of the opening of the blinded message, which may demonstrate that it
+    satisfies some properties.
     */
     pub fn blind_sign(&self, rng: &mut impl Rng, msg: &BlindedMessage) -> BlindedSignature {
         let u = Scalar::random(rng);

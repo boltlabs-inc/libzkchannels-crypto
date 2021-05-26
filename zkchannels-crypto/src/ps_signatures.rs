@@ -58,10 +58,12 @@ impl Signature {
         buf
     }
 
-    /// Check whether the signature is well-formed.
-    ///
-    /// This checks that first element is not the identity element. This implementation uses only
-    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
+    /**
+    Check whether the signature is well-formed.
+
+    This checks that first element is not the identity element. This implementation uses only
+    checked APIs to ensure that both parts of the signature are in the expected group (G1).
+    */
     pub fn is_valid(&self) -> bool {
         !bool::from(self.sigma1.is_identity())
     }
@@ -95,7 +97,7 @@ impl Signer for SecretKey {
         Ok(Signature {
             sigma1: h.into(),
             // sigma2 = h * [scalar_combination]
-            sigma2: G1Affine::from(h * scalar_combination),
+            sigma2: (h * scalar_combination).into(),
         })
     }
 }

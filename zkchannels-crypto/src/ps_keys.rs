@@ -1,15 +1,17 @@
-//! This defines a class of keys for use across the schemes in this crate.
-//!
-//! The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over BLS12-381.
-//! They can also be used for non-blind PS signatures.
-//!
-//! The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
-//! (https://eprint.iacr.org/2015/525.pdf).
-//!
-//! The BLS12-381 curve is defined in the (now expired) IRTF
-//! draft titled ["BLS
-//! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
-//!
+/*!
+This defines a class of keys for use across the schemes in this crate.
+
+The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over BLS12-381.
+They can also be used for non-blind PS signatures.
+
+The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
+(https://eprint.iacr.org/2015/525.pdf).
+
+The BLS12-381 curve is defined in the (now expired) IRTF
+draft titled ["BLS
+Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
+
+*/
 
 use crate::{pedersen_commitments::PedersenParameters, types::*, SerializeElement};
 use ff::Field;
@@ -55,17 +57,23 @@ pub struct KeyPair {
 }
 
 impl SecretKey {
-    /// Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at random
-    /// and the given generator from G1, which should also be chosen uniformly at random.
+    /**
+    Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at random
+    and the given generator from G1.
+
+    This is called internally, and we require `g1` is chosen uniformly at random and is not
+    the identity.
+    */
     fn new(rng: &mut impl Rng, length: usize, g1: &G1Projective) -> Self {
         let x = SecretKey::get_nonzero_scalar(&mut *rng);
         let ys = iter::repeat_with(|| SecretKey::get_nonzero_scalar(&mut *rng))
             .take(length)
             .collect();
-        let x1 = G1Affine::from(g1 * x);
+        let x1 = (g1 * x).into();
         SecretKey { x, ys, x1 }
     }
 
+    /// Select a random, non-zero `Scalar` uniformly at random.
     fn get_nonzero_scalar(rng: &mut impl Rng) -> Scalar {
         loop {
             let r = Scalar::random(&mut *rng);
@@ -77,7 +85,12 @@ impl SecretKey {
 }
 
 impl PublicKey {
-    /// Derive a new `PublicKey` from an existing [`SecretKey`] and a new generator from G1, chosen uniformly at random.
+    /**
+    Derive a new `PublicKey` from an existing [`SecretKey`] and a generator from G1.
+
+    This is called internally, and we require `g1` is chosen uniformly at random and is not
+    the identity.
+    */
     fn from_secret_key(rng: &mut impl Rng, sk: &SecretKey, g1: &G1Projective) -> Self {
         // select g2 randomly from G2*
         // this function shouldn't return ID, but we'll check just in case
@@ -87,17 +100,17 @@ impl PublicKey {
         }
 
         // y1i = g1 * [yi] (point multiplication with the secret key)
-        let y1s = sk.ys.iter().map(|yi| G1Affine::from(g1 * yi)).collect();
+        let y1s = sk.ys.iter().map(|yi| (g1 * yi).into()).collect();
 
         // y2i = g2 * [yi] (point multiplication with the secret key)
-        let y2s = sk.ys.iter().map(|yi| G2Affine::from(g2 * yi)).collect();
+        let y2s = sk.ys.iter().map(|yi| (g2 * yi).into()).collect();
 
         PublicKey {
             g1: g1.into(),
             y1s,
-            g2: G2Affine::from(g2),
+            g2: (g2).into(),
             // x2 = g * [x]
-            x2: G2Affine::from(g2 * sk.x),
+            x2: (g2 * sk.x).into(),
             y2s,
         }
     }
@@ -127,7 +140,12 @@ impl PublicKey {
 }
 
 impl KeyPair {
-    /// Generate a new random `KeyPair` of a given length.
+    /**
+    Generate a new `KeyPair` of a given length.
+
+    Generators are chosen uniformly at random from G1* and G2*. The scalars in the secret key
+    are chosen uniformly at random and are non-zero.
+    */
     pub fn new(length: usize, rng: &mut impl Rng) -> Self {
         // select g1 uniformly at random. This shouldn't return ID, but we'll check just in case.
         let mut g1 = G1Projective::random(&mut *rng);

@@ -81,7 +81,7 @@ mod tests {
 
     /// FIXME: this should not panic once commitments are implemented
     #[test]
-    #[should_panic] 
+    #[should_panic]
     fn blind_signing_is_correct() {
         let mut rng = rand::thread_rng();
         let length = 3;
@@ -97,8 +97,6 @@ mod tests {
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
         let sig = blind_sig.unblind(bf);
 
-        assert!(
-            kp.verify(&msg, &sig),
-            "Signature didn't verify!!");
+        assert!(kp.verify(&msg, &sig), "Signature didn't verify!!");
     }
 }

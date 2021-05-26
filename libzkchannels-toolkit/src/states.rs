@@ -26,10 +26,10 @@ use serde::*;
 use crate::nonce::*;
 use crate::revlock::*;
 use crate::types::*;
-use message::BlindingFactor;
-use crate::{Rng, Verification};
-use crate::{customer, merchant};
 use crate::PaymentAmount;
+use crate::{customer, merchant};
+use crate::{Rng, Verification};
+use message::BlindingFactor;
 use ps_signatures::Signature;
 
 /// Channel identifier, binds each payment to a specific channel.

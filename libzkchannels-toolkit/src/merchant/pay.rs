@@ -3,7 +3,7 @@ Cryptographic functionality for the merchant side of the pay protocol as describ
 */
 
 use crate::{
-    merchant::{Config, Ready},
+    merchant::Config,
     nonce::Nonce,
     proofs::PayProof,
     revlock::*,
@@ -12,34 +12,35 @@ use crate::{
 
 /// A channel that has approved a new payment, but has not revoked the previous channel state.
 #[derive(Debug)]
-pub struct Unrevoked {
-    config: Config,
+pub struct Unrevoked<'a> {
+    config: &'a Config,
     revocation_commitment: RevocationLockCommitment,
     state_commitment: StateCommitment,
 }
 
-impl Ready {
+impl Config {
     /**
     Issue a [`CloseStateBlindedSignature`] on the updated state, if the provided evidence is
     valid.
 
     This should only be called if the [`Nonce`] has never been seen before.
 
-    This will fail if the [`PayProof`] is not verifiable with the provided commitments and [`Nonce`]
+    This will fail if the [`PayProof`] is not verifiable with the provided commitments and
+    [`Nonce`].
     */
-    pub fn allow_payment(
-        self,
+    pub fn allow_payment<'a>(
+        &'a self,
         _nonce: &Nonce,
         _pay_proof: PayProof,
         _revocation_commitment: RevocationLockCommitment,
         _state_commitment: StateCommitment,
         _close_state_commitment: CloseStateCommitment,
-    ) -> Result<(Unrevoked, CloseStateBlindedSignature), Ready> {
+    ) -> Option<(Unrevoked<'a>, CloseStateBlindedSignature)> {
         todo!();
     }
 }
 
-impl Unrevoked {
+impl<'a> Unrevoked<'a> {
     /**
     Issue a pay token on the updated state, if the revocation information is well-formed.
 
@@ -53,7 +54,7 @@ impl Unrevoked {
         _revocation_lock: &RevocationLock,
         _revocation_secret: &RevocationSecret,
         _revocation_blinding_factor: &RevocationLockBlindingFactor,
-    ) -> Result<(Ready, BlindedPayToken), Unrevoked> {
+    ) -> Result<BlindedPayToken, Unrevoked<'a>> {
         todo!();
     }
 }

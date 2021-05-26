@@ -6,16 +6,16 @@ outside this module.
 
 */
 use crate::states::*;
-use crate::{merchant::Ready, proofs::EstablishProof};
+use crate::{merchant::Config, proofs::EstablishProof};
 
-impl Default for Ready {
+impl Default for Config {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Ready {
-    /// Instantiate a new merchant in the `Ready` state.
+impl Config {
+    /// Instantiate a new merchant with all parameters.
     pub fn new() -> Self {
         todo!();
     }
@@ -24,9 +24,10 @@ impl Ready {
     Respond to a customer request to initialize a new channel.
 
     Fails in the case where the given [`EstablishProof`] does not verify with respect to the
-    public variables.
+    public variables (channel id, balances, and provided commitments).
 
-    The given `channel_id` *must* be fresh.
+    The given `channel_id` *must* be fresh; this should only be called if the [`ChannelId`] has
+    never been seen before.
 
     Note: there are two "flavors" of inputs here. Channel id + balances are public inputs, should
     be agreed on outside of zkAbacus. The commitments + proof are received from the customer.

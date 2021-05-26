@@ -5,6 +5,7 @@
 //! draft titled ["BLS
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 use crate::{ps_keys::*, serde::*, types::*};
+use ff::Field;
 use group::Group;
 use serde::*;
 
@@ -41,8 +42,12 @@ pub struct Signature {
 
 impl Signature {
     /// Randomize a signature in place.
-    pub fn randomize(&mut self, _rng: &mut impl Rng) {
-        todo!()
+    pub fn randomize(&mut self, rng: &mut impl Rng) {
+        let r = Scalar::random(rng);
+        *self = Signature {
+            sigma1: (self.sigma1 * r).into(),
+            sigma2: (self.sigma2 * r).into(),
+        };
     }
 
     /// Convert to a bytewise representation
@@ -58,7 +63,7 @@ impl Signature {
     /// This checks that first element is not the identity element. This implementation uses only
     /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
     pub fn is_valid(&self) -> bool {
-        todo!();
+        !bool::from(self.sigma1.is_identity())
     }
 }
 
@@ -71,7 +76,7 @@ impl Signer for SecretKey {
                 self.ys.len()
             ));
         }
-        // select h randomly from G*_1
+        // select h randomly from G1*
         // this function shouldn't return ID but we'll check anyway
         let mut h = G1Projective::random(&mut *rng);
         while bool::from(h.is_identity()) {

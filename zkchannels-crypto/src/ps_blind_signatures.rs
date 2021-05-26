@@ -61,12 +61,7 @@ impl BlindedSignature {
 
     /// Randomize a signature in place.
     pub fn randomize(&mut self, rng: &mut impl Rng) {
-        let Self(Signature { sigma1, sigma2 }) = *self;
-        let r = Scalar::random(rng);
-        *self = Self(Signature {
-            sigma1: (sigma1 * r).into(),
-            sigma2: (sigma2 * r).into(),
-        });
+        self.0.randomize(rng);
     }
 
     /// Check whether the signature is well-formed.
@@ -74,19 +69,7 @@ impl BlindedSignature {
     /// This checks that first element is not the identity element. This implementation uses only
     /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
     pub fn is_valid(&self) -> bool {
-        todo!();
-    }
-}
-
-#[allow(unused)]
-impl SecretKey {
-    /// Produce a signature on the given message.
-    fn try_blind_sign(
-        &self,
-        _rng: &mut impl Rng,
-        _msg: &BlindedMessage,
-    ) -> Result<BlindedSignature, String> {
-        todo!();
+        self.0.is_valid()
     }
 }
 

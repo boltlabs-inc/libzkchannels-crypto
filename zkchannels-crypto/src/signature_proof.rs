@@ -49,6 +49,7 @@ i. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryp
 use crate::{
     challenge::Challenge,
     commitment_proof::{CommitmentProof, CommitmentProofBuilder},
+    message::BlindingFactor,
     pedersen_commitments::Commitment,
     ps_blind_signatures::BlindedSignature,
     ps_keys::PublicKey,
@@ -95,13 +96,37 @@ impl SignatureProofBuilder {
     implementing equality or linear combination constraints on top of the proof.
     */
     pub fn generate_proof_commitments(
-        _rng: &mut impl Rng,
-        _message: Message,
-        _signature: Signature,
-        _conjunction_commitment_scalars: &[Option<Scalar>],
-        _params: &PublicKey,
+        rng: &mut impl Rng,
+        message: Message,
+        signature: Signature,
+        conjunction_commitment_scalars: &[Option<Scalar>],
+        params: &PublicKey,
     ) -> Self {
-        todo!();
+        // Run commitment phase for PoK of opening of commitment to message.
+        let params = params.to_g2_pedersen_parameters();
+        let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            rng,
+            conjunction_commitment_scalars,
+            &params,
+        );
+
+        // Run signature proof setup phase:
+        // Blind and randomize signature
+        let message_blinding_factor = BlindingFactor::new(rng);
+        let mut blinded_signature =
+            BlindedSignature::from_signature(&signature, message_blinding_factor);
+        blinded_signature.randomize(rng);
+
+        // Form commitment to blinding factor + message
+        let message_commitment = params.commit(&message, message_blinding_factor);
+
+        Self {
+            message,
+            message_commitment,
+            message_blinding_factor,
+            blinded_signature,
+            commitment_proof_builder,
+        }
     }
 
     /// Get the commitment scalars corresponding to the message tuple to use when constructing
@@ -115,8 +140,19 @@ impl SignatureProofBuilder {
     }
 
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
-    pub fn generate_proof_response(self, _challenge: Challenge) -> SignatureProof {
-        todo!();
+    pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof {
+        // Run response phase for PoK of opening of commitment to message
+        let commitment_proof = self.commitment_proof_builder.generate_proof_response(
+            &self.message,
+            self.message_blinding_factor,
+            challenge_scalar,
+        );
+
+        SignatureProof {
+            message_commitment: self.message_commitment,
+            blinded_signature: self.blinded_signature,
+            commitment_proof,
+        }
     }
 }
 
@@ -130,12 +166,26 @@ impl SignatureProof {
     - the internal commitment proof is valid
     - the commitment proof is formed on the same message as the blinded signature
     */
-    pub fn verify_knowledge_of_signature(
-        &self,
-        _params: &PublicKey,
-        _challenge: Challenge,
-    ) -> bool {
-        todo!();
+    pub fn verify_knowledge_of_signature(&self, params: &PublicKey, challenge: Challenge) -> bool {
+        // signature is valid
+        let valid_signature = self.blinded_signature.is_valid();
+
+        // commitment proof is valid
+        let valid_commitment_proof = self
+            .commitment_proof
+            .verify_knowledge_of_opening_of_commitment(
+                &params.to_g2_pedersen_parameters(),
+                self.message_commitment,
+                challenge,
+            );
+
+        // commitment proof matches blinded signature
+        let Signature { sigma1, sigma2 } = self.blinded_signature.0;
+        let commitment_proof_matches_signature =
+            pairing(&sigma1, &(params.x2 + self.message_commitment.0).into())
+                == pairing(&sigma2, &params.g2);
+
+        valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }
 
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.

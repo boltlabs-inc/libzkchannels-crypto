@@ -85,10 +85,15 @@ https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 
 */
 
+use crate::ps_signatures::Signer;
 use crate::{
-    challenge::Challenge, ps_keys::PublicKey, ps_signatures::Signature, signature_proof::*,
-    types::*, Error,
+    challenge::Challenge,
+    ps_keys::{KeyPair, PublicKey},
+    ps_signatures::Signature,
+    signature_proof::*,
 };
+use crate::{types::*, Error};
+use arrayvec::ArrayVec;
 
 /// The arity of our digits used in the range proof.
 const RP_PARAMETER_U: u64 = 128;
@@ -115,8 +120,21 @@ impl RangeProofParameters {
     Note that this generates a [`KeyPair`](crate::ps_keys::KeyPair) to produce the `digit_signatures`,
     but discards the secret half after use. This is to prevent misuse; it should never be used again.
     */
-    pub fn new(_rng: &mut impl Rng) -> Self {
-        todo!();
+    pub fn new(rng: &mut impl Rng) -> Self {
+        let keypair = KeyPair::new(1, rng);
+        let mut digit_signatures = ArrayVec::new();
+        for i in 0..RP_PARAMETER_U {
+            let digit = Message::new(vec![Scalar::from(i)]);
+            let sig = keypair
+                .try_sign(rng, &digit)
+                .expect("message/keypair length will always be 1");
+            digit_signatures.push(sig);
+        }
+
+        Self {
+            digit_signatures: digit_signatures.into_inner().expect("known length"),
+            public_key: keypair.public_key().clone(),
+        }
     }
 }
 
@@ -147,16 +165,65 @@ impl RangeProofBuilder {
     /// Run the commitment phase of a Schnorr-style range proof on the value n, to show that
     /// `0 < n < u^l`.
     pub fn generate_proof_commitments(
-        _n: i64,
-        _params: &RangeProofParameters,
-        _rng: &mut impl Rng,
+        n: i64,
+        params: &RangeProofParameters,
+        rng: &mut impl Rng,
     ) -> Result<Self, Error> {
-        todo!();
+        if n.is_negative() {
+            return Err(Error::OutsideRange(n));
+        }
+
+        // break n into digits
+        let mut digits = [0; RP_PARAMETER_L];
+        let mut u = n as u64;
+        for digit in &mut digits {
+            *digit = u % RP_PARAMETER_U;
+            u /= RP_PARAMETER_U;
+        }
+
+        // compute signature proof builders on each digit
+        let digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L] = digits
+            .iter()
+            .map(|&digit| {
+                SignatureProofBuilder::generate_proof_commitments(
+                    rng,
+                    // N.B. u64s are being encoded to `Scalar`s using the builtin bls12_381
+                    // `From<u64>` implementation. We may want to reconsider this later.
+                    Message::new(vec![Scalar::from(digit)]),
+                    params.digit_signatures[digit as usize],
+                    &[None],
+                    &params.public_key,
+                )
+            })
+            .collect::<ArrayVec<_, RP_PARAMETER_L>>()
+            .into_inner()
+            .expect("impossible; len will always be RP_PARAMETER_L");
+
+        // construct cumulative commitment scalar for n from the c.s.'s of its digits
+        let mut commitment_scalar = Scalar::zero();
+        let mut u_pow = Scalar::one();
+        for proof_builder in &digit_proof_builders {
+            // The message here is always of length 1, so it's always okay to index it at the 0th element.
+            commitment_scalar += u_pow * proof_builder.conjunction_commitment_scalars()[0];
+            u_pow *= Scalar::from(RP_PARAMETER_U);
+        }
+
+        Ok(Self {
+            digit_proof_builders,
+            commitment_scalar,
+        })
     }
 
     /// Run the response phase of a Schnorr-style proof of knowledge that a value is in a range.
     pub fn generate_proof_response(self, challenge: Challenge) -> RangeProof {
-        todo!();
+        let digit_proofs = ArrayVec::from(self.digit_proof_builders)
+            .into_iter()
+            .map(|builder| builder.generate_proof_response(challenge))
+            .collect::<ArrayVec<_, RP_PARAMETER_L>>()
+            .into_inner()
+            .expect("impossible; len will always be RP_PARAMETER_L");
+
+        RangeProof { digit_proofs }
     }
 }
 
@@ -165,20 +232,32 @@ impl RangeProof {
     /// Verify that the PoKs on the opening of signatures for each digit are valid.
     fn verify_range_proof_digits(
         &self,
-        _params: &RangeProofParameters,
-        _challenge: Challenge,
+        params: &RangeProofParameters,
+        challenge: Challenge,
     ) -> bool {
-        todo!();
+        self.digit_proofs
+            .iter()
+            .all(|proof| proof.verify_knowledge_of_signature(&params.public_key, challenge))
     }
 
     /// Verify that the response scalar for a given value is correctly constructed from the range
     /// proof digits.
     pub fn verify_range_proof(
         &self,
-        _params: &RangeProofParameters,
-        _challenge: Challenge,
-        _expected_response_scalar: Scalar,
+        params: &RangeProofParameters,
+        challenge: Challenge,
+        expected_response_scalar: Scalar,
     ) -> bool {
-        todo!();
+        let valid_digits = self.verify_range_proof_digits(params, challenge);
+
+        // sum u^j t_{j,1}
+        let mut response_scalar = Scalar::zero();
+        let mut u_pow = Scalar::one();
+        for proof in &self.digit_proofs {
+            response_scalar += u_pow * proof.conjunction_response_scalars()[0];
+            u_pow *= Scalar::from(RP_PARAMETER_U);
+        }
+
+        valid_digits && response_scalar == expected_response_scalar
     }
 }

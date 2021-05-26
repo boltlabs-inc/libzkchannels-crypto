@@ -1,11 +1,11 @@
-//! Merchant's cryptographic routines to establish itself, establish customer channels, and
-//! process payments on channels.
+//! Cryptographic routines to establish a new merchant, establish customer channels, and
+//! process payments.
 
 use crate::{
-states::*,
     nonce::Nonce,
     proofs::{EstablishProof, PayProof},
     revlock::*,
+    states::*,
     states::{CloseStateCommitment, StateCommitment},
 };
 
@@ -87,7 +87,7 @@ impl Config {
         todo!();
     }
 }
-/// A merchant that has approved a new payment on a channel, but has not revoked the previous 
+/// A merchant that has approved a new payment on a channel, but has not revoked the previous
 /// channel state.
 #[derive(Debug)]
 pub struct Unrevoked<'a> {

@@ -16,9 +16,10 @@ match rl.verify(&rs) {
 }
 ```
 
-NOTE: un-ignore this doctest once things are implemented
+FIXME(Marcella): un-ignore this doctest once things are implemented
 
-*Security*: Given a revocation lock, an adversary can generate a correct revocation secret with negligible probability (e.g. basically never)
+*Security*: Given a revocation lock, an adversary can generate a correct revocation secret with
+negligible probability (e.g. basically never).
 
 */
 use serde::*;

@@ -195,7 +195,7 @@ impl RangeProofBuilder {
                     &params.public_key,
                 )
             })
-            .collect::<ArrayVec<_, RP_PARAMETER_L>>()
+            .collect::<Result<ArrayVec<_, RP_PARAMETER_L>, Error>>()?
             .into_inner()
             .expect("impossible; len will always be RP_PARAMETER_L");
 
@@ -234,10 +234,14 @@ impl RangeProof {
         &self,
         params: &RangeProofParameters,
         challenge: Challenge,
-    ) -> bool {
-        self.digit_proofs
-            .iter()
-            .all(|proof| proof.verify_knowledge_of_signature(&params.public_key, challenge))
+    ) -> Result<bool, Error> {
+        for proof in &self.digit_proofs {
+            if !proof.verify_knowledge_of_signature(&params.public_key, challenge)? {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
     }
 
     /// Verify that the response scalar for a given value is correctly constructed from the range
@@ -247,8 +251,8 @@ impl RangeProof {
         params: &RangeProofParameters,
         challenge: Challenge,
         expected_response_scalar: Scalar,
-    ) -> bool {
-        let valid_digits = self.verify_range_proof_digits(params, challenge);
+    ) -> Result<bool, Error> {
+        let valid_digits = self.verify_range_proof_digits(params, challenge)?;
 
         // sum u^j t_{j,1}
         let mut response_scalar = Scalar::zero();
@@ -258,6 +262,6 @@ impl RangeProof {
             u_pow *= Scalar::from(RP_PARAMETER_U);
         }
 
-        valid_digits && response_scalar == expected_response_scalar
+        Ok(valid_digits && response_scalar == expected_response_scalar)
     }
 }

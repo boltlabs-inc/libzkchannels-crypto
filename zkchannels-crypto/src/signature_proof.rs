@@ -55,6 +55,7 @@ use crate::{
     ps_keys::PublicKey,
     ps_signatures::Signature,
     types::*,
+    Error,
 };
 
 /// Fully constructed proof of knowledge of a signature.
@@ -101,14 +102,14 @@ impl SignatureProofBuilder {
         signature: Signature,
         conjunction_commitment_scalars: &[Option<Scalar>],
         params: &PublicKey,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         // Run commitment phase for PoK of opening of commitment to message.
         let params = params.to_g2_pedersen_parameters();
         let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             conjunction_commitment_scalars,
             &params,
-        );
+        )?;
 
         // Run signature proof setup phase:
         // Blind and randomize signature
@@ -118,15 +119,15 @@ impl SignatureProofBuilder {
         blinded_signature.randomize(rng);
 
         // Form commitment to blinding factor + message
-        let message_commitment = params.commit(&message, message_blinding_factor);
+        let message_commitment = params.commit(&message, message_blinding_factor)?;
 
-        Self {
+        Ok(Self {
             message,
             message_commitment,
             message_blinding_factor,
             blinded_signature,
             commitment_proof_builder,
-        }
+        })
     }
 
     /// Get the commitment scalars corresponding to the message tuple to use when constructing
@@ -166,7 +167,11 @@ impl SignatureProof {
     - the internal commitment proof is valid
     - the commitment proof is formed on the same message as the blinded signature
     */
-    pub fn verify_knowledge_of_signature(&self, params: &PublicKey, challenge: Challenge) -> bool {
+    pub fn verify_knowledge_of_signature(
+        &self,
+        params: &PublicKey,
+        challenge: Challenge,
+    ) -> Result<bool, Error> {
         // signature is valid
         let valid_signature = self.blinded_signature.is_valid();
 
@@ -177,7 +182,7 @@ impl SignatureProof {
                 &params.to_g2_pedersen_parameters(),
                 self.message_commitment,
                 challenge,
-            );
+            )?;
 
         // commitment proof matches blinded signature
         let Signature { sigma1, sigma2 } = self.blinded_signature.0;
@@ -185,7 +190,7 @@ impl SignatureProof {
             pairing(&sigma1, &(params.x2 + self.message_commitment.0).into())
                 == pairing(&sigma2, &params.g2);
 
-        valid_signature && valid_commitment_proof && commitment_proof_matches_signature
+        Ok(valid_signature && valid_commitment_proof && commitment_proof_matches_signature)
     }
 
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.

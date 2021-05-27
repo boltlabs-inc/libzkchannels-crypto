@@ -27,9 +27,18 @@ use thiserror::*;
 /// Error types that may arise from cryptographic operations.
 #[derive(Debug, Error, Clone, Copy)]
 pub enum Error {
-    /// Raised when a range proof is constructed on an out-of-range value.
+    /// Caused by attempting to construct a range proof on an out-of-range value.
     #[error("tried to build a range proof on a negative value ({0})")]
     OutsideRange(i64),
+    /// Caused by attempting to commit to a message with a different length than the provided
+    /// parameters expected.
+    #[error("expected a message of length {expected}, got {got}")]
+    MessageLengthMismatch {
+        /// The length of the parameters, and expected length of the message.
+        expected: usize,
+        /// The actual length of the message.
+        got: usize,
+    },
 }
 
 mod serde;

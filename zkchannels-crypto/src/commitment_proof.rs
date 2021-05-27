@@ -33,7 +33,7 @@ blinding factor.
     4(3):161–174, Jan 1991.
 
 */
-use crate::{challenge::Challenge, pedersen_commitments::*, types::*};
+use crate::{challenge::Challenge, pedersen_commitments::*, types::*, Error};
 use ff::Field;
 use group::Group;
 use std::iter;
@@ -54,17 +54,17 @@ impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
         params: &PedersenParameters<G>,
         commitment: Commitment<G>,
         challenge: Challenge,
-    ) -> bool {
+    ) -> Result<bool, Error> {
         // Construct commitment to response scalars.
         // [c*bf + cs0]h + [c * m1 + cs1]g1 + ...
         let rhs = params.commit(
             &Message::new(self.response_scalars[1..].to_owned()),
             BlindingFactor(self.response_scalars[0]),
-        );
+        )?;
 
         // Compare to challenge, commitments to message, scalars
         let lhs = self.scalar_commitment.0 + (commitment.0 * challenge.0);
-        rhs.0 == lhs
+        Ok(rhs.0 == lhs)
     }
 
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.
@@ -100,7 +100,7 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
         rng: &mut dyn Rng,
         conjunction_commitment_scalars: &[Option<Scalar>],
         params: &PedersenParameters<G>,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         assert_eq!(params.message_len(), conjunction_commitment_scalars.len());
 
         // Choose commitment scalars (that haven't already been specified)
@@ -116,12 +116,12 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
         let scalar_commitment = params.commit(
             &Message::new(commitment_scalars[1..].to_owned()),
             BlindingFactor(commitment_scalars[0]),
-        );
+        )?;
 
-        Self {
+        Ok(Self {
             scalar_commitment,
             commitment_scalars,
-        }
+        })
     }
 
     /// Get the commitment scalars corresponding to the message tuple to use when constructing

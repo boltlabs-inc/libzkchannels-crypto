@@ -138,7 +138,14 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
         msg: &Message,
         blinding_factor: BlindingFactor,
         challenge: Challenge,
-    ) -> CommitmentProof<G> {
+    ) -> Result<CommitmentProof<G>, Error> {
+        if msg.len() + 1 != self.commitment_scalars.len() {
+            return Err(Error::MessageLengthMismatch {
+                expected: self.commitment_scalars.len() - 1,
+                got: msg.len(),
+            });
+        }
+
         // Generate response scalars.
         let response_scalars = iter::once(&blinding_factor.0)
             .chain(&**msg)
@@ -146,10 +153,10 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
             .map(|(mi, cs)| challenge.0 * mi + cs)
             .collect::<Vec<_>>();
 
-        CommitmentProof {
+        Ok(CommitmentProof {
             scalar_commitment: self.scalar_commitment,
             response_scalars,
-        }
+        })
 
         /*
             [bf]*h + [m1]*g1 + ... + [ml]*gl        <-- original commitment

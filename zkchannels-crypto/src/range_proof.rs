@@ -215,15 +215,15 @@ impl RangeProofBuilder {
     }
 
     /// Run the response phase of a Schnorr-style proof of knowledge that a value is in a range.
-    pub fn generate_proof_response(self, challenge: Challenge) -> RangeProof {
+    pub fn generate_proof_response(self, challenge: Challenge) -> Result<RangeProof, Error> {
         let digit_proofs = ArrayVec::from(self.digit_proof_builders)
             .into_iter()
             .map(|builder| builder.generate_proof_response(challenge))
-            .collect::<ArrayVec<_, RP_PARAMETER_L>>()
+            .collect::<Result<ArrayVec<_, RP_PARAMETER_L>, Error>>()?
             .into_inner()
             .expect("impossible; len will always be RP_PARAMETER_L");
 
-        RangeProof { digit_proofs }
+        Ok(RangeProof { digit_proofs })
     }
 }
 

@@ -20,9 +20,14 @@ with only negligible probability (e.g. basically never).
 
 */
 use crate::{customer, types::*, Rng, Verification};
+use ff::Field;
 use serde::*;
+use sha3::{Digest, Sha3_256};
+use std::convert::TryFrom;
 use zkchannels_crypto::{
-    message::BlindingFactor, pedersen_commitments::Commitment, SerializeElement,
+    message::{BlindingFactor, Message},
+    pedersen_commitments::Commitment,
+    SerializeElement,
 };
 
 /// A revocation lock.
@@ -58,21 +63,32 @@ pub struct RevocationLockBlindingFactor(BlindingFactor);
 #[allow(unused)]
 impl RevocationSecret {
     /// Create a new, random revocation secret.
-    pub(crate) fn new(_rng: &mut impl Rng) -> Self {
-        todo!()
+    pub(crate) fn new(rng: &mut impl Rng) -> Self {
+        Self(Scalar::random(rng))
     }
 
-    /// Derive the [`RevocationLock`]  corresponding to this [`RevocationSecret`]
+    /// Derive the [`RevocationLock`] corresponding to this [`RevocationSecret`]
     pub(crate) fn revocation_lock(&self) -> RevocationLock {
-        todo!();
+        // Compute the SHA3 hash of the byte representation of this scalar, and then construct
+        // another scalar from the result. This computation is entirely little-endian, so endianness
+        // is consistent throughout.
+        let bytes = self.0.to_bytes();
+        let digested = Sha3_256::digest(&bytes);
+        let scalar = Scalar::from_raw([
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[24..32]).unwrap()),
+        ]);
+        RevocationLock(scalar)
     }
 }
 
 #[allow(unused)]
 impl RevocationLock {
     /// Validate a revocation pair.
-    pub(crate) fn verify(&self, _rs: &RevocationSecret) -> Verification {
-        todo!();
+    pub(crate) fn verify(&self, rs: &RevocationSecret) -> Verification {
+        Verification::from(self.0 == rs.revocation_lock().0)
     }
 }
 
@@ -83,11 +99,22 @@ impl RevocationLockCommitment {
     /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is derived from the [`RevocationSecret`].
     pub(crate) fn verify(
         &self,
-        _parameters: &customer::Config,
-        _revocation_secret: &RevocationSecret,
-        _revocation_lock: &RevocationLock,
-        _revocation_lock_commitment_randomness: &RevocationLockBlindingFactor,
+        parameters: &customer::Config,
+        revocation_secret: &RevocationSecret,
+        revocation_lock: &RevocationLock,
+        revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Verification {
-        todo!();
+        let verify_pair = revocation_lock.verify(revocation_secret);
+        let verify_commitment = parameters.revocation_parameters.decommit(
+            self.0,
+            &Message::from(revocation_lock.0),
+            revocation_lock_blinding_factor.0,
+        );
+
+        if matches!(verify_pair, Verification::Verified) && verify_commitment {
+            Verification::Verified
+        } else {
+            Verification::Failed
+        }
     }
 }

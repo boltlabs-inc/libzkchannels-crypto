@@ -49,12 +49,16 @@ use crate::{
     proofs::{BlindingFactors, EstablishProof, PayProof},
     revlock::*,
     states::*,
+    types::*,
     PaymentAmount,
 };
+use libzkchannels_crypto::pedersen_commitments::PedersenParameters;
 
 /// Keys and parameters used throughout the lifetime of a channel.
-#[derive(Debug, Clone, Copy)]
-pub struct Config {}
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub(crate) revocation_parameters: PedersenParameters<G1Projective>,
+}
 
 /// An activated channel that allows payments and closing.
 #[derive(Debug)]

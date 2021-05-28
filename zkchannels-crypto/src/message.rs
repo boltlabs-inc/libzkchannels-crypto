@@ -23,6 +23,18 @@ impl Message {
     }
 }
 
+impl From<Vec<Scalar>> for Message {
+    fn from(scalars: Vec<Scalar>) -> Self {
+        Self(scalars)
+    }
+}
+
+impl From<Scalar> for Message {
+    fn from(scalar: Scalar) -> Self {
+        Self(vec![scalar])
+    }
+}
+
 /// Blinding factor for a commitment, message, or signature.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindingFactor(#[serde(with = "SerializeElement")] pub(crate) Scalar);

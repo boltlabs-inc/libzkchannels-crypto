@@ -67,6 +67,15 @@ pub enum Verification {
     Failed,
 }
 
+impl From<bool> for Verification {
+    fn from(b: bool) -> Self {
+        match b {
+            true => Verification::Verified,
+            false => Verification::Failed,
+        }
+    }
+}
+
 /// Amount of a single payment.
 #[derive(Debug, Clone, Copy)]
 pub struct PaymentAmount;

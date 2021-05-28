@@ -1,5 +1,6 @@
 //! Cryptographically random nonces.
 use crate::{types::*, Rng};
+use ff::Field;
 use serde::*;
 use zkchannels_crypto::SerializeElement;
 
@@ -12,6 +13,6 @@ pub struct Nonce(#[serde(with = "SerializeElement")] Scalar);
 impl Nonce {
     /// Generate a new cryptographically random nonce with the given random number generator.
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
-        todo!();
+        Self(Scalar::random(rng))
     }
 }

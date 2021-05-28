@@ -8,12 +8,7 @@ the customer is behaving correctly without learning any additional information a
 */
 use serde::*;
 
-use crate::nonce::*;
-use crate::revlock::*;
-use crate::states::*;
-use crate::types::*;
-use crate::{customer, merchant};
-use crate::{Rng, Verification};
+use crate::{customer, merchant, revlock::*, states::*, types::*, Nonce, Rng, Verification};
 use libzkchannels_crypto::pedersen_commitments::Commitment;
 
 /**

@@ -21,18 +21,13 @@ to produce a [`CloseStateBlindedSignature`].
 
 The customer must blind the input and unblind the output with the _same_ blinding factor.
 */
-use serde::*;
 
-use crate::nonce::*;
-use crate::revlock::*;
-use crate::types::*;
-use crate::PaymentAmount;
-use crate::{customer, merchant};
-use crate::{Rng, Verification};
-use message::BlindingFactor;
-use pedersen_commitments::Commitment;
-use ps_blind_signatures::*;
-use ps_signatures::Signature;
+use crate::{customer, merchant, revlock::*, types::*, Nonce, PaymentAmount, Rng, Verification};
+use libzkchannels_crypto::{
+    message::BlindingFactor, pedersen_commitments::Commitment, ps_blind_signatures::*,
+    ps_signatures::Signature,
+};
+use serde::*;
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]

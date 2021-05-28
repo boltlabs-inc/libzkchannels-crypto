@@ -10,10 +10,7 @@ A pair ([`RevocationLock`], [`RevocationSecret`]) satisfies two properties:
 # use rand::thread_rng;
 let rs = RevocationSecret::new(&mut thread_rng());
 let rl = rs.revocation_lock();
-match rl.verify(&rs) {
-    Verification::Verified => (),
-    Verification::Failed => assert!(false),
-}
+assert!(matches!(rl.verify(&rs), Verification::Verified));
 ```
 
 FIXME(Marcella): un-ignore this doctest once things are implemented
@@ -22,12 +19,11 @@ FIXME(Marcella): un-ignore this doctest once things are implemented
 with only negligible probability (e.g. basically never).
 
 */
-use crate::types::*;
+use crate::{customer, types::*, Rng, Verification};
+use libzkchannels_crypto::{
+    message::BlindingFactor, pedersen_commitments::Commitment, SerializeElement,
+};
 use serde::*;
-
-use crate::customer;
-use crate::{Rng, Verification};
-use libzkchannels_crypto::{message::BlindingFactor, pedersen_commitments::Commitment};
 
 /// A revocation lock.
 #[derive(Debug, Serialize, Deserialize)]

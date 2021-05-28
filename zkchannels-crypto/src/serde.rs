@@ -9,14 +9,13 @@
 //! element used, want to use the `Serialize` and `Deserialize` derive macros, but only want to
 //! allow serialize/deserialization when the group element is specifically G1 or specifically G2.
 
-use std::marker::PhantomData;
-
 use crate::types::*;
 use serde::{
     de::{Error as DeError, SeqAccess, Visitor},
     ser::SerializeSeq,
     *,
 };
+use std::marker::PhantomData;
 
 #[derive(Serialize)]
 #[serde(transparent)]

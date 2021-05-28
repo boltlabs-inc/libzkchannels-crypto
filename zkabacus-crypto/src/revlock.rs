@@ -1,9 +1,9 @@
 /*!
 This library describes revocation pairs, a formalization of hash locks.
 
-A pair ([`RevocationLock`], [`RevocationSecret`]) satisfy two properties:
+A pair ([`RevocationLock`], [`RevocationSecret`]) satisfies two properties:
 
-*Correctness*: A correctly generated revocation pair will always verify.
+*Correctness*: A correctly generated revocation pair will always verify:
 
 ```ignore
 # use libzkchannels_toolkit::{revlock::*, Verification};
@@ -18,8 +18,8 @@ match rl.verify(&rs) {
 
 FIXME(Marcella): un-ignore this doctest once things are implemented
 
-*Security*: Given a revocation lock, an adversary can generate a correct revocation secret with
-negligible probability (e.g. basically never).
+*Security*: Given a revocation lock, an adversary can generate a revocation secret that verifies
+with only negligible probability (e.g. basically never).
 
 */
 use serde::*;
@@ -46,7 +46,7 @@ pub struct RevocationSecret(());
 /// *Hiding*: A `RevocationLockCommitment` does not reveal anything about the underlying
 /// [`RevocationLock`].
 ///
-/// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot efficiently generate a
+/// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot feasibly generate a
 /// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that /// verifies with the commitment.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]

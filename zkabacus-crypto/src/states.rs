@@ -151,7 +151,10 @@ impl State {
         todo!();
     }
 
-    /// Form a commitment (and corresponding blinding factor) to the [`State`].
+    /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
+    /// tuple (channel_id, nonce, revocation_lock, merchant_balance, customer_balance).
+    ///
+    /// Note that this _does not_ include the revocation secret!
     ///
     /// This is typically called by the customer.
     pub fn commit<'a>(
@@ -165,7 +168,8 @@ impl State {
 
 #[allow(unused)]
 impl CloseState<'_> {
-    /// Form a commitment (and corresponding blinding factor) to the [`CloseState`].
+    /// Form a commitment (and corresponding blinding factor) to the [`CloseState`] and a constant,
+    /// fixed close tag.
     ///
     /// This is typically called by the customer.
     pub fn commit<'a>(
@@ -177,8 +181,7 @@ impl CloseState<'_> {
     }
 }
 
-/// Commitment to a State.
-///
+/// Commitment to a State: (channel_id, nonce, revocation_lock, merchant_balance, customer_balance).
 /// This satisfies the standard properties of a commitment scheme:
 ///
 /// *Correctness*: A correctly-generated commitment will always verify.
@@ -194,7 +197,7 @@ impl CloseState<'_> {
 #[allow(missing_copy_implementations)]
 pub struct StateCommitment(/*Commitment*/);
 
-/// Commitment to a CloseState.
+/// Commitment to a CloseState and a constant, fixed close tag.
 ///
 /// This satisfies the standard properties of a commitment scheme:
 ///
@@ -211,12 +214,12 @@ pub struct StateCommitment(/*Commitment*/);
 #[allow(missing_copy_implementations)]
 pub struct CloseStateCommitment(/*Commitment*/);
 
-/// Signature on a [`CloseState`]. Used to close a channel.
+/// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
 pub(crate) struct CloseStateSignature;
 
-/// Blinded signature on a close state.
+/// Blinded signature on a close state and a constant, fixed close tag.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct CloseStateBlindedSignature;
@@ -258,6 +261,11 @@ impl CloseStateSignature {
         _param: &customer::Config,
         _close_state: CloseState<'_>,
     ) -> Verification {
+        todo!();
+    }
+
+    /// Randomize the `CloseStateSignature` in place.
+    pub(crate) fn randomize(&mut self, _rng: &mut impl Rng) {
         todo!();
     }
 }

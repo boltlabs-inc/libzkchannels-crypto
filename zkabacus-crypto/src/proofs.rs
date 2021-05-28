@@ -17,11 +17,12 @@ use crate::{Rng, Verification};
 /**
 An establish proof demonstrates that a customer is trying to initialize a channel correctly.
 
-This is a Schnorr proof that makes the following guarantees in zero knowledge:
+This is a zero-knowledge proof that makes the following guarantees:
 
 - The new balances match the previously-agreed-upon values.
 - The [`StateCommitment`] and [`CloseStateCommitment`] open to objects that are correctly formed
   relative to each other.
+- The close state is well-formed (e.g. with a close tag and corresponding to the state).
 */
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EstablishProof;
@@ -76,13 +77,14 @@ pub struct EstablishProofVerification {
 /**
 A payment proof demonstrates that a customer is trying to make a valid payment on a channel.
 
-This is a Schnorr proof that makes the following guarantees in zero knowledge:
+This is a zero-knowledge proof that makes the following guarantees:
 
 - The customer holds a valid `PayToken` and knows the state it corresponds to.
 - The customer knows the opening of the [`RevocationLockCommitment`], the [`StateCommitment`], and
   the [`CloseStateCommitment`].
 - The new state from the commitment is correctly updated from the previous state
-  (that is, the balances are updated by an agreed-upon amount)
+  (that is, the balances are updated by an agreed-upon amount).
+- The close state is well-formed (e.g. with a close tag and corresponding to the new state).
 - The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the previous `State`.
 - The new balances are non-negative.
 

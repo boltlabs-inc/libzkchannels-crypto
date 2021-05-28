@@ -12,7 +12,7 @@ use crate::{
 /// A merchant that is ready to establish channels and process payments.
 ///
 /// Holds keys and parameters used throughout the lifetime of a merchant node, across
-/// all its zkChannels.
+/// all its channels.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
 pub struct Config;
@@ -54,7 +54,7 @@ impl Config {
     }
 
     /**
-    Respond to a customer request to activate a channel.
+    Activate a channel with the given ID.
 
     This should only be called if the [`ChannelId`] is stored in the merchant database with
     this [`StateCommitment`].

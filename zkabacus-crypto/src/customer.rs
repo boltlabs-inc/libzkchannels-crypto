@@ -1,5 +1,5 @@
 /*!
-Cryptographic routines for establishing, making payments on, and closing a channel.
+Cryptographic routines for establishing, making payments on, and closing a zkAbacus channel.
 
 ## Establish
 
@@ -28,17 +28,16 @@ On receiving a [`ClosingSignature`](crate::ClosingSignature), the customer can
 This produces a [`LockMessage`], which revokes the old channel state;
 at this point, the customer _cannot_ make another payment.
 
-On receiving a [`PayToken`](crate::PayToken), the payment is complete and customer returns to the
-[`Ready`] state.
+On receiving a [`PayToken`](crate::PayToken), the payment is complete and the customer returns to
+the [`Ready`] state.
 
 ## Close
 
 The customer has the option to close at multiple points in the protocol:
 
 - [`Inactive`]. A channel that hasn't been activated can still close on the original balances.
-- [`Ready`]. A channel can close on the current balances.
-- [`Started`]. After a payment has been started, the customer can close on either the previous
-or current balances.
+- [`Ready`]. An activated channel can close on the current balances.
+- [`Started`]. After a payment has been started, the customer can close on the previous balances.
 - [`Locked`]. A locked channel can close on the current balances.
 
 */
@@ -50,13 +49,11 @@ use crate::revlock::*;
 use crate::states::*;
 use crate::PaymentAmount;
 
-/// Keys and parameters used throughout the lifetime of a zkChannel.
+/// Keys and parameters used throughout the lifetime of a channel.
 #[derive(Debug, Clone, Copy)]
 pub struct Config {}
 
-/// A channel that is ready to take an action.
-///
-/// A channel in this state can start a payment or close.
+/// An activated channel that allows payments and closing.
 #[derive(Debug)]
 pub struct Ready {
     config: Config,
@@ -81,9 +78,12 @@ pub struct Requested {
 /// Message sent to the merchant to request a new channel.
 #[derive(Debug)]
 pub struct RequestMessage {
-    close_state_commitment: CloseStateCommitment,
-    state_commitment: StateCommitment,
-    proof: EstablishProof,
+    /// Commitment to the initial close state.
+    pub close_state_commitment: CloseStateCommitment,
+    /// Commitment to the initial state.
+    pub state_commitment: StateCommitment,
+    /// Proof that channel is being correctly established.
+    pub proof: EstablishProof,
 }
 
 impl Requested {
@@ -136,7 +136,7 @@ pub struct StartMessage {
     pub pay_proof: PayProof,
     /// The commitment to the (not yet revealed) revocation lock.
     pub revocation_lock_commitment: RevocationLockCommitment,
-    /// The commitment to the close state message.
+    /// The commitment to the close state.
     pub close_state_commitment: CloseStateCommitment,
     /// The commitment to the state.
     pub state_commitment: StateCommitment,
@@ -176,7 +176,7 @@ pub struct LockMessage {
     pub revocation_lock_blinding_factor: RevocationLockBlindingFactor,
 }
 
-/// The information necessary to perform an on-chain close for a state.
+/// The information necessary to perform a close for a state.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
 pub struct Closing {}
@@ -190,14 +190,8 @@ impl Started {
         todo!();
     }
 
-    /// Extract data used to close the channel.
+    /// Extract data used to close the channel on the previous balances.
     pub fn close(self) -> Closing {
-        todo!()
-    }
-
-    /// Extract data used to close the channel on the old balances, prior to the
-    /// currently-in-progress payment.
-    pub fn close_old(self) -> Closing {
         todo!()
     }
 }

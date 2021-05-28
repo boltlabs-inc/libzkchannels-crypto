@@ -17,14 +17,11 @@ use crate::{
 #[allow(missing_copy_implementations)]
 pub struct Config;
 
-impl Default for Config {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Config {
     /// Instantiate a new merchant with all parameters.
+    ///
+    /// FIXME(Marcella): Add relevant parameters.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         todo!();
     }

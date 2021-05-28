@@ -23,11 +23,11 @@ The customer must blind the input and unblind the output with the _same_ blindin
 */
 
 use crate::{customer, merchant, revlock::*, types::*, Nonce, PaymentAmount, Rng, Verification};
-use libzkchannels_crypto::{
+use serde::*;
+use zkchannels_crypto::{
     message::BlindingFactor, pedersen_commitments::Commitment, ps_blind_signatures::*,
     ps_signatures::Signature,
 };
-use serde::*;
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]

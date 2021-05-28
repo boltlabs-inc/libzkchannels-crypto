@@ -1,7 +1,7 @@
 //! Cryptographically random nonces.
 use crate::{types::*, Rng};
-use libzkchannels_crypto::SerializeElement;
 use serde::*;
+use zkchannels_crypto::SerializeElement;
 
 #[allow(unused)]
 /// A random nonce.

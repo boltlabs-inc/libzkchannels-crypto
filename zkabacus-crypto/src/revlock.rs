@@ -20,10 +20,10 @@ with only negligible probability (e.g. basically never).
 
 */
 use crate::{customer, types::*, Rng, Verification};
-use libzkchannels_crypto::{
+use serde::*;
+use zkchannels_crypto::{
     message::BlindingFactor, pedersen_commitments::Commitment, SerializeElement,
 };
-use serde::*;
 
 /// A revocation lock.
 #[derive(Debug, Serialize, Deserialize)]

@@ -38,8 +38,10 @@ The customer has the option to close at multiple points in the protocol:
 - [`Inactive`]. A channel that hasn't been activated can still close on the original balances.
 - [`Ready`]. An activated channel can close on the current balances.
 - [`Started`]. After a payment has been started, the customer can close on the previous balances.
-- [`Locked`]. A locked channel can close on the current balances.
+- [`Locked`]. A locked channel can close on the updated balances.
 
+At any of these points, the customer can call the associated `close()` function to retrieve the
+[`Closing`] information.
 */
 
 use crate::nonce::Nonce;
@@ -161,7 +163,6 @@ pub struct Started {
     new_state: State,
     old_state: State,
     blinding_factors: BlindingFactors,
-    close_state_signature: CloseStateSignature,
     old_close_state_signature: CloseStateSignature,
 }
 

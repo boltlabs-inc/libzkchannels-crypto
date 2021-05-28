@@ -87,8 +87,10 @@ impl Config {
         todo!();
     }
 }
-/// A merchant that has approved a new payment on a channel, but has not revoked the previous
-/// channel state.
+/**
+A merchant that has approved a new payment on a channel, but has not received revocation
+information for the previous channel state.
+*/
 #[derive(Debug)]
 pub struct Unrevoked<'a> {
     config: &'a Config,
@@ -106,7 +108,7 @@ impl<'a> Unrevoked<'a> {
     This will fail if the revocation information is not well-formed (e.g. the revocation lock does
     not match the revocation secret; or it does not match the stored revocation commitment).
     */
-    pub fn revoke(
+    pub fn complete_payment(
         self,
         _revocation_lock: &RevocationLock,
         _revocation_secret: &RevocationSecret,

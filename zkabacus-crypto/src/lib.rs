@@ -1,12 +1,24 @@
 /*!
-This crate describes the zkAbacus protocol \[1\] and the cryptographic toolkit used to construct it.
-It defines contextual types as wrappers for the basic cryptographic primitives defined in `libzkchannels-crypto`.
+This crate provides a cryptographic API for the zkAbacus protocol \[1\].
+This API processes messages and produces cryptographic outputs for each step of the zkAbacus
+protocol.
+It **does not** handle communication between participants or long-term storage across channels.
 
- # References
+The [`customer`] and [`merchant`] modules describe state machines for each party. A
+customer maintains state over the lifetime of a channel that allows it to correctly update the
+channel balances, make payments, and close the channel. The merchant has a comparatively simple
+state machine: it operates primarily as a server, atomically processing requests from
+customers but never retaining (or even learning) information about specific channels.
 
- 1: zkChannels Private Payments Protocol. Ch 3.3: Off-network channel protocol zkAbacus.
- URL: https://github.com/boltlabs-inc/blindsigs-protocol
- */
+Internally, this crate also defines zkAbacus-aware cryptographic types as wrappers around the basic
+cryptographic primitives defined in `libzkchannels-crypto`. Some of these types must be sent
+between parties in the execution of zkAbacus; these are revealed publicly.
+
+# References
+
+1: [zkChannels Private Payments Protocol](https://github.com/boltlabs-inc/blindsigs-protocol).
+Ch 3.3: Off-network channel protocol zkAbacus.
+*/
 #![warn(missing_docs)]
 #![warn(missing_copy_implementations, missing_debug_implementations)]
 #![warn(unused_qualifications, unused_results)]

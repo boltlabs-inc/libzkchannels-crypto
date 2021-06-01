@@ -22,11 +22,10 @@ to produce a [`CloseStateBlindedSignature`].
 The customer must blind the input and unblind the output with the _same_ blinding factor.
 */
 
-use crate::{customer, merchant, revlock::*, types::*, Nonce, PaymentAmount, Rng, Verification};
+use crate::{customer, merchant, revlock::*, Nonce, PaymentAmount, Rng, Verification};
 use serde::*;
 use zkchannels_crypto::{
-    message::BlindingFactor, pedersen_commitments::Commitment, ps_blind_signatures::*,
-    ps_signatures::Signature,
+    message::BlindingFactor, ps_blind_signatures::*, ps_signatures::Signature,
 };
 
 /// Channel identifier, binds each payment to a specific channel.
@@ -192,7 +191,7 @@ impl CloseState<'_> {
 /// used to generate [`BlindedPayToken`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct StateCommitment(Commitment<G1Projective>);
+pub struct StateCommitment(BlindedMessage);
 
 /// Commitment to a CloseState and a constant, fixed close tag.
 ///
@@ -209,7 +208,7 @@ pub struct StateCommitment(Commitment<G1Projective>);
 /// used to generate [`CloseStateBlindedSignature`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateCommitment(Commitment<G1Projective>);
+pub struct CloseStateCommitment(BlindedMessage);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone)]

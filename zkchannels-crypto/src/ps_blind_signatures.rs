@@ -19,7 +19,7 @@ the parameters;
 programmatically, a `BlindedMessage` can be constructed using
 [`PublicKey::blind_message`].
 */
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedMessage(Commitment<G1Projective>);
 
 /// A signature on a blinded message, generated using PS blind signing protocols.

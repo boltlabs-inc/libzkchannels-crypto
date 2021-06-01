@@ -47,7 +47,7 @@ mod states;
 #[allow(unused)]
 mod types {
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
-    pub use libzkchannels_crypto::*;
+    pub use zkchannels_crypto::*;
 }
 
 /// Trait synonym for a cryptographically secure random number generator.

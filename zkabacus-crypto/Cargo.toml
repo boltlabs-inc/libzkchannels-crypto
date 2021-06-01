@@ -8,7 +8,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libzkchannels-crypto = { version = "0.1.0", path = "../libzkchannels-crypto" }
+zkchannels-crypto = { version = "0.1.0", path = "../zkchannels-crypto" }
 bls12_381 = "0.4.0"
 rand_core = "0.6.0"
 rand = "0.8.3"

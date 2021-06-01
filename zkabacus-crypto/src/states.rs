@@ -290,7 +290,7 @@ pub(crate) struct CloseStateSignature(Signature);
 pub struct CloseStateBlindedSignature(BlindedSignature);
 
 /// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[allow(missing_copy_implementations)]
 pub(crate) struct CloseStateBlindingFactor(BlindingFactor);
 
@@ -357,7 +357,7 @@ impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub(crate) fn new(rng: &mut impl Rng, param: &merchant::Config, com: StateCommitment) -> Self {
+    pub(crate) fn new(rng: &mut impl Rng, param: &merchant::Config, com: &StateCommitment) -> Self {
         BlindedPayToken(param.signing_keypair.blind_sign(rng, &com.0))
     }
 

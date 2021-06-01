@@ -51,14 +51,16 @@ use crate::{
     states::*,
     types::*,
     PaymentAmount,
+    Verification::{Failed, Verified},
 };
 use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::PublicKey};
 
 /// Keys and parameters used throughout the lifetime of a channel.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Config {
-    /// Merchant's signing and proofs public key
+    /// Merchant public parameters for blind signing and proofs.
     pub(crate) merchant_public_key: PublicKey,
+    /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
 }
 
@@ -76,9 +78,6 @@ pub struct Ready {
 #[allow(missing_copy_implementations)]
 pub struct Requested {
     config: Config,
-    channel_id: ChannelId,
-    merchant_balance: MerchantBalance,
-    customer_balance: CustomerBalance,
     state: State,
     close_state_blinding_factor: CloseStateBlindingFactor,
     pay_token_blinding_factor: PayTokenBlindingFactor,
@@ -98,25 +97,62 @@ pub struct RequestMessage {
 impl Requested {
     /**
     Generate a new channel request from public parameters.
-
-    FIXME(Marcella). The API doesn't yet determine how `Config` is generated. It may be better
-    to pass the components here, rather than the generated object.
     */
     pub fn new(
-        _config: Config,
-        _channel_id: ChannelId,
-        _merchant_balance: MerchantBalance,
-        _customer_balance: CustomerBalance,
+        config: Config,
+        channel_id: ChannelId,
+        merchant_balance: MerchantBalance,
+        customer_balance: CustomerBalance,
     ) -> (Self, RequestMessage) {
-        todo!();
+        let mut rng = rand::thread_rng();
+        let state = State::new(&mut rng, channel_id, merchant_balance, customer_balance);
+        let close_state = state.close_state();
+
+        let (state_commitment, pay_token_blinding_factor) = state.commit(&mut rng, &config);
+        let (close_state_commitment, close_state_blinding_factor) =
+            close_state.commit(&mut rng, &config);
+
+        let proof = EstablishProof::new(
+            &mut rng,
+            &config,
+            &state,
+            close_state_blinding_factor,
+            pay_token_blinding_factor,
+        );
+
+        let request_message = RequestMessage {
+            close_state_commitment,
+            state_commitment,
+            proof,
+        };
+
+        (
+            Self {
+                config,
+                state,
+                close_state_blinding_factor,
+                pay_token_blinding_factor,
+            },
+            request_message,
+        )
     }
 
     /// Complete channel initiation: validate approval received from the merchant.
     pub fn complete(
         self,
-        _closing_signature: crate::ClosingSignature,
+        closing_signature: crate::ClosingSignature,
     ) -> Result<Inactive, Requested> {
-        todo!();
+        let close_state_signature = closing_signature.unblind(self.close_state_blinding_factor);
+
+        match close_state_signature.verify(&self.config, self.state.close_state()) {
+            Verified => Ok(Inactive {
+                config: self.config,
+                state: self.state,
+                blinding_factor: self.pay_token_blinding_factor,
+                close_state_signature,
+            }),
+            Failed => Err(self),
+        }
     }
 }
 
@@ -132,8 +168,17 @@ pub struct Inactive {
 
 impl Inactive {
     /// Activate the channel with the fresh pay token from the merchant.
-    pub fn activate(self, _pay_token: crate::PayToken) -> Result<Ready, Inactive> {
-        todo!();
+    pub fn activate(self, pay_token: crate::PayToken) -> Result<Ready, Inactive> {
+        let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
+        match unblinded_pay_token.verify(&self.config, &self.state) {
+            Verified => Ok(Ready {
+                config: self.config,
+                state: self.state,
+                pay_token: unblinded_pay_token,
+                close_state_signature: self.close_state_signature,
+            }),
+            Failed => Err(self),
+        }
     }
 }
 /// Message sent to the merchant after starting a payment.

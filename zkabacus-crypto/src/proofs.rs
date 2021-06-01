@@ -58,9 +58,9 @@ impl EstablishProof {
 
 /// Collects the information a merchant needs to verify a [`EstablishProof`].
 #[derive(Debug)]
-pub struct EstablishProofVerification {
+pub struct EstablishProofVerification<'a> {
     /// Commitment to a [`State`].
-    pub state_commitment: StateCommitment,
+    pub state_commitment: &'a StateCommitment,
     /// Commitment to a `CloseState`.
     pub close_state_commitment: CloseStateCommitment,
     /// Expected channel ID.

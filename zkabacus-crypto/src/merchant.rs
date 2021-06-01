@@ -4,10 +4,11 @@
 use crate::{
     customer,
     nonce::Nonce,
-    proofs::{EstablishProof, PayProof},
+    proofs::{EstablishProof, EstablishProofVerification, PayProof},
     revlock::*,
     states::*,
     types::*,
+    Verification::{Failed, Verified},
 };
 use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPair};
 
@@ -16,9 +17,11 @@ use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPa
 /// Holds keys and parameters used throughout the lifetime of a merchant node, across
 /// all its channels.
 #[derive(Debug)]
+#[allow(missing_copy_implementations)]
 pub struct Config {
     /// KeyPair for signing, blind signing, and proofs.
     pub(crate) signing_keypair: KeyPair,
+    /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
 }
 
@@ -29,11 +32,11 @@ impl Config {
         let mut rng = rand::thread_rng();
 
         let signing_keypair = KeyPair::new(5, &mut rng);
-        let revocation_parameters = PedersenParameters::new(1, &mut rng);
+        let revocation_commitment_parameters = PedersenParameters::new(1, &mut rng);
 
         Self {
             signing_keypair,
-            revocation_commitment_parameters: revocation_parameters,
+            revocation_commitment_parameters,
         }
     }
 
@@ -59,28 +62,41 @@ impl Config {
     */
     pub fn initialize(
         &self,
-        _channel_id: &ChannelId,
-        _customer_balance: CustomerBalance,
-        _merchant_balance: MerchantBalance,
-        _state_commitment: &StateCommitment,
-        _close_state_commitment: CloseStateCommitment,
-        _proof: EstablishProof,
+        channel_id: &ChannelId,
+        customer_balance: CustomerBalance,
+        merchant_balance: MerchantBalance,
+        state_commitment: &StateCommitment,
+        close_state_commitment: CloseStateCommitment,
+        proof: EstablishProof,
     ) -> Option<crate::ClosingSignature> {
-        todo!();
+        let verification_objects = EstablishProofVerification {
+            state_commitment,
+            close_state_commitment,
+            channel_id: *channel_id,
+            merchant_balance,
+            customer_balance,
+        };
+
+        let mut rng = rand::thread_rng();
+        match proof.verify(&self, &verification_objects) {
+            Verified => Some(CloseStateBlindedSignature::new(
+                &mut rng,
+                &self,
+                verification_objects.close_state_commitment,
+            )),
+            Failed => None,
+        }
     }
 
     /**
     Activate a channel with the given ID.
 
-    This should only be called if the [`ChannelId`] is stored in the merchant database with
-    this [`StateCommitment`].
+    This should only be called if the [`StateCommitment`] is stored in the merchant database with
+    a known [`ChannelId`].
     */
-    pub fn activate(
-        &self,
-        _channel_id: &ChannelId,
-        _state_commitment: &StateCommitment,
-    ) -> crate::PayToken {
-        todo!();
+    pub fn activate(&self, state_commitment: &StateCommitment) -> crate::PayToken {
+        let mut rng = rand::thread_rng();
+        BlindedPayToken::new(&mut rng, &self, state_commitment)
     }
 
     /**

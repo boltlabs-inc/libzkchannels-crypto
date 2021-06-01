@@ -52,7 +52,7 @@ use crate::{
     types::*,
     PaymentAmount,
 };
-use libzkchannels_crypto::pedersen_commitments::PedersenParameters;
+use zkchannels_crypto::pedersen_commitments::PedersenParameters;
 
 /// Keys and parameters used throughout the lifetime of a channel.
 #[derive(Debug, Clone)]

@@ -90,7 +90,7 @@ This is a zero-knowledge proof that makes the following guarantees:
 pub struct PayProof(());
 
 /// Blinding factors for commitments associated with a particular payment.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct BlindingFactors {
     /// The blinding factor for a [`RevocationLockCommitment`] (associated with the previous [`State`])
     pub for_revocation_lock: RevocationLockBlindingFactor,
@@ -124,7 +124,7 @@ impl PayProof {
         _rng: &mut impl Rng,
         _params: &customer::Config,
         _pay_token: PayToken,
-        _old_state: State,
+        _old_state: &State,
         _state: &State,
         _blinding_factors: BlindingFactors,
     ) -> Self {

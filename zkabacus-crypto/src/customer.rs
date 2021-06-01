@@ -198,8 +198,50 @@ pub struct StartMessage {
 
 impl Ready {
     /// Start a payment of the given [`PaymentAmount`].
-    pub fn start(self, _amount: PaymentAmount) -> (Started, StartMessage) {
-        todo!()
+    pub fn start(self, amount: PaymentAmount) -> (Started, StartMessage) {
+        // Generate correctly-updated state.
+        let mut rng = rand::thread_rng();
+        let new_state = self.state.apply_payment(&mut rng, amount);
+
+        // Commit to new state and old revocation lock.
+        let (revocation_lock_commitment, revocation_lock_bf) =
+            self.state.commit_to_revocation(&mut rng, &self.config);
+        let (state_commitment, state_bf) = self.state.commit(&mut rng, &self.config);
+        let (close_state_commitment, close_state_bf) =
+            self.state.close_state().commit(&mut rng, &self.config);
+        let blinding_factors = BlindingFactors {
+            for_revocation_lock: revocation_lock_bf,
+            for_pay_token: state_bf,
+            for_close_state: close_state_bf,
+        };
+
+        // Form proof.
+        let pay_proof = PayProof::new(
+            &mut rng,
+            &self.config,
+            self.pay_token,
+            &self.state,
+            &new_state,
+            blinding_factors,
+        );
+
+        let old_nonce = *self.state.nonce();
+        (
+            Started {
+                config: self.config,
+                new_state,
+                old_state: self.state,
+                blinding_factors,
+                old_close_state_signature: self.close_state_signature,
+            },
+            StartMessage {
+                nonce: old_nonce,
+                pay_proof,
+                revocation_lock_commitment,
+                close_state_commitment,
+                state_commitment,
+            },
+        )
     }
 
     /// Extract data used to close the channel.

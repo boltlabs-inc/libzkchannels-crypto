@@ -46,7 +46,7 @@ pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
 pub struct RevocationLockCommitment(Commitment<G1Projective>);
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct RevocationLockBlindingFactor(BlindingFactor);
 

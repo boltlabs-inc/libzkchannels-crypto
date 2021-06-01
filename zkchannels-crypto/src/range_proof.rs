@@ -87,8 +87,8 @@ https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 
 use crate::{
     challenge::Challenge, ps_keys::PublicKey, ps_signatures::Signature, signature_proof::*,
+    types::*, Error,
 };
-use crate::{types::*, Error};
 
 /// The arity of our digits used in the range proof.
 const RP_PARAMETER_U: u64 = 128;

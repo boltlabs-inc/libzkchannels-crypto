@@ -32,10 +32,13 @@ pub mod revlock;
 pub use nonce::Nonce;
 pub use proofs::EstablishProof;
 pub use proofs::PayProof;
+
 /// Rename cryptographically correct `BlindedPayToken` to the semantic `PayToken`.
 pub use states::BlindedPayToken as PayToken;
+
 /// Rename cryptographically correct `CloseStateBlindedSignature` to the semantic `ClosingSignature`.
 pub use states::CloseStateBlindedSignature as ClosingSignature;
+
 pub use states::{
     ChannelId, CloseStateCommitment, CustomerBalance, MerchantBalance, StateCommitment,
 };

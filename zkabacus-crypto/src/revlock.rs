@@ -10,10 +10,7 @@ A pair ([`RevocationLock`], [`RevocationSecret`]) satisfies two properties:
 # use rand::thread_rng;
 let rs = RevocationSecret::new(&mut thread_rng());
 let rl = rs.revocation_lock();
-match rl.verify(&rs) {
-    Verification::Verified => (),
-    Verification::Failed => assert!(false),
-}
+assert!(matches!(rl.verify(&rs), Verification::Verified));
 ```
 
 FIXME(Marcella): un-ignore this doctest once things are implemented
@@ -22,20 +19,21 @@ FIXME(Marcella): un-ignore this doctest once things are implemented
 with only negligible probability (e.g. basically never).
 
 */
+use crate::{customer, types::*, Rng, Verification};
 use serde::*;
-
-use crate::customer;
-use crate::{Rng, Verification};
+use zkchannels_crypto::{
+    message::BlindingFactor, pedersen_commitments::Commitment, SerializeElement,
+};
 
 /// A revocation lock.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLock(());
+pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 
 /// A revocation secret.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationSecret(());
+pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
 
 /// A commitment to a [`RevocationLock`].
 ///
@@ -47,15 +45,15 @@ pub struct RevocationSecret(());
 /// [`RevocationLock`].
 ///
 /// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot feasibly generate a
-/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that /// verifies with the commitment.
+/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that verifies with the commitment.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLockCommitment(());
+pub struct RevocationLockCommitment(Commitment<G1Projective>);
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLockBlindingFactor(());
+pub struct RevocationLockBlindingFactor(BlindingFactor);
 
 #[allow(unused)]
 impl RevocationSecret {

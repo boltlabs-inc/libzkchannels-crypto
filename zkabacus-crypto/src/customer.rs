@@ -44,12 +44,13 @@ At any of these points, the customer can call the associated `close()` function 
 [`Closing`] information.
 */
 
-use crate::nonce::Nonce;
-use crate::proofs::EstablishProof;
-use crate::proofs::*;
-use crate::revlock::*;
-use crate::states::*;
-use crate::PaymentAmount;
+use crate::{
+    nonce::Nonce,
+    proofs::{BlindingFactors, EstablishProof, PayProof},
+    revlock::*,
+    states::*,
+    PaymentAmount,
+};
 
 /// Keys and parameters used throughout the lifetime of a channel.
 #[derive(Debug, Clone, Copy)]

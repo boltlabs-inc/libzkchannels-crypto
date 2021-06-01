@@ -9,23 +9,29 @@ Pedersen commitments \[1\] over the prime-order pairing groups from BLS12-381 \[
 2. D. Boneh, S. Gorbunov, R. Wahby, H. Wee, and Z. Zhang. "BLS Signatures, Version 4". Internet-draft, IETF.
 2021. URL: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 */
-use crate::types::*;
+use crate::{serde::*, types::*};
 use group::Group;
+use serde::*;
 
 /// A Pedersen commitment to a message.
-#[derive(Debug, Clone, Copy)]
-pub struct Commitment<G: Group<Scalar = Scalar>>(pub G);
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(bound = "G: SerializeElement")]
+pub struct Commitment<G>(#[serde(with = "SerializeElement")] G)
+where
+    G: Group<Scalar = Scalar>;
 
-#[allow(unused)]
 /// Parameters for Pedersen commitments.
 ///
 /// These are defined over the prime-order pairing groups from BLS12-381.
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(bound = "G: SerializeG1")]
 pub struct PedersenParameters<G>
 where
     G: Group<Scalar = Scalar>,
 {
+    #[serde(with = "SerializeElement")]
     h: G,
+    #[serde(with = "SerializeElement")]
     gs: Vec<G>,
 }
 

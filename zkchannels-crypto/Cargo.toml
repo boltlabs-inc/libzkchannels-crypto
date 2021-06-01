@@ -16,3 +16,5 @@ rand_core = "0.6.0"
 rand = "0.8.3"
 sha3 = "0.9.1"
 thiserror = "1"
+serde = "1.0.126"
+serde-big-array = { version = "0.3.2", features = ["const-generics"] }

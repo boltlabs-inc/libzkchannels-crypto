@@ -8,11 +8,8 @@ the customer is behaving correctly without learning any additional information a
 */
 use serde::*;
 
-use crate::nonce::*;
-use crate::revlock::*;
-use crate::states::*;
-use crate::{customer, merchant};
-use crate::{Rng, Verification};
+use crate::{customer, merchant, revlock::*, states::*, types::*, Nonce, Rng, Verification};
+use zkchannels_crypto::pedersen_commitments::Commitment;
 
 /**
 An establish proof demonstrates that a customer is trying to initialize a channel correctly.
@@ -154,9 +151,10 @@ Commitment to the [`State`] underlying a [`PayToken`] for use in a [`PayProof`]
 Note: this is a commitment to the [`State`] for use in the proof of knowledge of the opening
 of a _signature_. This makes it different from a [`StateCommitment`], which is used in the
 proof of knowledge of the opening of a _commitment_.
+
 */
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct PayTokenCommitment;
+pub struct PayTokenCommitment(Commitment<G2Projective>);
 
 /// Collects the information a merchant needs to verify a [`PayProof`].
 #[derive(Debug)]

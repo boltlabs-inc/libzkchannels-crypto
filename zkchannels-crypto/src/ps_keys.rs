@@ -11,7 +11,8 @@
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 //!
 
-use crate::{pedersen_commitments::PedersenParameters, types::*};
+use crate::{pedersen_commitments::PedersenParameters, types::*, SerializeElement};
+use serde::*;
 
 /// Pointcheval-Sanders secret key for multi-message operations.
 #[derive(Debug)]
@@ -21,18 +22,23 @@ pub(crate) struct SecretKey {
     pub x1: G1Affine,
 }
 
-/// Pointcheval-Sanders public key for multi-message operations.
-#[derive(Debug, Clone)]
+/// A public key for multi-message operations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PublicKey {
     /// G1 generator (g)
+    #[serde(with = "SerializeElement")]
     pub g1: G1Affine,
     /// Y_1 ... Y_l
+    #[serde(with = "SerializeElement")]
     pub y1s: Vec<G1Affine>,
     /// G2 generator (g~)
+    #[serde(with = "SerializeElement")]
     pub g2: G2Affine,
     /// X~
+    #[serde(with = "SerializeElement")]
     pub x2: G2Affine,
     /// Y~_1 ... Y~_l
+    #[serde(with = "SerializeElement")]
     pub y2s: Vec<G2Affine>,
 }
 

@@ -1,17 +1,17 @@
 //! Cryptographically random nonces.
+use crate::{types::*, Rng};
 use serde::*;
-
-use crate::Rng;
+use zkchannels_crypto::SerializeElement;
 
 #[allow(unused)]
 /// A random nonce.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct Nonce(());
+pub struct Nonce(#[serde(with = "SerializeElement")] Scalar);
 
 #[allow(unused)]
 impl Nonce {
     /// Generate a new cryptographically random nonce with the given random number generator.
-    pub(crate) fn new(_rng: &mut impl Rng) -> Self {
+    pub(crate) fn new(rng: &mut impl Rng) -> Self {
         todo!();
     }
 }

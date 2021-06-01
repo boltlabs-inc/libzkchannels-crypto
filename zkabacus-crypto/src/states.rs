@@ -21,16 +21,13 @@ to produce a [`CloseStateBlindedSignature`].
 
 The customer must blind the input and unblind the output with the _same_ blinding factor.
 */
-use serde::*;
 
-use crate::nonce::*;
-use crate::revlock::*;
-use crate::types::*;
-use crate::PaymentAmount;
-use crate::{customer, merchant};
-use crate::{Rng, Verification};
-use message::BlindingFactor;
-use ps_signatures::Signature;
+use crate::{customer, merchant, revlock::*, types::*, Nonce, PaymentAmount, Rng, Verification};
+use serde::*;
+use zkchannels_crypto::{
+    message::BlindingFactor, pedersen_commitments::Commitment, ps_blind_signatures::*,
+    ps_signatures::Signature,
+};
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]
@@ -188,14 +185,14 @@ impl CloseState<'_> {
 ///
 /// *Hiding*: A `StateCommitment` does not reveal anything about the underlying state.
 ///
-/// *Binding*: Given a `StateCommitment`, an adversary cannot efficiently generate a
+/// *Binding*: Given a `StateCommitment`, an adversary cannot feasibly generate a
 /// state and blinding factor that verify with the commitment.
 ///
 /// Note that there is no direct verification function on `StateCommitment`s. They are
 /// used to generate [`BlindedPayToken`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct StateCommitment(/*Commitment*/);
+pub struct StateCommitment(Commitment<G1Projective>);
 
 /// Commitment to a CloseState and a constant, fixed close tag.
 ///
@@ -205,14 +202,14 @@ pub struct StateCommitment(/*Commitment*/);
 ///
 /// *Hiding*: A `CloseStateCommitment` does not reveal anything about the underlying state.
 ///
-/// *Binding*: Given a `CloseStateCommitment`, an adversary cannot efficiently generate a
+/// *Binding*: Given a `CloseStateCommitment`, an adversary cannot feasibly generate a
 /// state and blinding factor that verify with the commitment.
 ///
 /// Note that there is no direct verification function on `CloseStateCommitment`s. They are
 /// used to generate [`CloseStateBlindedSignature`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateCommitment(/*Commitment*/);
+pub struct CloseStateCommitment(Commitment<G1Projective>);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone)]
@@ -222,7 +219,7 @@ pub(crate) struct CloseStateSignature;
 /// Blinded signature on a close state and a constant, fixed close tag.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateBlindedSignature;
+pub struct CloseStateBlindedSignature(BlindedSignature);
 
 /// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
 #[derive(Debug)]
@@ -278,7 +275,7 @@ pub(crate) struct PayToken(Signature);
 
 /// A blinded pay token.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindedPayToken(/*BlindedSignature*/);
+pub struct BlindedPayToken(BlindedSignature);
 
 /// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
 #[derive(Debug, Clone, Copy)]

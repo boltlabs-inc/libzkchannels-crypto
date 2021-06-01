@@ -16,7 +16,7 @@ use serde::*;
 /// A Pedersen commitment to a message.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(bound = "G: SerializeElement")]
-pub struct Commitment<G>(#[serde(with = "SerializeElement")] G)
+pub struct Commitment<G>(#[serde(with = "SerializeElement")] pub(crate) G)
 where
     G: Group<Scalar = Scalar>;
 

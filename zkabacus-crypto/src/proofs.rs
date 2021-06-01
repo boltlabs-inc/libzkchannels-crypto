@@ -158,15 +158,13 @@ pub struct PayTokenCommitment(Commitment<G2Projective>);
 
 /// Collects the information a merchant needs to verify a [`PayProof`].
 #[derive(Debug)]
-pub struct PayProofVerification {
-    /// Blinded, unused pay token from the previous [`State`].
-    pub blinded_pay_token: BlindedPayToken,
+pub struct PayProofVerification<'a> {
     /// Commitment to the revocation lock in the previous [`State`].
-    pub revocation_lock_commitment: RevocationLockCommitment,
+    pub revocation_lock_commitment: &'a RevocationLockCommitment,
     /// Commitment to the new channel [`State`].
-    pub state_commitment: StateCommitment,
+    pub state_commitment: &'a StateCommitment,
     /// Commitment to the new [`CloseState`].
-    pub close_state_commitment: CloseStateCommitment,
+    pub close_state_commitment: &'a CloseStateCommitment,
     /// Expected nonce revealed at the beginning of Pay.
     pub nonce: Nonce,
     /// Expected payment amount.

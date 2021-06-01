@@ -4,10 +4,11 @@
 use crate::{
     customer,
     nonce::Nonce,
-    proofs::{EstablishProof, EstablishProofVerification, PayProof},
+    proofs::{EstablishProof, EstablishProofVerification, PayProof, PayProofVerification},
     revlock::*,
     states::*,
     types::*,
+    PaymentAmount,
     Verification::{Failed, Verified},
 };
 use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPair};
@@ -30,7 +31,6 @@ impl Config {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
-
         let signing_keypair = KeyPair::new(5, &mut rng);
         let revocation_commitment_parameters = PedersenParameters::new(1, &mut rng);
 
@@ -110,13 +110,32 @@ impl Config {
     */
     pub fn allow_payment<'a>(
         &'a self,
-        _nonce: &Nonce,
-        _pay_proof: PayProof,
-        _revocation_commitment: RevocationLockCommitment,
-        _state_commitment: StateCommitment,
-        _close_state_commitment: CloseStateCommitment,
+        amount: PaymentAmount,
+        nonce: &Nonce,
+        pay_proof: PayProof,
+        revocation_lock_commitment: RevocationLockCommitment,
+        state_commitment: StateCommitment,
+        close_state_commitment: CloseStateCommitment,
     ) -> Option<(Unrevoked<'a>, crate::ClosingSignature)> {
-        todo!();
+        let verification_objects = PayProofVerification {
+            revocation_lock_commitment: &revocation_lock_commitment,
+            state_commitment: &state_commitment,
+            close_state_commitment: &close_state_commitment,
+            nonce: *nonce,
+            amount,
+        };
+        let mut rng = rand::thread_rng();
+        match pay_proof.verify(&self, &verification_objects) {
+            Verified => Some((
+                Unrevoked {
+                    config: &self,
+                    revocation_lock_commitment,
+                    state_commitment,
+                },
+                CloseStateBlindedSignature::new(&mut rng, &self, close_state_commitment),
+            )),
+            Failed => None,
+        }
     }
 }
 /**
@@ -126,7 +145,7 @@ information for the previous channel state.
 #[derive(Debug)]
 pub struct Unrevoked<'a> {
     config: &'a Config,
-    revocation_commitment: RevocationLockCommitment,
+    revocation_lock_commitment: RevocationLockCommitment,
     state_commitment: StateCommitment,
 }
 
@@ -142,10 +161,24 @@ impl<'a> Unrevoked<'a> {
     */
     pub fn complete_payment(
         self,
-        _revocation_lock: &RevocationLock,
-        _revocation_secret: &RevocationSecret,
-        _revocation_blinding_factor: &RevocationLockBlindingFactor,
+        revocation_lock: &RevocationLock,
+        revocation_secret: &RevocationSecret,
+        revocation_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Result<crate::PayToken, Unrevoked<'a>> {
-        todo!();
+        let mut rng = rand::thread_rng();
+        // Verify that the provided parameters are consistent and they match the stored commitment.
+        match self.revocation_lock_commitment.verify(
+            self.config,
+            revocation_secret,
+            revocation_lock,
+            revocation_blinding_factor,
+        ) {
+            Verified => Ok(BlindedPayToken::new(
+                &mut rng,
+                self.config,
+                &self.state_commitment,
+            )),
+            Failed => Err(self),
+        }
     }
 }

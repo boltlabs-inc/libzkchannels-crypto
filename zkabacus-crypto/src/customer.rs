@@ -52,11 +52,13 @@ use crate::{
     types::*,
     PaymentAmount,
 };
-use zkchannels_crypto::pedersen_commitments::PedersenParameters;
+use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::PublicKey};
 
 /// Keys and parameters used throughout the lifetime of a channel.
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// Merchant's signing and proofs public key
+    pub(crate) merchant_public_key: PublicKey,
     pub(crate) revocation_parameters: PedersenParameters<G1Projective>,
 }
 

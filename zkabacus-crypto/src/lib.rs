@@ -53,6 +53,8 @@ mod types {
     pub use zkchannels_crypto::*;
 }
 
+use types::*;
+
 /// Trait synonym for a cryptographically secure random number generator.
 pub trait Rng: rand::CryptoRng + rand::RngCore {}
 impl<T: rand::CryptoRng + rand::RngCore> Rng for T {}
@@ -91,6 +93,9 @@ impl PaymentAmount {
         todo!()
     }
 }
+
+/// The "CLOSE" scalar constant, used in place of a nonce when committing to a [`CloseState`](states::CloseState).
+pub const CLOSE_SCALAR: Scalar = Scalar::from_raw([0, 0, 0, u64::from_le_bytes(*b"\0\0\0CLOSE")]);
 
 #[cfg(test)]
 mod tests {}

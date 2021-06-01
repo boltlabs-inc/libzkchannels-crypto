@@ -15,4 +15,8 @@ impl Nonce {
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
         Self(Scalar::random(rng))
     }
+
+    pub(crate) fn to_scalar(&self) -> Scalar {
+        self.0
+    }
 }

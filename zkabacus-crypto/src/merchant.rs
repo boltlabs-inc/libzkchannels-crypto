@@ -6,16 +6,20 @@ use crate::{
     proofs::{EstablishProof, PayProof},
     revlock::*,
     states::*,
-    states::{CloseStateCommitment, StateCommitment},
+    types::*,
 };
+use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPair};
 
 /// A merchant that is ready to establish channels and process payments.
 ///
 /// Holds keys and parameters used throughout the lifetime of a merchant node, across
 /// all its channels.
-#[derive(Debug, Clone)]
-#[allow(missing_copy_implementations)]
-pub struct Config;
+#[derive(Debug)]
+pub struct Config {
+    /// KeyPair for signing, blind signing, and proofs.
+    pub(crate) signing_keypair: KeyPair,
+    pub(crate) revocation_parameters: PedersenParameters<G1Projective>,
+}
 
 impl Config {
     /// Instantiate a new merchant with all parameters.

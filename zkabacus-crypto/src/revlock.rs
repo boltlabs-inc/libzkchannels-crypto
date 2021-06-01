@@ -19,7 +19,7 @@ FIXME(Marcella): un-ignore this doctest once things are implemented
 with only negligible probability (e.g. basically never).
 
 */
-use crate::{customer, types::*, Rng, Verification};
+use crate::{customer, merchant, types::*, Rng, Verification};
 use ff::Field;
 use serde::*;
 use sha3::{Digest, Sha3_256};
@@ -60,6 +60,12 @@ pub struct RevocationLockCommitment(Commitment<G1Projective>);
 #[allow(missing_copy_implementations)]
 pub struct RevocationLockBlindingFactor(BlindingFactor);
 
+impl RevocationLockBlindingFactor {
+    pub(crate) fn new(rng: &mut impl Rng) -> Self {
+        Self(BlindingFactor::new(rng))
+    }
+}
+
 #[allow(unused)]
 impl RevocationSecret {
     /// Create a new, random revocation secret.
@@ -90,6 +96,22 @@ impl RevocationLock {
     pub(crate) fn verify(&self, rs: &RevocationSecret) -> Verification {
         Verification::from(self.0 == rs.revocation_lock().0)
     }
+
+    pub(crate) fn commit(
+        &self,
+        params: &customer::Config,
+        revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
+    ) -> RevocationLockCommitment {
+        RevocationLockCommitment(
+            params
+                .revocation_parameters
+                .commit(&Message::from(self.0), revocation_lock_blinding_factor.0),
+        )
+    }
+
+    pub(crate) fn to_scalar(&self) -> Scalar {
+        self.0
+    }
 }
 
 #[allow(unused)]
@@ -99,7 +121,7 @@ impl RevocationLockCommitment {
     /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is derived from the [`RevocationSecret`].
     pub(crate) fn verify(
         &self,
-        parameters: &customer::Config,
+        parameters: &merchant::Config,
         revocation_secret: &RevocationSecret,
         revocation_lock: &RevocationLock,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,

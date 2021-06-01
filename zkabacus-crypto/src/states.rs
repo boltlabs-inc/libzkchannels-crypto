@@ -22,23 +22,53 @@ to produce a [`CloseStateBlindedSignature`].
 The customer must blind the input and unblind the output with the _same_ blinding factor.
 */
 
-use crate::{customer, merchant, revlock::*, Nonce, PaymentAmount, Rng, Verification};
+use crate::{
+    customer, merchant, revlock::*, types::*, Nonce, PaymentAmount, Rng, Verification, CLOSE_SCALAR,
+};
 use serde::*;
 use zkchannels_crypto::{
-    message::BlindingFactor, ps_blind_signatures::*, ps_signatures::Signature,
+    message::{BlindingFactor, Message},
+    ps_blind_signatures::*,
+    ps_signatures::{Signature, Verifier},
 };
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]
 pub struct ChannelId;
 
+impl ChannelId {
+    fn to_scalar(self) -> Scalar {
+        todo!()
+    }
+}
+
 /// Channel balance for merchant.
 #[derive(Debug, Clone, Copy)]
 pub struct MerchantBalance;
 
+impl MerchantBalance {
+    fn apply(self, _amt: PaymentAmount) -> Self {
+        todo!()
+    }
+
+    fn to_scalar(self) -> Scalar {
+        todo!()
+    }
+}
+
 /// Channel balance for customer.
 #[derive(Debug, Clone, Copy)]
 pub struct CustomerBalance;
+
+impl CustomerBalance {
+    fn apply(self, _amt: PaymentAmount) -> Self {
+        todo!()
+    }
+
+    fn to_scalar(self) -> Scalar {
+        todo!()
+    }
+}
 
 /// Describes the complete state of the channel with the given ID.
 #[allow(missing_copy_implementations)]
@@ -108,12 +138,14 @@ impl State {
 
     /// Form a commitment (and corresponding blinding factor) to the `State`'s
     /// [`RevocationLock`].
-    pub fn commit_to_revocation<'a>(
-        &'a self,
-        _rng: &mut impl Rng,
-        _param: &customer::Config,
+    pub fn commit_to_revocation(
+        &self,
+        rng: &mut impl Rng,
+        param: &customer::Config,
     ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
-        todo!();
+        let blinding_factor = RevocationLockBlindingFactor::new(rng);
+        let commitment = self.revocation_lock().commit(param, &blinding_factor);
+        (commitment, blinding_factor)
     }
 
     /// Get the [`CloseState`] corresponding to this `State`.
@@ -143,8 +175,14 @@ impl State {
     /// *deducts* from the [`MerchantBalance`].
     ///
     /// This is typically called by the customer.
-    pub fn apply_payment<'a>(&'a mut self, _rng: &mut impl Rng, _amt: &PaymentAmount) -> State {
-        todo!();
+    pub fn apply_payment(&self, rng: &mut impl Rng, amt: PaymentAmount) -> State {
+        State {
+            channel_id: self.channel_id,
+            nonce: Nonce::new(rng),
+            revocation_secret: RevocationSecret::new(rng),
+            customer_balance: self.customer_balance.apply(amt),
+            merchant_balance: self.merchant_balance.apply(amt),
+        }
     }
 
     /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
@@ -155,10 +193,30 @@ impl State {
     /// This is typically called by the customer.
     pub fn commit<'a>(
         &'a self,
-        _rng: &mut impl Rng,
-        _param: &customer::Config,
+        rng: &mut impl Rng,
+        param: &customer::Config,
     ) -> (StateCommitment, PayTokenBlindingFactor) {
-        todo!();
+        let msg = self.to_message();
+        let blinding_factor = BlindingFactor::new(rng);
+        let commitment = param
+            .merchant_public_key
+            .blind_message(&msg, blinding_factor);
+
+        (
+            StateCommitment(commitment),
+            PayTokenBlindingFactor(blinding_factor),
+        )
+    }
+
+    /// Get the message representation of a State.
+    fn to_message(&self) -> Message {
+        Message::from(vec![
+            self.channel_id.to_scalar(),
+            self.nonce.to_scalar(),
+            self.revocation_secret.revocation_lock().to_scalar(),
+            self.customer_balance.to_scalar(),
+            self.merchant_balance.to_scalar(),
+        ])
     }
 }
 
@@ -170,10 +228,30 @@ impl CloseState<'_> {
     /// This is typically called by the customer.
     pub fn commit<'a>(
         &'a self,
-        _rng: &mut impl Rng,
-        _param: &customer::Config,
+        rng: &mut impl Rng,
+        param: &customer::Config,
     ) -> (CloseStateCommitment, CloseStateBlindingFactor) {
-        todo!();
+        let msg = self.to_message();
+        let blinding_factor = BlindingFactor::new(rng);
+        let commitment = param
+            .merchant_public_key
+            .blind_message(&msg, blinding_factor);
+
+        (
+            CloseStateCommitment(commitment),
+            CloseStateBlindingFactor(blinding_factor),
+        )
+    }
+
+    /// Get the message representation of a CloseState.
+    fn to_message(&self) -> Message {
+        Message::from(vec![
+            self.channel_id.to_scalar(),
+            CLOSE_SCALAR,
+            self.revocation_lock.to_scalar(),
+            self.customer_balance.to_scalar(),
+            self.merchant_balance.to_scalar(),
+        ])
     }
 }
 
@@ -213,7 +291,7 @@ pub struct CloseStateCommitment(BlindedMessage);
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct CloseStateSignature;
+pub(crate) struct CloseStateSignature(Signature);
 
 /// Blinded signature on a close state and a constant, fixed close tag.
 #[derive(Debug, Serialize, Deserialize)]
@@ -223,7 +301,7 @@ pub struct CloseStateBlindedSignature(BlindedSignature);
 /// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
 #[derive(Debug)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct CloseStateBlindingFactor;
+pub(crate) struct CloseStateBlindingFactor(BlindingFactor);
 
 #[allow(unused)]
 impl CloseStateBlindedSignature {
@@ -231,19 +309,19 @@ impl CloseStateBlindedSignature {
     ///
     /// This is typically called by the merchant.
     pub(crate) fn new(
-        _rng: &mut impl Rng,
-        _param: &merchant::Config,
-        _com: CloseStateCommitment,
+        rng: &mut impl Rng,
+        param: &merchant::Config,
+        com: CloseStateCommitment,
     ) -> CloseStateBlindedSignature {
-        todo!();
+        CloseStateBlindedSignature(param.signing_keypair.blind_sign(rng, &com.0))
     }
 
     /// Unblind a [`CloseStateBlindedSignature`] to get an (unblinded) [`CloseStateSignature`]
     /// using the given [`CloseStateBlindingFactor`].
     ///
     /// This is typically called by the customer.
-    pub(crate) fn unblind(self, _bf: CloseStateBlindingFactor) -> CloseStateSignature {
-        todo!();
+    pub(crate) fn unblind(self, bf: CloseStateBlindingFactor) -> CloseStateSignature {
+        CloseStateSignature(self.0.unblind(bf.0))
     }
 }
 
@@ -254,15 +332,18 @@ impl CloseStateSignature {
     /// This is typically called by the customer.
     pub(crate) fn verify(
         &self,
-        _param: &customer::Config,
-        _close_state: CloseState<'_>,
+        param: &customer::Config,
+        close_state: CloseState<'_>,
     ) -> Verification {
-        todo!();
+        param
+            .merchant_public_key
+            .verify(&close_state.to_message(), &self.0)
+            .into()
     }
 
     /// Randomize the `CloseStateSignature` in place.
-    pub(crate) fn randomize(&mut self, _rng: &mut impl Rng) {
-        todo!();
+    pub(crate) fn randomize(&mut self, rng: &mut impl Rng) {
+        self.0.randomize(rng);
     }
 }
 
@@ -285,19 +366,15 @@ impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub(crate) fn new(
-        _rng: &mut impl Rng,
-        _param: &merchant::Config,
-        _com: StateCommitment,
-    ) -> Self {
-        todo!();
+    pub(crate) fn new(rng: &mut impl Rng, param: &merchant::Config, com: StateCommitment) -> Self {
+        BlindedPayToken(param.signing_keypair.blind_sign(rng, &com.0))
     }
 
     /// Unblind a [`BlindedPayToken`] to get an (unblinded) [`PayToken`].
     ///
     /// This is typically called by the customer.
-    pub(crate) fn unblind(self, _bf: PayTokenBlindingFactor) -> PayToken {
-        todo!();
+    pub(crate) fn unblind(self, bf: PayTokenBlindingFactor) -> PayToken {
+        PayToken(self.0.unblind(bf.0))
     }
 }
 
@@ -306,8 +383,11 @@ impl PayToken {
     /// Verify a `PayToken` against the given [`State`].
     ///
     /// This is typically called by the customer.
-    pub fn verify(&self, _param: &customer::Config, _state: &State) -> Verification {
-        todo!();
+    pub fn verify(&self, param: &customer::Config, state: &State) -> Verification {
+        param
+            .merchant_public_key
+            .verify(&state.to_message(), &self.0)
+            .into()
     }
 }
 
@@ -319,7 +399,7 @@ mod test {
     #[should_panic]
     fn apply_payment_works() {
         let mut rng = rand::thread_rng();
-        let mut s = State::new(&mut rng, ChannelId, MerchantBalance, CustomerBalance);
-        let _s_prev = s.apply_payment(&mut rng, &PaymentAmount::pay_merchant(1));
+        let s = State::new(&mut rng, ChannelId, MerchantBalance, CustomerBalance);
+        let _s_prev = s.apply_payment(&mut rng, PaymentAmount::pay_merchant(1));
     }
 }

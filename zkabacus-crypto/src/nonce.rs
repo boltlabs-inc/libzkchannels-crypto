@@ -16,6 +16,7 @@ impl Nonce {
         Self(Scalar::random(rng))
     }
 
+    /// Convert a nonce to its canonical `Scalar` representation.
     pub(crate) fn to_scalar(&self) -> Scalar {
         self.0
     }

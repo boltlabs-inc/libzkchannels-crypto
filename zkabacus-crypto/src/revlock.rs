@@ -3,17 +3,7 @@ This library describes revocation pairs, a formalization of hash locks.
 
 A pair ([`RevocationLock`], [`RevocationSecret`]) satisfies two properties:
 
-*Correctness*: A correctly generated revocation pair will always verify:
-
-```ignore
-# use libzkchannels_toolkit::{revlock::*, Verification};
-# use rand::thread_rng;
-let rs = RevocationSecret::new(&mut thread_rng());
-let rl = rs.revocation_lock();
-assert!(matches!(rl.verify(&rs), Verification::Verified));
-```
-
-FIXME(Marcella): un-ignore this doctest once things are implemented
+*Correctness*: A correctly generated revocation pair will always verify.
 
 *Security*: Given a revocation lock, an adversary can generate a revocation secret that verifies
 with only negligible probability (e.g. basically never).
@@ -50,7 +40,7 @@ pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
 /// [`RevocationLock`].
 ///
 /// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot feasibly generate a
-/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that verifies with the commitment.
+/// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that verify with the commitment.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct RevocationLockCommitment(Commitment<G1Projective>);
@@ -61,12 +51,12 @@ pub struct RevocationLockCommitment(Commitment<G1Projective>);
 pub struct RevocationLockBlindingFactor(BlindingFactor);
 
 impl RevocationLockBlindingFactor {
+    /// Generate a blinding factor uniformly at random.
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
         Self(BlindingFactor::new(rng))
     }
 }
 
-#[allow(unused)]
 impl RevocationSecret {
     /// Create a new, random revocation secret.
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
@@ -90,25 +80,25 @@ impl RevocationSecret {
     }
 }
 
-#[allow(unused)]
 impl RevocationLock {
     /// Validate a revocation pair.
     pub(crate) fn verify(&self, rs: &RevocationSecret) -> Verification {
         Verification::from(self.0 == rs.revocation_lock().0)
     }
 
+    /// Form a commitment to the revocation lock.
     pub(crate) fn commit(
         &self,
         params: &customer::Config,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> RevocationLockCommitment {
-        RevocationLockCommitment(
-            params
-                .revocation_parameters
-                .commit(&Message::from(self.0), revocation_lock_blinding_factor.0),
-        )
+        RevocationLockCommitment(params.revocation_parameters.commit(
+            &Message::from(self.to_scalar()),
+            revocation_lock_blinding_factor.0,
+        ))
     }
 
+    /// Convert a revocation lock to its canonical `Scalar` representation.
     pub(crate) fn to_scalar(&self) -> Scalar {
         self.0
     }
@@ -118,7 +108,8 @@ impl RevocationLock {
 impl RevocationLockCommitment {
     /// Validate the [`RevocationLockCommitment`] against the given parameters and blinding factor.
     ///
-    /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is derived from the [`RevocationSecret`].
+    /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is
+    /// derived from the [`RevocationSecret`].
     pub(crate) fn verify(
         &self,
         parameters: &merchant::Config,
@@ -129,7 +120,7 @@ impl RevocationLockCommitment {
         let verify_pair = revocation_lock.verify(revocation_secret);
         let verify_commitment = parameters.revocation_parameters.decommit(
             self.0,
-            &Message::from(revocation_lock.0),
+            &Message::from(revocation_lock.to_scalar()),
             revocation_lock_blinding_factor.0,
         );
 
@@ -138,5 +129,18 @@ impl RevocationLockCommitment {
         } else {
             Verification::Failed
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rand::thread_rng;
+
+    #[test]
+    pub fn revlock_is_correct() {
+        let rs = RevocationSecret::new(&mut thread_rng());
+        let rl = rs.revocation_lock();
+        assert!(matches!(rl.verify(&rs), Verification::Verified));
     }
 }

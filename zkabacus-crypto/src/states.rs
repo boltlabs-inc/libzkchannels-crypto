@@ -98,12 +98,18 @@ pub(crate) struct CloseState<'a> {
 impl State {
     /// Generate a new `State` with the given balances and ID.
     pub fn new(
-        _rng: &mut impl Rng,
-        _channel_id: ChannelId,
-        _merchant_balance: MerchantBalance,
-        _customer_balance: CustomerBalance,
+        rng: &mut impl Rng,
+        channel_id: ChannelId,
+        merchant_balance: MerchantBalance,
+        customer_balance: CustomerBalance,
     ) -> Self {
-        todo!();
+        Self {
+            channel_id,
+            nonce: Nonce::new(rng),
+            revocation_secret: RevocationSecret::new(rng),
+            merchant_balance,
+            customer_balance,
+        }
     }
 
     /// Get the channel ID for this state.
@@ -167,12 +173,12 @@ impl State {
         }
     }
 
-    /// Apply a payment to the state by updating the balances appropriately and generating new
-    /// [`Nonce`] and [`RevocationLock`] (returning the corresponding [`RevocationSecret`]).
+    /// Apply a payment to the state by updating the balances appropriately and generating a new
+    /// [`Nonce`] and [`RevocationLock`].
     ///
-    /// A positive payment amount *deducts* from the [`CustomerBalance`] and *adds* to the
-    /// [`MerchantBalance`]; a negative payment amount *adds* to the [`CustomerBalance`] and
-    /// *deducts* from the [`MerchantBalance`].
+    /// A positive payment amount *decreases* the [`CustomerBalance`] and *increases* the
+    /// [`MerchantBalance`]; a negative payment amount *increases* to the [`CustomerBalance`] and
+    /// *decreases* the [`MerchantBalance`].
     ///
     /// This is typically called by the customer.
     pub fn apply_payment(&self, rng: &mut impl Rng, amt: PaymentAmount) -> State {
@@ -186,7 +192,7 @@ impl State {
     }
 
     /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
-    /// tuple (channel_id, nonce, revocation_lock, merchant_balance, customer_balance).
+    /// tuple (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
     ///
     /// Note that this _does not_ include the revocation secret!
     ///
@@ -255,15 +261,7 @@ impl CloseState<'_> {
     }
 }
 
-/// Commitment to a State: (channel_id, nonce, revocation_lock, merchant_balance, customer_balance).
-/// This satisfies the standard properties of a commitment scheme:
-///
-/// *Correctness*: A correctly-generated commitment will always verify.
-///
-/// *Hiding*: A `StateCommitment` does not reveal anything about the underlying state.
-///
-/// *Binding*: Given a `StateCommitment`, an adversary cannot feasibly generate a
-/// state and blinding factor that verify with the commitment.
+/// Commitment to a State: (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
 ///
 /// Note that there is no direct verification function on `StateCommitment`s. They are
 /// used to generate [`BlindedPayToken`]s.
@@ -272,15 +270,6 @@ impl CloseState<'_> {
 pub struct StateCommitment(BlindedMessage);
 
 /// Commitment to a CloseState and a constant, fixed close tag.
-///
-/// This satisfies the standard properties of a commitment scheme:
-///
-/// *Correctness*: A correctly-generated commitment will always verify.
-///
-/// *Hiding*: A `CloseStateCommitment` does not reveal anything about the underlying state.
-///
-/// *Binding*: Given a `CloseStateCommitment`, an adversary cannot feasibly generate a
-/// state and blinding factor that verify with the commitment.
 ///
 /// Note that there is no direct verification function on `CloseStateCommitment`s. They are
 /// used to generate [`CloseStateBlindedSignature`]s.

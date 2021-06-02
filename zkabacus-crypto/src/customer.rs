@@ -75,7 +75,6 @@ pub struct Ready {
 
 /// A channel that has been requested but not yet approved.
 #[derive(Debug)]
-#[allow(missing_copy_implementations)]
 pub struct Requested {
     config: Config,
     state: State,
@@ -104,14 +103,17 @@ impl Requested {
         merchant_balance: MerchantBalance,
         customer_balance: CustomerBalance,
     ) -> (Self, RequestMessage) {
+        // Construct initial state.
         let mut rng = rand::thread_rng();
         let state = State::new(&mut rng, channel_id, merchant_balance, customer_balance);
         let close_state = state.close_state();
 
+        // Commit to state and corresponding close state.
         let (state_commitment, pay_token_blinding_factor) = state.commit(&mut rng, &config);
         let (close_state_commitment, close_state_blinding_factor) =
             close_state.commit(&mut rng, &config);
 
+        // Form proof that the state / close state are correct.
         let proof = EstablishProof::new(
             &mut rng,
             &config,
@@ -120,12 +122,6 @@ impl Requested {
             pay_token_blinding_factor,
         );
 
-        let request_message = RequestMessage {
-            close_state_commitment,
-            state_commitment,
-            proof,
-        };
-
         (
             Self {
                 config,
@@ -133,7 +129,11 @@ impl Requested {
                 close_state_blinding_factor,
                 pay_token_blinding_factor,
             },
-            request_message,
+            RequestMessage {
+                close_state_commitment,
+                state_commitment,
+                proof,
+            },
         )
     }
 
@@ -142,8 +142,8 @@ impl Requested {
         self,
         closing_signature: crate::ClosingSignature,
     ) -> Result<Inactive, Requested> {
+        // Unblind close signature and verify it is correct.
         let close_state_signature = closing_signature.unblind(self.close_state_blinding_factor);
-
         match close_state_signature.verify(&self.config, self.state.close_state()) {
             Verified => Ok(Inactive {
                 config: self.config,
@@ -158,7 +158,6 @@ impl Requested {
 
 /// A channel that has been approved but not yet activated.
 #[derive(Debug)]
-#[allow(missing_copy_implementations)]
 pub struct Inactive {
     config: Config,
     state: State,
@@ -169,6 +168,7 @@ pub struct Inactive {
 impl Inactive {
     /// Activate the channel with the fresh pay token from the merchant.
     pub fn activate(self, pay_token: crate::PayToken) -> Result<Ready, Inactive> {
+        // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
         match unblinded_pay_token.verify(&self.config, &self.state) {
             Verified => Ok(Ready {
@@ -217,7 +217,7 @@ impl Ready {
             for_close_state: close_state_bf,
         };
 
-        // Form proof.
+        // Form proof that the payment correctly updates a valid state.
         let pay_proof = PayProof::new(
             &mut rng,
             &self.config,
@@ -284,7 +284,7 @@ impl Started {
         self,
         closing_signature: crate::ClosingSignature,
     ) -> Result<(Locked, LockMessage), Started> {
-        // Unblind signature and verify it is correct.
+        // Unblind close signature and verify it is correct.
         let close_state_signature =
             closing_signature.unblind(self.blinding_factors.for_close_state);
         match close_state_signature.verify(&self.config, self.new_state.close_state()) {
@@ -324,7 +324,7 @@ pub struct Locked {
 impl Locked {
     /// Unlock the channel by validating the merchant's approval message.
     pub fn unlock(self, pay_token: crate::PayToken) -> Result<Ready, Locked> {
-        // Unblind signature and verify it is correct.
+        // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
         match unblinded_pay_token.verify(&self.config, &self.state) {
             Verified => Ok(Ready {

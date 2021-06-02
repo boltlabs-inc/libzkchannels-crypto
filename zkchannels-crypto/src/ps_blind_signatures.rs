@@ -84,7 +84,6 @@ impl KeyPair {
     ///
     /// **Warning**: this should *only* be used if the signer has verified a proof of knowledge of
     /// the opening of the `BlindedMessage`.
-    /// FIXME(Marcella) - make this warning more forceful.
     pub fn blind_sign(&self, rng: &mut impl Rng, msg: &BlindedMessage) -> BlindedSignature {
         let u = Scalar::random(rng);
 

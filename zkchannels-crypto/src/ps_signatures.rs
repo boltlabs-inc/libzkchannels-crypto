@@ -130,3 +130,115 @@ impl Verifier for KeyPair {
         self.public_key().verify(msg, sig)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::iter;
+
+    #[test]
+    fn verify_signed_message() {
+        let mut rng = crate::test::rng();
+        let length = 3;
+        let kp = KeyPair::new(length, &mut rng);
+        let msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(length)
+                .collect(),
+        );
+
+        let sig = kp.try_sign(&mut rng, &msg).unwrap();
+
+        assert!(
+            kp.verify(&msg, &sig),
+            "Signature didn't verify!! {:?}, {:?}",
+            kp,
+            msg
+        );
+    }
+
+    #[test]
+    fn fail_verification_of_different_message() {
+        let mut rng = crate::test::rng();
+        let length = 3;
+        let kp = KeyPair::new(length, &mut rng);
+        let msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(length)
+                .collect(),
+        );
+
+        let sig = kp.try_sign(&mut rng, &msg).unwrap();
+        let bad_msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(length)
+                .collect(),
+        );
+
+        assert_ne!(
+            &*msg, &*bad_msg,
+            "RNG failed to generate a different message."
+        );
+        assert!(
+            !kp.verify(&bad_msg, &sig),
+            "Signature verified on the wrong message!",
+        );
+    }
+
+    #[test]
+    fn fail_mismatched_message_length() {
+        let mut rng = crate::test::rng();
+        let kp = KeyPair::new(1, &mut rng);
+        let msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(10)
+                .collect(),
+        );
+
+        let _ = kp
+            .try_sign(&mut rng, &msg)
+            .expect_err("Signing should fail with mismatched message length");
+    }
+
+    #[test]
+    fn fail_verification_with_wrong_keypair() {
+        let mut rng = crate::test::rng();
+        let length = 3;
+        let kp = KeyPair::new(length, &mut rng);
+        let msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(length)
+                .collect(),
+        );
+
+        let bad_kp = KeyPair::new(length, &mut rng);
+        let bad_sig = bad_kp.try_sign(&mut rng, &msg).unwrap();
+
+        assert!(
+            !kp.verify(&msg, &bad_sig),
+            "Signature from a different keypair verified!",
+        );
+    }
+
+    #[test]
+    fn fail_unit_signature() {
+        let mut rng = crate::test::rng();
+        let length = 3;
+        let kp = KeyPair::new(length, &mut rng);
+        let msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(length)
+                .collect(),
+        );
+
+        let bad_sig = Signature {
+            sigma1: G1Affine::identity(),
+            sigma2: G1Projective::random(&mut rng).into(),
+        };
+
+        assert!(
+            !kp.verify(&msg, &bad_sig),
+            "Bad signature with sigma1 = 1 verified!"
+        );
+    }
+}

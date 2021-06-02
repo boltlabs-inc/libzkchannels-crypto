@@ -100,3 +100,34 @@ impl KeyPair {
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use crate::{ps_keys::*, ps_signatures::*, types::*};
+    use bls12_381::Scalar;
+    use ff::Field;
+    use std::iter;
+
+    #[test]
+    fn blind_signing_is_correct() {
+        let mut rng = crate::test::rng();
+        let length = 3;
+        let kp = KeyPair::new(length, &mut rng);
+        let msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(length)
+                .collect(),
+        );
+
+        let bf = BlindingFactor::new(&mut rng);
+        let blinded_msg = kp
+            .public_key()
+            .blind_message(&msg, bf)
+            .expect("Impossible: message is the same size as key.");
+        let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
+        let sig = blind_sig.unblind(bf);
+
+        assert!(kp.verify(&msg, &sig), "Signature didn't verify!!");
+    }
+}

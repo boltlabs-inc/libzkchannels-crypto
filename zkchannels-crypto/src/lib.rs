@@ -70,57 +70,13 @@ mod types {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{ps_keys::*, ps_signatures::*, types::*};
-    use bls12_381::Scalar;
-    use ff::Field;
-    use std::iter;
+mod test {
+    use crate::types::*;
+    use rand::SeedableRng;
 
-    #[test]
-    fn make_keypair() {
-        let mut rng = rand::thread_rng();
-        let _kp = KeyPair::new(3, &mut rng);
-    }
+    pub const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
 
-    #[test]
-    fn signing_is_correct() {
-        let mut rng = rand::thread_rng();
-        let length = 3;
-        let kp = KeyPair::new(length, &mut rng);
-        let msg = Message::new(
-            iter::repeat_with(|| Scalar::random(&mut rng))
-                .take(length)
-                .collect(),
-        );
-
-        let sig = kp.try_sign(&mut rng, &msg).unwrap();
-        assert!(
-            kp.verify(&msg, &sig),
-            "Signature didn't verify!! {:?}, {:?}",
-            kp,
-            msg
-        );
-    }
-
-    #[test]
-    fn blind_signing_is_correct() {
-        let mut rng = rand::thread_rng();
-        let length = 3;
-        let kp = KeyPair::new(length, &mut rng);
-        let msg = Message::new(
-            iter::repeat_with(|| Scalar::random(&mut rng))
-                .take(length)
-                .collect(),
-        );
-
-        let bf = BlindingFactor::new(&mut rng);
-        let blinded_msg = kp
-            .public_key()
-            .blind_message(&msg, bf)
-            .expect("Impossible: message is the same size as key.");
-        let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
-        let sig = blind_sig.unblind(bf);
-
-        assert!(kp.verify(&msg, &sig), "Signature didn't verify!!");
+    pub fn rng() -> impl Rng {
+        rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
     }
 }

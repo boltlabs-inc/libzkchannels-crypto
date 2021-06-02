@@ -145,6 +145,7 @@ impl Requested {
         // Unblind close signature and verify it is correct.
         let close_state_signature = closing_signature.unblind(self.close_state_blinding_factor);
         match close_state_signature.verify(&self.config, self.state.close_state()) {
+            // If so, save it and enter the `Inactive` state.
             Verified => Ok(Inactive {
                 config: self.config,
                 state: self.state,
@@ -171,6 +172,7 @@ impl Inactive {
         // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
         match unblinded_pay_token.verify(&self.config, &self.state) {
+            // If so, save it and enter the `Ready` state.
             Verified => Ok(Ready {
                 config: self.config,
                 state: self.state,
@@ -288,6 +290,8 @@ impl Started {
         let close_state_signature =
             closing_signature.unblind(self.blinding_factors.for_close_state);
         match close_state_signature.verify(&self.config, self.new_state.close_state()) {
+            // If so, save it, reveal the revocation information for the old close signature and
+            // enter the `Locked` state.
             Verified => Ok((
                 Locked {
                     config: self.config,
@@ -327,6 +331,7 @@ impl Locked {
         // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
         match unblinded_pay_token.verify(&self.config, &self.state) {
+            // If so, save it and enter the `Ready` state.
             Verified => Ok(Ready {
                 config: self.config,
                 state: self.state,

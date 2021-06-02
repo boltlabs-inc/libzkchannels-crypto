@@ -59,10 +59,10 @@ pub struct KeyPair {
 impl SecretKey {
     /**
     Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at random
-    and the given generator from G1.
+    and the given generator `g1` from G1.
 
     This is called internally, and we require `g1` is chosen uniformly at random and is not
-    the identity.
+    the identity element.
     */
     fn new(rng: &mut impl Rng, length: usize, g1: &G1Projective) -> Self {
         let x = SecretKey::get_nonzero_scalar(&mut *rng);

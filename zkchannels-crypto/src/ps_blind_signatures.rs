@@ -5,10 +5,7 @@ More information on the constructs involved can be found in the documentation fo
 [`ps_signatures`](crate::ps_signatures) module.
 */
 use crate::{
-    message::BlindingFactor,
-    pedersen_commitments::*,
-    ps_keys::*,
-    ps_signatures::{Signature, Verifier},
+    message::BlindingFactor, pedersen_commitments::*, ps_keys::*, ps_signatures::Signature,
     types::*,
 };
 use ff::Field;
@@ -80,32 +77,14 @@ impl PublicKey {
     pub fn blind_message(&self, msg: &Message, bf: BlindingFactor) -> BlindedMessage {
         BlindedMessage(self.to_g1_pedersen_parameters().commit(msg, bf))
     }
-
-    /**
-    Verify that the given signature is on the message, using the blinding factor.
-
-    Note: this unblinds the signature!
-    */
-    pub fn verify_blinded(
-        &self,
-        msg: &Message,
-        blinded_sig: BlindedSignature,
-        bf: BlindingFactor,
-    ) -> bool {
-        let sig = blinded_sig.unblind(bf);
-        self.verify(msg, &sig)
-    }
 }
 
 impl KeyPair {
-    /**
-    Sign a blinded message.
-
-    Note: this should be used judiciously. The signer should only sign a blinded message if they
-    have great confidence that it is something they actually wish to sign. For example, a signer
-    should verify a PoK of the opening of the blinded message, which may demonstrate that it
-    satisfies some properties.
-    */
+    /// Sign a blinded message.
+    ///
+    /// **Warning**: this should *only* be used if the signer has verified a proof of knowledge of
+    /// the opening of the `BlindedMessage`.
+    /// FIXME(Marcella) - make this warning more forceful.
     pub fn blind_sign(&self, rng: &mut impl Rng, msg: &BlindedMessage) -> BlindedSignature {
         let u = Scalar::random(rng);
 
@@ -113,11 +92,5 @@ impl KeyPair {
             sigma1: (self.public_key().g1 * u).into(),
             sigma2: ((self.secret_key().x1 + msg.0 .0) * u).into(),
         })
-    }
-
-    /// Given the blinding factor, verify that the given signature is valid with respect to the
-    /// message, using the blinding factor.
-    pub fn verify_blinded(&self, msg: &Message, sig: BlindedSignature, bf: BlindingFactor) -> bool {
-        self.public_key().verify_blinded(msg, sig, bf)
     }
 }

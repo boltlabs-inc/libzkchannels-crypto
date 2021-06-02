@@ -138,8 +138,10 @@ impl State {
     }
 
     /// Get the revocation secret for this state.
-    pub fn revocation_secret(&self) -> &RevocationSecret {
-        &self.revocation_secret
+    ///
+    /// Once the revocation secret is removed and shared, the State is useless, so this function consumes it.
+    pub fn revocation_secret(self) -> RevocationSecret {
+        self.revocation_secret
     }
 
     /// Form a commitment (and corresponding blinding factor) to the `State`'s

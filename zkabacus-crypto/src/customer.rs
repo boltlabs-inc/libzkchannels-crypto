@@ -209,6 +209,8 @@ impl Ready {
         let (state_commitment, state_bf) = self.state.commit(&mut rng, &self.config);
         let (close_state_commitment, close_state_bf) =
             self.state.close_state().commit(&mut rng, &self.config);
+
+        // Save the blinding factors together.
         let blinding_factors = BlindingFactors {
             for_revocation_lock: revocation_lock_bf,
             for_pay_token: state_bf,
@@ -280,9 +282,27 @@ impl Started {
     /// Revoke the ability to close the channel on the outdated balances.
     pub fn lock(
         self,
-        _closing_signature: crate::ClosingSignature,
+        closing_signature: crate::ClosingSignature,
     ) -> Result<(Locked, LockMessage), Started> {
-        todo!();
+        // Unblind signature and verify it is correct.
+        let close_state_signature =
+            closing_signature.unblind(self.blinding_factors.for_close_state);
+        match close_state_signature.verify(&self.config, self.new_state.close_state()) {
+            Verified => Ok((
+                Locked {
+                    config: self.config,
+                    state: self.new_state,
+                    blinding_factor: self.blinding_factors.for_pay_token,
+                    close_state_signature,
+                },
+                LockMessage {
+                    revocation_lock: self.old_state.revocation_lock(),
+                    revocation_secret: self.old_state.revocation_secret(),
+                    revocation_lock_blinding_factor: self.blinding_factors.for_revocation_lock,
+                },
+            )),
+            Failed => Err(self),
+        }
     }
 
     /// Extract data used to close the channel on the previous balances.
@@ -303,8 +323,18 @@ pub struct Locked {
 
 impl Locked {
     /// Unlock the channel by validating the merchant's approval message.
-    pub fn unlock(self, _pay_token: crate::PayToken) -> Result<Ready, Locked> {
-        todo!()
+    pub fn unlock(self, pay_token: crate::PayToken) -> Result<Ready, Locked> {
+        // Unblind signature and verify it is correct.
+        let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
+        match unblinded_pay_token.verify(&self.config, &self.state) {
+            Verified => Ok(Ready {
+                config: self.config,
+                state: self.state,
+                pay_token: unblinded_pay_token,
+                close_state_signature: self.close_state_signature,
+            }),
+            Failed => Err(self),
+        }
     }
 
     /// Extract data used to close the channel.

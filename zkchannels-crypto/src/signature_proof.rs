@@ -114,8 +114,7 @@ impl SignatureProofBuilder {
         // Run signature proof setup phase:
         // Blind and randomize signature
         let message_blinding_factor = BlindingFactor::new(rng);
-        let mut blinded_signature =
-            BlindedSignature::from_signature(&signature, message_blinding_factor);
+        let mut blinded_signature = BlindedSignature::blind(signature, message_blinding_factor);
         blinded_signature.randomize(rng);
 
         // Form commitment to blinding factor + message

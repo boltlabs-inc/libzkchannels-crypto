@@ -88,9 +88,7 @@ mod tests {
         );
     }
 
-    /// FIXME: this should not panic once commitments are implemented
     #[test]
-    #[should_panic]
     fn blind_signing_is_correct() {
         let mut rng = rand::thread_rng();
         let length = 3;
@@ -102,7 +100,10 @@ mod tests {
         );
 
         let bf = BlindingFactor::new(&mut rng);
-        let blinded_msg = kp.public_key().blind_message(&msg, bf);
+        let blinded_msg = kp
+            .public_key()
+            .blind_message(&msg, bf)
+            .expect("Impossible: message is the same size as key.");
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
         let sig = blind_sig.unblind(bf);
 

@@ -6,7 +6,7 @@ More information on the constructs involved can be found in the documentation fo
 */
 use crate::{
     message::BlindingFactor, pedersen_commitments::*, ps_keys::*, ps_signatures::Signature,
-    types::*,
+    types::*, Error,
 };
 use ff::Field;
 use serde::*;
@@ -74,8 +74,15 @@ impl BlindedSignature {
 
 impl PublicKey {
     /// Blind a message using the given blinding factor.
-    pub fn blind_message(&self, msg: &Message, bf: BlindingFactor) -> BlindedMessage {
-        BlindedMessage(self.to_g1_pedersen_parameters().commit(msg, bf))
+    pub fn blind_message(
+        &self,
+        msg: &Message,
+        bf: BlindingFactor,
+    ) -> Result<BlindedMessage, Error> {
+        match self.to_g1_pedersen_parameters().commit(msg, bf) {
+            Ok(com) => Ok(BlindedMessage(com)),
+            Err(m) => Err(m),
+        }
     }
 }
 

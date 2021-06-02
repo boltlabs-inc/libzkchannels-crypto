@@ -129,6 +129,7 @@ impl Signer for KeyPair {
         self.secret_key().try_sign(rng, msg)
     }
 }
+
 impl Verifier for KeyPair {
     fn verify(&self, msg: &Message, sig: &Signature) -> bool {
         self.public_key().verify(msg, sig)

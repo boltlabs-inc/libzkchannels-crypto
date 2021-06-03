@@ -43,7 +43,10 @@ pub enum Error {
 
 mod serde;
 
-pub use crate::serde::{SerializeElement, SerializeG1, SerializeG2};
+pub use crate::{
+    serde::{SerializeElement, SerializeG1, SerializeG2},
+    types::Rng,
+};
 
 mod types {
     pub use crate::message::*;

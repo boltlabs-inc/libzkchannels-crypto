@@ -241,4 +241,21 @@ mod test {
             "Bad signature with sigma1 = 1 verified!"
         );
     }
+
+    #[test]
+    fn randomized_signatures_verify() {
+        let mut rng = crate::test::rng();
+        let length = 3;
+        let kp = KeyPair::new(length, &mut rng);
+        let msg = Message::new(
+            iter::repeat_with(|| Scalar::random(&mut rng))
+                .take(length)
+                .collect(),
+        );
+
+        let mut sig = kp.try_sign(&mut rng, &msg).unwrap();
+        sig.randomize(&mut rng);
+
+        assert!(kp.verify(&msg, &sig))
+    }
 }

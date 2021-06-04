@@ -73,7 +73,7 @@ fn commitment_proof_with_linear_relation() {
         .collect::<Vec<Scalar>>();
     // Create random message of which the last element is equal to the first element of the first msg
     let mut msg_vec2 = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(length-1)
+        .take(length - 1)
         .collect::<Vec<Scalar>>();
     msg_vec2.push(msg_vec1[0]);
     let msg1 = Message::new(msg_vec1);
@@ -89,7 +89,11 @@ fn commitment_proof_with_linear_relation() {
     // Pass in the commitment scalar of the first position onto the third position
     let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &[None, None, Some(proof_builder1.conjunction_commitment_scalars()[0])],
+        &[
+            None,
+            None,
+            Some(proof_builder1.conjunction_commitment_scalars()[0]),
+        ],
         &params,
     )
     .unwrap();
@@ -113,9 +117,21 @@ fn commitment_proof_with_linear_relation() {
         .verify_knowledge_of_opening_of_commitment(&params, com2, challenge)
         .unwrap());
     // Verify linear equation
-    assert_eq!(proof1.conjunction_response_scalars()[0], proof2.conjunction_response_scalars()[2]);
+    assert_eq!(
+        proof1.conjunction_response_scalars()[0],
+        proof2.conjunction_response_scalars()[2]
+    );
     // Verify the above was not an accident
-    assert_ne!(proof1.conjunction_response_scalars()[0], proof2.conjunction_response_scalars()[0]);
-    assert_ne!(proof1.conjunction_response_scalars()[1], proof2.conjunction_response_scalars()[1]);
-    assert_ne!(proof1.conjunction_response_scalars()[2], proof2.conjunction_response_scalars()[2]);
+    assert_ne!(
+        proof1.conjunction_response_scalars()[0],
+        proof2.conjunction_response_scalars()[0]
+    );
+    assert_ne!(
+        proof1.conjunction_response_scalars()[1],
+        proof2.conjunction_response_scalars()[1]
+    );
+    assert_ne!(
+        proof1.conjunction_response_scalars()[2],
+        proof2.conjunction_response_scalars()[2]
+    );
 }

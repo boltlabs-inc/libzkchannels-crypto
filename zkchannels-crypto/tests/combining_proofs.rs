@@ -1,14 +1,14 @@
-use zkchannels_crypto::Rng;
-use zkchannels_crypto::message::{Message, BlindingFactor};
-use bls12_381::{Scalar, G1Projective};
-use zkchannels_crypto::ps_keys::KeyPair;
+use bls12_381::{G1Projective, Scalar};
 use ff::Field;
 use std::iter;
+use zkchannels_crypto::challenge::ChallengeBuilder;
+use zkchannels_crypto::commitment_proof::CommitmentProofBuilder;
+use zkchannels_crypto::message::{BlindingFactor, Message};
+use zkchannels_crypto::pedersen_commitments::PedersenParameters;
+use zkchannels_crypto::ps_keys::KeyPair;
 use zkchannels_crypto::ps_signatures::Signer;
 use zkchannels_crypto::signature_proof::SignatureProofBuilder;
-use zkchannels_crypto::challenge::ChallengeBuilder;
-use zkchannels_crypto::pedersen_commitments::PedersenParameters;
-use zkchannels_crypto::commitment_proof::CommitmentProofBuilder;
+use zkchannels_crypto::Rng;
 
 fn rng() -> impl Rng {
     use rand::SeedableRng;
@@ -38,9 +38,17 @@ fn signature_commitment_proof_linear_relation() {
         &[None; 3],
         kp.public_key(),
     )
-        .unwrap();
-    let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &sig_proof_builder.conjunction_commitment_scalars().iter().map(|scalar| Some(*scalar)).collect::<Vec<Option<Scalar>>>()[..], &params).unwrap();
+    .unwrap();
+    let com_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng,
+        &sig_proof_builder
+            .conjunction_commitment_scalars()
+            .iter()
+            .map(|scalar| Some(*scalar))
+            .collect::<Vec<Option<Scalar>>>()[..],
+        &params,
+    )
+    .unwrap();
     let challenge = ChallengeBuilder::new()
         .with_signature_proof(&sig_proof_builder)
         .with_commitment_proof(&com_proof_builder)
@@ -58,7 +66,10 @@ fn signature_commitment_proof_linear_relation() {
     assert!(sig_proof
         .verify_knowledge_of_signature(kp.public_key(), challenge)
         .unwrap());
-    assert_eq!(com_proof.conjunction_response_scalars(), sig_proof.conjunction_response_scalars());
+    assert_eq!(
+        com_proof.conjunction_response_scalars(),
+        sig_proof.conjunction_response_scalars()
+    );
 }
 
 #[test]
@@ -83,10 +94,14 @@ fn commitment_signature_proof_linear_relation() {
         &mut rng,
         msg.clone(),
         sig,
-        &com_proof_builder.conjunction_commitment_scalars().iter().map(|scalar| Some(*scalar)).collect::<Vec<Option<Scalar>>>()[..],
+        &com_proof_builder
+            .conjunction_commitment_scalars()
+            .iter()
+            .map(|scalar| Some(*scalar))
+            .collect::<Vec<Option<Scalar>>>()[..],
         kp.public_key(),
     )
-        .unwrap();
+    .unwrap();
     let challenge = ChallengeBuilder::new()
         .with_signature_proof(&sig_proof_builder)
         .with_commitment_proof(&com_proof_builder)
@@ -104,5 +119,8 @@ fn commitment_signature_proof_linear_relation() {
     assert!(sig_proof
         .verify_knowledge_of_signature(kp.public_key(), challenge)
         .unwrap());
-    assert_eq!(com_proof.conjunction_response_scalars(), sig_proof.conjunction_response_scalars());
+    assert_eq!(
+        com_proof.conjunction_response_scalars(),
+        sig_proof.conjunction_response_scalars()
+    );
 }

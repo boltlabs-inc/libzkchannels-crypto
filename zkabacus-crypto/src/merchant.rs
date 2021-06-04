@@ -2,6 +2,7 @@
 //! process payments.
 
 use crate::{
+    customer,
     nonce::Nonce,
     proofs::{EstablishProof, PayProof},
     revlock::*,
@@ -23,11 +24,25 @@ pub struct Config {
 
 impl Config {
     /// Instantiate a new merchant with all parameters.
-    ///
-    /// FIXME(Marcella): Add relevant parameters.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        todo!();
+        let mut rng = rand::thread_rng();
+
+        let signing_keypair = KeyPair::new(5, &mut rng);
+        let revocation_parameters = PedersenParameters::new(1, &mut rng);
+
+        Self {
+            signing_keypair,
+            revocation_parameters,
+        }
+    }
+
+    /// Extract public configuration for customers.
+    pub fn to_customer_config(&self) -> customer::Config {
+        customer::Config {
+            merchant_public_key: self.signing_keypair.public_key().clone(),
+            revocation_parameters: self.revocation_parameters.clone(),
+        }
     }
 
     /**

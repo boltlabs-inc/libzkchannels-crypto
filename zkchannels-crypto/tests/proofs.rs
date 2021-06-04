@@ -40,3 +40,25 @@ fn commitment_proof_verifies() {
         .verify_knowledge_of_opening_of_commitment(&params, com, challenge)
         .unwrap());
 }
+
+#[test]
+#[should_panic(expected = "MessageLengthMismatch")]
+fn commitment_proof_incorrect_message_length() {
+    let mut rng = rng();
+    let length = 3;
+    let wrong_msg = Message::new(iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(length-1)
+        .collect());
+    let params = PedersenParameters::<G1Projective>::new(length, &mut rng);
+    let bf = BlindingFactor::new(&mut rng);
+
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params).unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_commitment_proof(&proof_builder)
+        .finish();
+    let _proof = proof_builder
+        .generate_proof_response(&wrong_msg, bf, challenge)
+        .unwrap();
+}
+

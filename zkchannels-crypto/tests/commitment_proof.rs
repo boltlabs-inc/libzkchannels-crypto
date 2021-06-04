@@ -1,5 +1,6 @@
 use bls12_381::*;
 use ff::Field;
+use rand::thread_rng;
 use std::iter;
 use zkchannels_crypto::{
     challenge::ChallengeBuilder,
@@ -10,8 +11,7 @@ use zkchannels_crypto::{
 };
 
 fn rng() -> impl Rng {
-    use rand::SeedableRng;
-    rand::rngs::StdRng::from_seed(*b"DON'T USE THIS FOR ANYTHING REAL")
+    thread_rng()
 }
 
 #[test]
@@ -163,7 +163,66 @@ fn commitment_proof_with_public_value() {
         .verify_knowledge_of_opening_of_commitment(&params, com, challenge)
         .unwrap());
     let response_scalars = proof.conjunction_response_scalars();
-    assert_eq!(msg[0] * challenge.0 + commitment_scalars[0], response_scalars[0]);
-    assert_eq!(msg[1] * challenge.0 + commitment_scalars[1], response_scalars[1]);
-    assert_eq!(msg[2] * challenge.0 + commitment_scalars[2], response_scalars[2]);
+    assert_eq!(
+        msg[0] * challenge.0 + commitment_scalars[0],
+        response_scalars[0]
+    );
+    assert_eq!(
+        msg[1] * challenge.0 + commitment_scalars[1],
+        response_scalars[1]
+    );
+    assert_eq!(
+        msg[2] * challenge.0 + commitment_scalars[2],
+        response_scalars[2]
+    );
+}
+
+#[test]
+fn commitment_proof_with_linear_relation_public_addition() {
+    let mut rng = rng();
+    let public_value = Scalar::random(&mut rng);
+    let msg_vec1 = vec![Scalar::random(&mut rng)];
+    // Create random message of which the last element is equal to the first element of the first msg
+    let msg_vec2 = vec![msg_vec1[0] + public_value];
+    let msg1 = Message::new(msg_vec1);
+    let msg2 = Message::new(msg_vec2);
+    let params = PedersenParameters::<G1Projective>::new(1, &mut rng);
+    let bf1 = BlindingFactor::new(&mut rng);
+    let com1 = params.commit(&msg1, bf1).unwrap();
+    let bf2 = BlindingFactor::new(&mut rng);
+    let com2 = params.commit(&msg2, bf2).unwrap();
+
+    let proof_builder1 =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 1], &params).unwrap();
+    // Pass in the commitment scalar of the first position onto the third position
+    let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng,
+        &[Some(proof_builder1.conjunction_commitment_scalars()[0])],
+        &params,
+    )
+    .unwrap();
+    // Create a challenge from both transcripts
+    let challenge = ChallengeBuilder::new()
+        .with_commitment_proof(&proof_builder1)
+        .with_commitment_proof(&proof_builder2)
+        .finish();
+    let proof1 = proof_builder1
+        .generate_proof_response(&msg1, bf1, challenge)
+        .unwrap();
+    let proof2 = proof_builder2
+        .generate_proof_response(&msg2, bf2, challenge)
+        .unwrap();
+
+    // Verify both proofs
+    assert!(proof1
+        .verify_knowledge_of_opening_of_commitment(&params, com1, challenge)
+        .unwrap());
+    assert!(proof2
+        .verify_knowledge_of_opening_of_commitment(&params, com2, challenge)
+        .unwrap());
+    // Verify linear equation
+    assert_eq!(
+        proof1.conjunction_response_scalars()[0],
+        proof2.conjunction_response_scalars()[0] - challenge.0 * public_value
+    );
 }

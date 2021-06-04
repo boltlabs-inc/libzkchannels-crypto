@@ -135,3 +135,35 @@ fn commitment_proof_with_linear_relation() {
         proof2.conjunction_response_scalars()[2]
     );
 }
+
+#[test]
+fn commitment_proof_with_public_value() {
+    let mut rng = rng();
+    let length = 3;
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    let params = PedersenParameters::<G1Projective>::new(length, &mut rng);
+    let bf = BlindingFactor::new(&mut rng);
+    let com = params.commit(&msg, bf).unwrap();
+
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params).unwrap();
+    let commitment_scalars = proof_builder.conjunction_commitment_scalars().to_vec();
+    let challenge = ChallengeBuilder::new()
+        .with_commitment_proof(&proof_builder)
+        .finish();
+    let proof = proof_builder
+        .generate_proof_response(&msg, bf, challenge)
+        .unwrap();
+
+    assert!(proof
+        .verify_knowledge_of_opening_of_commitment(&params, com, challenge)
+        .unwrap());
+    let response_scalars = proof.conjunction_response_scalars();
+    assert_eq!(msg[0] * challenge.0 + commitment_scalars[0], response_scalars[0]);
+    assert_eq!(msg[1] * challenge.0 + commitment_scalars[1], response_scalars[1]);
+    assert_eq!(msg[2] * challenge.0 + commitment_scalars[2], response_scalars[2]);
+}

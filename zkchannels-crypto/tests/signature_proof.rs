@@ -116,3 +116,40 @@ fn signature_linear_relation() {
         proof2.conjunction_response_scalars()[2]
     );
 }
+
+#[test]
+fn signature_proof_public_value() {
+    let mut rng = rng();
+    let length = 3;
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    let kp = KeyPair::new(length, &mut rng);
+    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+
+    let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg.clone(),
+        sig,
+        &[None; 3],
+        kp.public_key(),
+    )
+        .unwrap();
+    let commitment_scalars = sig_proof_builder.conjunction_commitment_scalars().to_vec();
+    let challenge = ChallengeBuilder::new()
+        .with_signature_proof(&sig_proof_builder)
+        .finish();
+    let proof = sig_proof_builder
+        .generate_proof_response(challenge)
+        .unwrap();
+
+    assert!(proof
+        .verify_knowledge_of_signature(kp.public_key(), challenge)
+        .unwrap());
+    let response_scalars = proof.conjunction_response_scalars();
+    assert_eq!(msg[0] * challenge.0 + commitment_scalars[0], response_scalars[0]);
+    assert_eq!(msg[1] * challenge.0 + commitment_scalars[1], response_scalars[1]);
+    assert_eq!(msg[2] * challenge.0 + commitment_scalars[2], response_scalars[2]);
+}

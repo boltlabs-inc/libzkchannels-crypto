@@ -84,6 +84,7 @@ pub struct Requested {
 
 /// Message sent to the merchant to request a new channel.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct RequestMessage {
     /// Commitment to the initial close state.
     pub close_state_commitment: CloseStateCommitment,
@@ -183,8 +184,10 @@ impl Inactive {
         }
     }
 }
+
 /// Message sent to the merchant after starting a payment.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct StartMessage {
     /// The current customer state's random nonce.
     pub nonce: Nonce,
@@ -266,6 +269,7 @@ pub struct Started {
 
 /// Message sent to the merchant to revoke the old balance and lock the channel.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct LockMessage {
     /// Revocation lock
     pub revocation_lock: RevocationLock,

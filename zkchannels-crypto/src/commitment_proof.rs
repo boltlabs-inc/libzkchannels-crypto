@@ -33,17 +33,20 @@ blinding factor.
     4(3):161–174, Jan 1991.
 
 */
-use crate::{challenge::Challenge, pedersen_commitments::*, types::*, Error};
+use crate::{challenge::Challenge, pedersen_commitments::*, types::*, Error, SerializeElement};
 use ff::Field;
 use group::Group;
+use serde::*;
 use std::iter;
 
 /// Fully constructed proof of knowledge of the opening of a commitment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(bound = "G: SerializeElement")]
 pub struct CommitmentProof<G: Group<Scalar = Scalar>> {
     /// The commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
     /// The response scalars, with the response scalar for the blinding factor prepended.
+    #[serde(with = "SerializeElement")]
     response_scalars: Vec<Scalar>,
 }
 

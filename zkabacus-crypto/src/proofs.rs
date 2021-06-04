@@ -8,8 +8,15 @@ the customer is behaving correctly without learning any additional information a
 */
 use serde::*;
 
-use crate::{customer, merchant, revlock::*, states::*, types::*, Nonce, Rng, Verification};
-use zkchannels_crypto::pedersen_commitments::Commitment;
+use crate::{
+    customer, merchant, revlock::*, states::*, types::*, Nonce, Rng, Verification, CLOSE_SCALAR,
+};
+use zkchannels_crypto::{
+    challenge::ChallengeBuilder,
+    commitment_proof::{CommitmentProof, CommitmentProofBuilder},
+    pedersen_commitments::Commitment,
+    SerializeElement,
+};
 
 /**
 An establish proof demonstrates that a customer is trying to initialize a channel correctly.
@@ -21,8 +28,20 @@ This is a zero-knowledge proof that makes the following guarantees:
   relative to each other.
 - The close state is well-formed (e.g. with a close tag and corresponding to the state).
 */
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct EstablishProof;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EstablishProof {
+    state_proof: CommitmentProof<G1Projective>,
+    close_state_proof: CommitmentProof<G1Projective>,
+
+    #[serde(with = "SerializeElement")]
+    channel_id_cs: Scalar,
+    #[serde(with = "SerializeElement")]
+    close_tag_cs: Scalar,
+    #[serde(with = "SerializeElement")]
+    customer_balance_cs: Scalar,
+    #[serde(with = "SerializeElement")]
+    merchant_balance_cs: Scalar,
+}
 
 #[allow(unused)]
 impl EstablishProof {
@@ -35,13 +54,68 @@ impl EstablishProof {
     This function is typically called by the customer.
     */
     pub(crate) fn new(
-        _rng: &mut impl Rng,
-        _params: &customer::Config,
-        _state: &State,
-        _close_state_blinding_factor: CloseStateBlindingFactor,
-        _pay_token_blinding_factor: PayTokenBlindingFactor,
+        rng: &mut impl Rng,
+        params: &customer::Config,
+        state: &State,
+        close_state_blinding_factor: CloseStateBlindingFactor,
+        pay_token_blinding_factor: PayTokenBlindingFactor,
+        state_commitment: &StateCommitment,
+        close_state_commitment: &CloseStateCommitment,
     ) -> Self {
-        todo!();
+        let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
+        let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            rng,
+            &[None; 5],
+            &pedersen_parameters,
+        )
+        .expect("mismatched lengths");
+
+        let cs = state_proof_builder.conjunction_commitment_scalars();
+        let close_state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            rng,
+            &[Some(cs[0]), None, Some(cs[2]), Some(cs[3]), Some(cs[4])],
+            &pedersen_parameters,
+        )
+        .expect("mismatched lengths");
+
+        let challenge = ChallengeBuilder::new()
+            .with_public_key(&params.merchant_public_key)
+            .with_scalar(state.channel_id().to_scalar())
+            .with_scalar(CLOSE_SCALAR)
+            .with_scalar(state.customer_balance().to_scalar())
+            .with_scalar(state.merchant_balance().to_scalar())
+            .with_blinded_message(state_commitment.0)
+            .with_blinded_message(close_state_commitment.0)
+            .with_commitment(state_proof_builder.scalar_commitment)
+            .with_commitment(close_state_proof_builder.scalar_commitment)
+            .finish();
+
+        // We take the commitment scalars from the close state proof because we need the close tag
+        // from the close state proof and then the channel ID, customer balance, and merchant
+        // balance commitment scalars should match by construction.
+        let commitment_scalars = close_state_proof_builder.conjunction_commitment_scalars();
+        Self {
+            channel_id_cs: commitment_scalars[0],
+            close_tag_cs: commitment_scalars[1],
+            customer_balance_cs: commitment_scalars[3],
+            merchant_balance_cs: commitment_scalars[4],
+
+            state_proof: state_proof_builder
+                .generate_proof_response(
+                    &state.to_message(),
+                    pay_token_blinding_factor.0,
+                    challenge,
+                )
+                .expect("mismatched length"),
+
+            close_state_proof: close_state_proof_builder
+                .generate_proof_response(
+                    &state.close_state().to_message(),
+                    close_state_blinding_factor.0,
+                    challenge,
+                )
+                .expect("mismatched length"),
+        }
     }
 
     /// Verify the [`EstablishProof`] against the provided verification objects.
@@ -49,10 +123,86 @@ impl EstablishProof {
     /// This function is typically called by the merchant.
     pub fn verify(
         &self,
-        _params: &merchant::Config,
-        _verification_objects: &EstablishProofVerification,
+        params: &merchant::Config,
+        verification_objects: &EstablishProofVerification,
     ) -> Verification {
-        todo!();
+        let challenge = ChallengeBuilder::new()
+            .with_public_key(params.signing_keypair.public_key())
+            .with_scalar(verification_objects.channel_id.to_scalar())
+            .with_scalar(CLOSE_SCALAR)
+            .with_scalar(verification_objects.customer_balance.to_scalar())
+            .with_scalar(verification_objects.merchant_balance.to_scalar())
+            .with_blinded_message(verification_objects.state_commitment.0)
+            .with_blinded_message(verification_objects.close_state_commitment.0)
+            .with_commitment(self.state_proof.scalar_commitment)
+            .with_commitment(self.close_state_proof.scalar_commitment)
+            .finish();
+
+        let pedersen_parameters = params
+            .signing_keypair
+            .public_key()
+            .to_g1_pedersen_parameters();
+
+        let state_proof_verifies = self
+            .state_proof
+            .verify_knowledge_of_opening_of_commitment(
+                &pedersen_parameters,
+                verification_objects.state_commitment.0.as_commitment(),
+                challenge,
+            )
+            .expect("length mismatch");
+
+        let close_state_proof_verifies = self
+            .close_state_proof
+            .verify_knowledge_of_opening_of_commitment(
+                &pedersen_parameters,
+                verification_objects
+                    .close_state_commitment
+                    .0
+                    .as_commitment(),
+                challenge,
+            )
+            .expect("length mismatch");
+
+        let state_proof_rs = self.state_proof.conjunction_response_scalars();
+        let close_state_proof_rs = self.close_state_proof.conjunction_response_scalars();
+
+        // check channel identifiers match expected.
+        let expected_channel_id =
+            challenge.0 * verification_objects.channel_id.to_scalar() + self.channel_id_cs;
+        let channel_ids_match = state_proof_rs[0] == expected_channel_id
+            && close_state_proof_rs[0] == expected_channel_id;
+
+        // check close state contains close tag.
+        let expected_close_tag = challenge.0 * CLOSE_SCALAR + self.close_tag_cs;
+        let close_tags_match = close_state_proof_rs[1] == expected_close_tag;
+
+        // check revocation locks match each other
+        let revlocks_match = state_proof_rs[2] == close_state_proof_rs[2];
+
+        // check customer balances match expected
+        let expected_customer_balance = challenge.0
+            * verification_objects.customer_balance.to_scalar()
+            + self.customer_balance_cs;
+        let customer_balances_match = state_proof_rs[3] == expected_customer_balance
+            && close_state_proof_rs[3] == expected_customer_balance;
+
+        // check merchant balances match expected
+        let expected_merchant_balance = challenge.0
+            * verification_objects.merchant_balance.to_scalar()
+            + self.merchant_balance_cs;
+        let merchant_balances_match = state_proof_rs[3] == expected_merchant_balance
+            && close_state_proof_rs[3] == expected_merchant_balance;
+
+        Verification::from(
+            state_proof_verifies
+                && close_state_proof_verifies
+                && channel_ids_match
+                && close_tags_match
+                && revlocks_match
+                && customer_balances_match
+                && merchant_balances_match,
+        )
     }
 }
 

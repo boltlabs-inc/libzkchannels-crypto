@@ -8,8 +8,8 @@ other public information into the challenge.
 */
 
 use crate::{
-    commitment_proof::CommitmentProofBuilder,
     pedersen_commitments::{Commitment, PedersenParameters},
+    ps_blind_signatures::BlindedMessage,
     ps_keys::PublicKey,
     range_proof::RangeProofBuilder,
     signature_proof::SignatureProofBuilder,
@@ -53,34 +53,35 @@ impl ChallengeBuilder {
         self.with_bytes(com.0.to_bytes())
     }
 
-    /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge
-    ///
-    /// (e.g. the pieces that will also be in the finalized
-    /// [`CommitmentProof`](crate::commitment_proof::CommitmentProof)).
-    pub fn with_commitment_proof<G>(self, com: &CommitmentProofBuilder<G>) -> Self
-    where
-        G: Group<Scalar = Scalar> + GroupEncoding,
-    {
-        self.with_bytes(com.scalar_commitment.0.to_bytes())
+    /// Incorporate a blinded message into the challenge.
+    pub fn with_blinded_message(self, blinded_message: BlindedMessage) -> Self {
+        self.with_commitment(blinded_message.0)
     }
 
     /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge
     /// (e.g. the pieces that will also be in the finalized
     /// [`SignatureProof`](crate::signature_proof::SignatureProof)).
-    pub fn with_signature_proof(self, signature_proof_builder: &SignatureProofBuilder) -> Self {
+    pub fn with_signature_proof_builder(
+        self,
+        signature_proof_builder: &SignatureProofBuilder,
+    ) -> Self {
         self.with_bytes(signature_proof_builder.message_commitment.0.to_bytes())
             .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
-            .with_commitment_proof(&signature_proof_builder.commitment_proof_builder)
+            .with_commitment(
+                signature_proof_builder
+                    .commitment_proof_builder
+                    .scalar_commitment,
+            )
     }
 
     /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
     /// (e.g. the pieces that will also be in the finalized
     /// [`RangeProof`](crate::range_proof::RangeProof)).
-    pub fn with_range_proof(self, range_proof_builder: &RangeProofBuilder) -> Self {
+    pub fn with_range_proof_builder(self, range_proof_builder: &RangeProofBuilder) -> Self {
         range_proof_builder
             .digit_proof_builders
             .iter()
-            .fold(self, |this, proof| this.with_signature_proof(proof))
+            .fold(self, |this, proof| this.with_signature_proof_builder(proof))
     }
 
     /// Incorporate public key material into the challenge.

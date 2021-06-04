@@ -20,7 +20,14 @@ programmatically, a `BlindedMessage` can be constructed using
 [`PublicKey::blind_message`].
 */
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindedMessage(Commitment<G1Projective>);
+pub struct BlindedMessage(pub(crate) Commitment<G1Projective>);
+
+impl BlindedMessage {
+    /// Extract the inner commitment.
+    pub fn as_commitment(&self) -> Commitment<G1Projective> {
+        self.0
+    }
+}
 
 /// A signature on a blinded message, generated using PS blind signing protocols.
 ///

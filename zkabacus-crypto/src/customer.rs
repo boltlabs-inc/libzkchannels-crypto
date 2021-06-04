@@ -148,6 +148,8 @@ impl Requested {
             &state,
             close_state_blinding_factor,
             pay_token_blinding_factor,
+            &state_commitment,
+            &close_state_commitment,
         );
 
         (

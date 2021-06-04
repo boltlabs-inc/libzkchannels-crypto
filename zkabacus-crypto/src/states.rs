@@ -37,7 +37,7 @@ use zkchannels_crypto::{
 pub struct ChannelId;
 
 impl ChannelId {
-    fn to_scalar(self) -> Scalar {
+    pub(crate) fn to_scalar(self) -> Scalar {
         todo!()
     }
 }
@@ -51,7 +51,7 @@ impl MerchantBalance {
         todo!()
     }
 
-    fn to_scalar(self) -> Scalar {
+    pub(crate) fn to_scalar(self) -> Scalar {
         todo!()
     }
 }
@@ -65,7 +65,7 @@ impl CustomerBalance {
         todo!()
     }
 
-    fn to_scalar(self) -> Scalar {
+    pub(crate) fn to_scalar(self) -> Scalar {
         todo!()
     }
 }
@@ -218,7 +218,7 @@ impl State {
     }
 
     /// Get the message representation of a State.
-    fn to_message(&self) -> Message {
+    pub(crate) fn to_message(&self) -> Message {
         Message::from(vec![
             self.channel_id.to_scalar(),
             self.nonce.to_scalar(),
@@ -254,7 +254,7 @@ impl CloseState<'_> {
     }
 
     /// Get the message representation of a CloseState.
-    fn to_message(&self) -> Message {
+    pub(crate) fn to_message(&self) -> Message {
         Message::from(vec![
             self.channel_id.to_scalar(),
             CLOSE_SCALAR,
@@ -271,7 +271,7 @@ impl CloseState<'_> {
 /// used to generate [`BlindedPayToken`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct StateCommitment(BlindedMessage);
+pub struct StateCommitment(pub(crate) BlindedMessage);
 
 /// Commitment to a CloseState and a constant, fixed close tag.
 ///
@@ -279,22 +279,22 @@ pub struct StateCommitment(BlindedMessage);
 /// used to generate [`CloseStateBlindedSignature`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateCommitment(BlindedMessage);
+pub struct CloseStateCommitment(pub(crate) BlindedMessage);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct CloseStateSignature(Signature);
+pub(crate) struct CloseStateSignature(pub(crate) Signature);
 
 /// Blinded signature on a close state and a constant, fixed close tag.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateBlindedSignature(BlindedSignature);
+pub struct CloseStateBlindedSignature(pub(crate) BlindedSignature);
 
 /// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
 #[derive(Debug, Clone, Copy)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct CloseStateBlindingFactor(BlindingFactor);
+pub(crate) struct CloseStateBlindingFactor(pub(crate) BlindingFactor);
 
 #[allow(unused)]
 impl CloseStateBlindedSignature {
@@ -352,7 +352,7 @@ pub struct BlindedPayToken(BlindedSignature);
 
 /// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct PayTokenBlindingFactor(BlindingFactor);
+pub(crate) struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
 
 #[allow(unused)]
 impl BlindedPayToken {

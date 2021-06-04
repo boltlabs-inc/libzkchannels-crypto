@@ -56,7 +56,6 @@ impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
         challenge: Challenge,
     ) -> Result<bool, Error> {
         // Construct commitment to response scalars.
-        // [c*bf + cs0]h + [c * m1 + cs1]g1 + ...
         let rhs = params.commit(
             &Message::new(self.response_scalars[1..].to_owned()),
             BlindingFactor(self.response_scalars[0]),
@@ -95,6 +94,9 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
     scalars in the case that they need to satisfy some sort of constraint, for example when
     implementing equality or linear combination constraints on top of the proof.
+
+    Return a `MessageLengthMismatch` error if the `conjunction_commitment_scalars` are malformed
+    with respect to the `PedersenParameters`.
     */
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
@@ -133,6 +135,10 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     }
 
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
+    ///
+    /// Return a `MessageLengthMismatch` error if the message is malformed with respect to the
+    /// proof builder (that is, if it is not the same length as the parameters and commitment
+    /// scalars provided in [`generate_proof_commitments()`](CommitmentProofBuilder::generate_proof_commitments())).
     pub fn generate_proof_response(
         self,
         msg: &Message,
@@ -157,14 +163,5 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
             scalar_commitment: self.scalar_commitment,
             response_scalars,
         })
-
-        /*
-            [bf]*h + [m1]*g1 + ... + [ml]*gl        <-- original commitment
-
-            [cs0]*h + [cs1]*g1 + ... + [csl]*gl     <-- scalar commitment
-
-            c * bf + cs0, c * m1 + cs1, ...         <-- response scalars - ties together two commitment values!
-
-        */
     }
 }

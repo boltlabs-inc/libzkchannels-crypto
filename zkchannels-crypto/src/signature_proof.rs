@@ -95,6 +95,9 @@ impl SignatureProofBuilder {
     The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
     scalars in the case that they need to satisfy some sort of constraint, for example when
     implementing equality or linear combination constraints on top of the proof.
+
+    Return a `MessageLengthMismatch` error if the provided message or `conjunction_commitment_scalars`
+    are malformed with respect to the provided `PublicKey`.
     */
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
@@ -168,14 +171,17 @@ impl SignatureProof {
     - the blinded signature is correctly formed (first element is non-identity)
     - the internal commitment proof is valid
     - the commitment proof is formed on the same message as the blinded signature
+
+    Return a `MessageLengthMismatch` error if the proof is malformed with respect to the
+    provided `PublicKey`.
     */
     pub fn verify_knowledge_of_signature(
         &self,
         params: &PublicKey,
         challenge: Challenge,
     ) -> Result<bool, Error> {
-        // signature is valid
-        let valid_signature = self.blinded_signature.is_valid();
+        // signature is well-formed
+        let valid_signature = self.blinded_signature.is_well_formed();
 
         // commitment proof is valid
         let valid_commitment_proof = self

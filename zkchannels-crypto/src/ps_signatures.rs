@@ -6,7 +6,6 @@
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 use crate::{ps_keys::*, serde::*, types::*};
 use ff::Field;
-use group::Group;
 use serde::*;
 
 /// A `Signer` may be used to sign a message.
@@ -64,7 +63,7 @@ impl Signature {
     This checks that first element is not the identity element. This implementation uses only
     checked APIs to ensure that both parts of the signature are in the expected group (G1).
     */
-    pub fn is_valid(&self) -> bool {
+    pub fn is_well_formed(&self) -> bool {
         !bool::from(self.sigma1.is_identity())
     }
 }
@@ -78,12 +77,8 @@ impl Signer for SecretKey {
                 self.ys.len()
             ));
         }
-        // select h randomly from G1*
-        // this function shouldn't return ID but we'll check anyway
-        let mut h = G1Projective::random(&mut *rng);
-        while bool::from(h.is_identity()) {
-            h = G1Projective::random(&mut *rng);
-        }
+        // select h randomly from G1*.
+        let h: G1Projective = random_non_identity(&mut *rng);
 
         // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
         let scalar_combination = self.x
@@ -104,7 +99,7 @@ impl Signer for SecretKey {
 
 impl Verifier for PublicKey {
     fn verify(&self, msg: &Message, sig: &Signature) -> bool {
-        if bool::from(sig.sigma1.is_identity()) {
+        if !sig.is_well_formed() {
             return false;
         }
 

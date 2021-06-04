@@ -48,11 +48,25 @@ pub use crate::serde::{SerializeElement, SerializeG1, SerializeG2};
 mod types {
     pub use crate::message::*;
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
+    pub use group::{Group, GroupEncoding};
 
     /// A trait synonym for a cryptographically secure random number generator. This trait is
     /// blanket-implemented for all valid types and will never need to be implemented by-hand.
     pub trait Rng: rand::CryptoRng + rand::RngCore {}
     impl<T: rand::CryptoRng + rand::RngCore> Rng for T {}
+
+    /// Select a non-identity element from the group uniformly at random.
+    pub fn random_non_identity<G>(rng: &mut impl Rng) -> G
+    where
+        G: Group<Scalar = Scalar>,
+    {
+        loop {
+            let g = G::random(&mut *rng);
+            if !bool::from(g.is_identity()) {
+                return g;
+            }
+        }
+    }
 }
 
 #[cfg(test)]

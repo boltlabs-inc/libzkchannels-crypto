@@ -67,8 +67,8 @@ impl BlindedSignature {
     This checks that first element is not the identity element. This implementation uses only
     checked APIs to ensure that both parts of the signature are in the expected group (G1).
     */
-    pub fn is_valid(&self) -> bool {
-        self.0.is_valid()
+    pub fn is_well_formed(&self) -> bool {
+        self.0.is_well_formed()
     }
 }
 

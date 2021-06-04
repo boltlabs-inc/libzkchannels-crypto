@@ -45,8 +45,8 @@ impl<G: Group<Scalar = Scalar>> PedersenParameters<G> {
     are known among the generators.
     */
     pub fn new(length: usize, rng: &mut impl Rng) -> Self {
-        let h = G::random(&mut *rng);
-        let gs = iter::repeat_with(|| G::random(&mut *rng))
+        let h: G = random_non_identity(&mut *rng);
+        let gs = iter::repeat_with(|| random_non_identity(&mut *rng))
             .take(length)
             .collect();
         Self { h, gs }

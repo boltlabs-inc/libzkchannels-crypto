@@ -15,7 +15,6 @@ Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 
 use crate::{pedersen_commitments::PedersenParameters, types::*, SerializeElement};
 use ff::Field;
-use group::Group;
 use serde::*;
 use std::iter;
 
@@ -92,12 +91,8 @@ impl PublicKey {
     the identity.
     */
     fn from_secret_key(rng: &mut impl Rng, sk: &SecretKey, g1: &G1Projective) -> Self {
-        // select g2 randomly from G2*
-        // this function shouldn't return ID, but we'll check just in case
-        let mut g2 = G2Projective::random(&mut *rng);
-        while bool::from(g2.is_identity()) {
-            g2 = G2Projective::random(&mut *rng);
-        }
+        // select g2 randomly from G2*.
+        let g2: G2Projective = random_non_identity(&mut *rng);
 
         // y1i = g1 * [yi] (point multiplication with the secret key)
         let y1s = sk.ys.iter().map(|yi| (g1 * yi).into()).collect();
@@ -147,11 +142,8 @@ impl KeyPair {
     are chosen uniformly at random and are non-zero.
     */
     pub fn new(length: usize, rng: &mut impl Rng) -> Self {
-        // select g1 uniformly at random. This shouldn't return ID, but we'll check just in case.
-        let mut g1 = G1Projective::random(&mut *rng);
-        while bool::from(g1.is_identity()) {
-            g1 = G1Projective::random(&mut *rng);
-        }
+        // select g1 uniformly at random.
+        let g1: G1Projective = random_non_identity(&mut *rng);
 
         // construct keys
         let sk = SecretKey::new(rng, length, &g1);

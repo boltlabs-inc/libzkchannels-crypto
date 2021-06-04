@@ -162,33 +162,36 @@ pub struct RangeProof {
 
 #[allow(unused)]
 impl RangeProofBuilder {
-    /// Run the commitment phase of a Schnorr-style range proof on the value n, to show that
-    /// `0 < n < u^l`.
+    /// Run the commitment phase of a Schnorr-style range proof on the value, to show that
+    /// `0 <= value < 2^63`.
     pub fn generate_proof_commitments(
-        n: i64,
+        value: i64,
         params: &RangeProofParameters,
         rng: &mut impl Rng,
     ) -> Result<Self, Error> {
-        if n.is_negative() {
-            return Err(Error::OutsideRange(n));
+        // Make sure value lies within the correct range: a normal i64 is in the range [-2^63, 2^63).
+        // A non-negative i64 must be in the range [0, 2^63).
+        if value.is_negative() {
+            return Err(Error::OutsideRange(value));
         }
+        // It is now safe to convert to u64 (the value cannot be in the overflow range [2^63, 2^64).)
+        let mut decomposing_value = value as u64;
 
-        // break n into digits
+        // Decompose the value into digits.
         let mut digits = [0; RP_PARAMETER_L];
-        let mut u = n as u64;
         for digit in &mut digits {
-            *digit = u % RP_PARAMETER_U;
-            u /= RP_PARAMETER_U;
+            *digit = decomposing_value % RP_PARAMETER_U;
+            decomposing_value /= RP_PARAMETER_U;
         }
 
-        // compute signature proof builders on each digit
+        // Compute signature proof builders on each digit.
         let digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L] = digits
             .iter()
             .map(|&digit| {
                 SignatureProofBuilder::generate_proof_commitments(
                     rng,
                     // N.B. u64s are being encoded to `Scalar`s using the builtin bls12_381
-                    // `From<u64>` implementation. We may want to reconsider this later.
+                    // `From<u64>` implementation.
                     Message::new(vec![Scalar::from(digit)]),
                     params.digit_signatures[digit as usize],
                     &[None],
@@ -199,9 +202,11 @@ impl RangeProofBuilder {
             .into_inner()
             .expect("impossible; len will always be RP_PARAMETER_L");
 
-        // construct cumulative commitment scalar for n from the c.s.'s of its digits
+        // Construct cumulative commitment scalar for value from the commitment scalars of its digits.
         let mut commitment_scalar = Scalar::zero();
+        // u_pow holds the term u^j for j = 0 .. RP_PARAMETER_L
         let mut u_pow = Scalar::one();
+        // Compute sum ( u^j * commitment_scalar[j] )
         for proof_builder in &digit_proof_builders {
             // The message here is always of length 1, so it's always okay to index it at the 0th element.
             commitment_scalar += u_pow * proof_builder.conjunction_commitment_scalars()[0];
@@ -230,6 +235,10 @@ impl RangeProofBuilder {
 #[allow(unused)]
 impl RangeProof {
     /// Verify that the PoKs on the opening of signatures for each digit are valid.
+    ///
+    /// Return `MessageLengthMismatch` error if the digit proofs are malformed with respect to the
+    /// `RangeProofParameters`.
+    /// If none are, return a bool indicating whether ALL the signatures are valid.
     fn verify_range_proof_digits(
         &self,
         params: &RangeProofParameters,
@@ -246,6 +255,11 @@ impl RangeProof {
 
     /// Verify that the response scalar for a given value is correctly constructed from the range
     /// proof digits.
+    ///
+    /// Return `MessageLengthMismatch` error if the proof is malformed with respect to the provided
+    /// `RangeProofParameters`.
+    /// Otherwise, return a bool indicating whether the digit proofs are valid and are correctly
+    /// formed with respect to the given `Scalar`.
     pub fn verify_range_proof(
         &self,
         params: &RangeProofParameters,
@@ -254,9 +268,11 @@ impl RangeProof {
     ) -> Result<bool, Error> {
         let valid_digits = self.verify_range_proof_digits(params, challenge)?;
 
-        // sum u^j t_{j,1}
+        // Construct cumulative response scalar from the response scalars of the individual digits.
         let mut response_scalar = Scalar::zero();
+        // u_pow holds the term u^j for j = 0 .. RP_PARAMETER_L
         let mut u_pow = Scalar::one();
+        // sum ( u^j * response_scalar[j] )
         for proof in &self.digit_proofs {
             response_scalar += u_pow * proof.conjunction_response_scalars()[0];
             u_pow *= Scalar::from(RP_PARAMETER_U);

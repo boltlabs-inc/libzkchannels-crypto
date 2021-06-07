@@ -26,6 +26,7 @@ use crate::{
     customer, merchant, revlock::*, types::*, Balance, Error, Nonce, PaymentAmount, Rng,
     Verification, CLOSE_SCALAR,
 };
+use ff::Field;
 use serde::*;
 use zkchannels_crypto::{
     message::{BlindingFactor, Message},
@@ -35,11 +36,16 @@ use zkchannels_crypto::{
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]
-pub struct ChannelId;
+pub struct ChannelId(Scalar);
 
 impl ChannelId {
+    /// Generate a new channel ID uniformly at random.
+    pub fn new(rng: &mut impl Rng) -> Self {
+        Self(Scalar::random(&mut *rng))
+    }
+
     pub(crate) fn to_scalar(self) -> Scalar {
-        todo!()
+        self.0
     }
 }
 
@@ -430,9 +436,10 @@ mod test {
     #[test]
     fn apply_positive_payment_works() {
         let mut rng = rand::thread_rng();
+        let channel_id = ChannelId::new(&mut rng);
         let s = State::new(
             &mut rng,
-            ChannelId,
+            channel_id,
             MerchantBalance::try_new(0).unwrap(),
             CustomerBalance::try_new(1).unwrap(),
         );
@@ -447,9 +454,10 @@ mod test {
     #[test]
     fn apply_negative_payment_works() {
         let mut rng = rand::thread_rng();
+        let channel_id = ChannelId::new(&mut rng);
         let s = State::new(
             &mut rng,
-            ChannelId,
+            channel_id,
             MerchantBalance::try_new(1).unwrap(),
             CustomerBalance::try_new(0).unwrap(),
         );
@@ -465,9 +473,10 @@ mod test {
     #[should_panic = "InsufficientFunds"]
     fn apply_payment_fails_for_insufficient_customer_funds() {
         let mut rng = rand::thread_rng();
+        let channel_id = ChannelId::new(&mut rng);
         let s = State::new(
             &mut rng,
-            ChannelId,
+            channel_id,
             MerchantBalance::try_new(0).unwrap(),
             CustomerBalance::try_new(1).unwrap(),
         );
@@ -480,9 +489,10 @@ mod test {
     #[should_panic = "InsufficientFunds"]
     fn apply_payment_fails_for_insufficient_merchant_funds() {
         let mut rng = rand::thread_rng();
+        let channel_id = ChannelId::new(&mut rng);
         let s = State::new(
             &mut rng,
-            ChannelId,
+            channel_id,
             MerchantBalance::try_new(0).unwrap(),
             CustomerBalance::try_new(1).unwrap(),
         );

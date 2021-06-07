@@ -193,8 +193,8 @@ impl EstablishProof {
         let expected_merchant_balance = challenge.0
             * verification_objects.merchant_balance.to_scalar()
             + self.merchant_balance_cs;
-        let merchant_balances_match = state_proof_rs[3] == expected_merchant_balance
-            && close_state_proof_rs[3] == expected_merchant_balance;
+        let merchant_balances_match = state_proof_rs[4] == expected_merchant_balance
+            && close_state_proof_rs[4] == expected_merchant_balance;
 
         Verification::from(
             state_proof_verifies
@@ -422,4 +422,54 @@ pub struct PayProofVerification<'a> {
     pub nonce: Nonce,
     /// Expected payment amount.
     pub amount: crate::PaymentAmount,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        merchant,
+        proofs::*,
+        states::{ChannelId, CustomerBalance, MerchantBalance, State},
+    };
+    use rand::SeedableRng;
+
+    #[test]
+    fn establish_proof_verifies() {
+        let seed: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
+        let mut rng = rand::rngs::StdRng::from_seed(seed);
+        let merchant_params = merchant::Config::new(&mut rng);
+        let params = merchant_params.to_customer_config();
+        let channel_id = ChannelId::new(&mut rng);
+        let state = State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new(0).unwrap(),
+            CustomerBalance::try_new(100).unwrap(),
+        );
+        let close_state = state.close_state();
+
+        let (state_commitment, pt_bf) = state.commit(&mut rng, &params);
+        let (close_state_commitment, cs_bf) = close_state.commit(&mut rng, &params);
+        let proof = EstablishProof::new(
+            &mut rng,
+            &params,
+            &state,
+            cs_bf,
+            pt_bf,
+            &state_commitment,
+            &close_state_commitment,
+        );
+
+        let vos = EstablishProofVerification {
+            state_commitment: &state_commitment,
+            close_state_commitment,
+            channel_id: *state.channel_id(),
+            merchant_balance: *state.merchant_balance(),
+            customer_balance: *state.customer_balance(),
+        };
+        assert!(matches!(
+            proof.verify(&merchant_params, &vos),
+            Verification::Verified
+        ));
+    }
 }

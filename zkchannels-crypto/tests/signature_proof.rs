@@ -1,6 +1,6 @@
 use bls12_381::Scalar;
 use ff::Field;
-use rand::thread_rng;
+use rand::SeedableRng;
 use std::iter;
 use zkchannels_crypto::challenge::ChallengeBuilder;
 use zkchannels_crypto::message::Message;
@@ -9,8 +9,10 @@ use zkchannels_crypto::ps_signatures::Signer;
 use zkchannels_crypto::signature_proof::SignatureProofBuilder;
 use zkchannels_crypto::Rng;
 
+// Seeded rng for replicable tests.
 fn rng() -> impl Rng {
-    thread_rng()
+    const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
+    rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }
 
 #[test]

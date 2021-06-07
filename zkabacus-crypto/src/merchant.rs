@@ -19,7 +19,7 @@ use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPa
 pub struct Config {
     /// KeyPair for signing, blind signing, and proofs.
     pub(crate) signing_keypair: KeyPair,
-    pub(crate) revocation_parameters: PedersenParameters<G1Projective>,
+    pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
 }
 
 impl Config {
@@ -33,7 +33,7 @@ impl Config {
 
         Self {
             signing_keypair,
-            revocation_parameters,
+            revocation_commitment_parameters: revocation_parameters,
         }
     }
 
@@ -41,7 +41,7 @@ impl Config {
     pub fn to_customer_config(&self) -> customer::Config {
         customer::Config {
             merchant_public_key: self.signing_keypair.public_key().clone(),
-            revocation_parameters: self.revocation_parameters.clone(),
+            revocation_commitment_parameters: self.revocation_commitment_parameters.clone(),
         }
     }
 

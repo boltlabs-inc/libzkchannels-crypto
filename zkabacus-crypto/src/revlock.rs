@@ -94,7 +94,7 @@ impl RevocationLock {
     ) -> RevocationLockCommitment {
         RevocationLockCommitment(
             params
-                .revocation_parameters
+                .revocation_commitment_parameters
                 .commit(
                     &Message::from(self.to_scalar()),
                     revocation_lock_blinding_factor.0,
@@ -124,7 +124,7 @@ impl RevocationLockCommitment {
     ) -> Verification {
         let verify_pair = revocation_lock.verify(revocation_secret);
         let verify_commitment = parameters
-            .revocation_parameters
+            .revocation_commitment_parameters
             .decommit(
                 &Message::from(revocation_lock.to_scalar()),
                 revocation_lock_blinding_factor.0,

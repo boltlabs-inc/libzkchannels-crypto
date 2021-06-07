@@ -59,7 +59,7 @@ use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::Publi
 pub struct Config {
     /// Merchant's signing and proofs public key
     pub(crate) merchant_public_key: PublicKey,
-    pub(crate) revocation_parameters: PedersenParameters<G1Projective>,
+    pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
 }
 
 /// An activated channel that allows payments and closing.

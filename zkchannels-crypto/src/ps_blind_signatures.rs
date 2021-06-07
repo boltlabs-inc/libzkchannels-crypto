@@ -84,16 +84,6 @@ impl PublicKey {
             Err(m) => Err(m),
         }
     }
-
-    /// Verify that the given signature is on the message, using the blinding factor.
-    pub fn verify_blinded(
-        &self,
-        _msg: &Message,
-        _sig: &BlindedSignature,
-        _bf: BlindingFactor,
-    ) -> bool {
-        todo!();
-    }
 }
 
 impl KeyPair {
@@ -108,16 +98,5 @@ impl KeyPair {
             sigma1: (self.public_key().g1 * u).into(),
             sigma2: ((self.secret_key().x1 + msg.0 .0) * u).into(),
         })
-    }
-
-    /// Given the blinding factor, verify that the given signature is valid with respect to the
-    /// message, using the blinding factor.
-    pub fn verify_blinded(
-        &self,
-        msg: &Message,
-        sig: &BlindedSignature,
-        bf: BlindingFactor,
-    ) -> bool {
-        self.public_key().verify_blinded(msg, sig, bf)
     }
 }

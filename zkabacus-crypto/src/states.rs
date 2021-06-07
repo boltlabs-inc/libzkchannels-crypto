@@ -23,7 +23,8 @@ The customer must blind the input and unblind the output with the _same_ blindin
 */
 
 use crate::{
-    customer, merchant, revlock::*, types::*, Nonce, PaymentAmount, Rng, Verification, CLOSE_SCALAR,
+    customer, merchant, revlock::*, types::*, Balance, Error, Nonce, PaymentAmount, Rng,
+    Verification, CLOSE_SCALAR,
 };
 use serde::*;
 use zkchannels_crypto::{
@@ -44,29 +45,55 @@ impl ChannelId {
 
 /// Channel balance for merchant.
 #[derive(Debug, Clone, Copy)]
-pub struct MerchantBalance;
+pub struct MerchantBalance(Balance);
 
 impl MerchantBalance {
-    fn apply(self, _amt: PaymentAmount) -> Self {
-        todo!()
+    /// Create a new merchant balance.
+    ///
+    /// Raise an error if the proposed balance is too large.
+    pub fn try_new(value: u64) -> Result<Self, Error> {
+        Balance::try_new(value).map(Self)
+    }
+
+    fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
+        // The merchant adds, the customer subtracts
+        let new_value = self.0 .0 as i64 + amt.0;
+        if new_value.is_negative() {
+            Err(Error::InsufficientFunds)
+        } else {
+            Self::try_new(new_value as u64)
+        }
     }
 
     pub(crate) fn to_scalar(self) -> Scalar {
-        todo!()
+        self.0.to_scalar()
     }
 }
 
 /// Channel balance for customer.
 #[derive(Debug, Clone, Copy)]
-pub struct CustomerBalance;
+pub struct CustomerBalance(Balance);
 
 impl CustomerBalance {
-    fn apply(self, _amt: PaymentAmount) -> Self {
-        todo!()
+    /// Create a new customer balance.
+    ///
+    /// Raise an error if the proposed balance is too large.
+    pub fn try_new(value: u64) -> Result<Self, Error> {
+        Balance::try_new(value).map(Self)
+    }
+
+    fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
+        // The merchant adds, the customer subtracts
+        let new_value = self.0 .0 as i64 - amt.0;
+        if new_value.is_negative() {
+            Err(Error::InsufficientFunds)
+        } else {
+            Self::try_new(new_value as u64)
+        }
     }
 
     pub(crate) fn to_scalar(self) -> Scalar {
-        todo!()
+        self.0.to_scalar()
     }
 }
 
@@ -183,14 +210,14 @@ impl State {
     /// *decreases* the [`MerchantBalance`].
     ///
     /// This is typically called by the customer.
-    pub fn apply_payment(&self, rng: &mut impl Rng, amt: PaymentAmount) -> State {
-        State {
+    pub fn apply_payment(&self, rng: &mut impl Rng, amt: PaymentAmount) -> Result<State, Error> {
+        Ok(State {
             channel_id: self.channel_id,
             nonce: Nonce::new(rng),
             revocation_secret: RevocationSecret::new(rng),
-            customer_balance: self.customer_balance.apply(amt),
-            merchant_balance: self.merchant_balance.apply(amt),
-        }
+            customer_balance: self.customer_balance.apply(amt)?,
+            merchant_balance: self.merchant_balance.apply(amt)?,
+        })
     }
 
     /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
@@ -389,10 +416,66 @@ mod test {
     use super::*;
 
     #[test]
-    #[should_panic]
-    fn apply_payment_works() {
+    fn apply_positive_payment_works() {
         let mut rng = rand::thread_rng();
-        let s = State::new(&mut rng, ChannelId, MerchantBalance, CustomerBalance);
-        let _s_prev = s.apply_payment(&mut rng, PaymentAmount::pay_merchant(1));
+        let s = State::new(
+            &mut rng,
+            ChannelId,
+            MerchantBalance::try_new(0).unwrap(),
+            CustomerBalance::try_new(1).unwrap(),
+        );
+        let s_prime = s
+            .apply_payment(&mut rng, PaymentAmount::pay_merchant(1).unwrap())
+            .unwrap();
+
+        assert_eq!(s_prime.merchant_balance.0 .0, 1);
+        assert_eq!(s_prime.customer_balance.0 .0, 0);
+    }
+
+    #[test]
+    fn apply_negative_payment_works() {
+        let mut rng = rand::thread_rng();
+        let s = State::new(
+            &mut rng,
+            ChannelId,
+            MerchantBalance::try_new(1).unwrap(),
+            CustomerBalance::try_new(0).unwrap(),
+        );
+        let s_prime = s
+            .apply_payment(&mut rng, PaymentAmount::pay_customer(1).unwrap())
+            .unwrap();
+
+        assert_eq!(s_prime.merchant_balance.0 .0, 0);
+        assert_eq!(s_prime.customer_balance.0 .0, 1);
+    }
+
+    #[test]
+    #[should_panic = "InsufficientFunds"]
+    fn apply_payment_fails_for_insufficient_customer_funds() {
+        let mut rng = rand::thread_rng();
+        let s = State::new(
+            &mut rng,
+            ChannelId,
+            MerchantBalance::try_new(0).unwrap(),
+            CustomerBalance::try_new(1).unwrap(),
+        );
+        let _ = s
+            .apply_payment(&mut rng, PaymentAmount::pay_merchant(2).unwrap())
+            .unwrap();
+    }
+
+    #[test]
+    #[should_panic = "InsufficientFunds"]
+    fn apply_payment_fails_for_insufficient_merchant_funds() {
+        let mut rng = rand::thread_rng();
+        let s = State::new(
+            &mut rng,
+            ChannelId,
+            MerchantBalance::try_new(0).unwrap(),
+            CustomerBalance::try_new(1).unwrap(),
+        );
+        let _ = s
+            .apply_payment(&mut rng, PaymentAmount::pay_customer(1).unwrap())
+            .unwrap();
     }
 }

@@ -50,7 +50,7 @@ use crate::{
     revlock::*,
     states::*,
     types::*,
-    PaymentAmount, Rng,
+    Error, PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
 use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::PublicKey};
@@ -237,9 +237,13 @@ pub struct StartMessage {
 impl Ready {
     /// Start a payment of the given [`PaymentAmount`].
     /// This is part of zkAbacus.Pay.
-    pub fn start(self, rng: &mut impl Rng, amount: PaymentAmount) -> (Started, StartMessage) {
+    pub fn start(
+        self,
+        rng: &mut impl Rng,
+        amount: PaymentAmount,
+    ) -> Result<(Started, StartMessage), Error> {
         // Generate correctly-updated state.
-        let new_state = self.state.apply_payment(rng, amount);
+        let new_state = self.state.apply_payment(rng, amount)?;
 
         // Commit to new state and old revocation lock.
         let (revocation_lock_commitment, revocation_lock_bf) =
@@ -266,7 +270,7 @@ impl Ready {
         );
 
         let old_nonce = *self.state.nonce();
-        (
+        Ok((
             Started {
                 config: self.config,
                 new_state,
@@ -281,7 +285,7 @@ impl Ready {
                 close_state_commitment,
                 state_commitment,
             },
-        )
+        ))
     }
 
     /// Extract data used to close the channel.

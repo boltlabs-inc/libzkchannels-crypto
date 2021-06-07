@@ -57,9 +57,10 @@ use crate::{
     types::*,
     Error,
 };
+use serde::*;
 
 /// Fully constructed proof of knowledge of a signature.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureProof {
     /// Commitment to the signed message.
     pub message_commitment: Commitment<G2Projective>,

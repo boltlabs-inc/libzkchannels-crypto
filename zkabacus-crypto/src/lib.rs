@@ -107,6 +107,11 @@ impl Balance {
     fn to_scalar(self) -> Scalar {
         Scalar::from(self.0)
     }
+
+    /// Always returns a `u64` which is less than `i64::MAX`.
+    fn into_inner(self) -> u64 {
+        self.0 as u64
+    }
 }
 
 /// Amount of a single payment.

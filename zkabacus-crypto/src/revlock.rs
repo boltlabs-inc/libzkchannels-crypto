@@ -43,7 +43,7 @@ pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
 /// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that verify with the commitment.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLockCommitment(Commitment<G1Projective>);
+pub struct RevocationLockCommitment(pub(crate) Commitment<G1Projective>);
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

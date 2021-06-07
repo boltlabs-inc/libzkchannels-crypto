@@ -15,6 +15,8 @@ use zkchannels_crypto::{
     challenge::ChallengeBuilder,
     commitment_proof::{CommitmentProof, CommitmentProofBuilder},
     pedersen_commitments::Commitment,
+    range_proof::{RangeProof, RangeProofBuilder},
+    signature_proof::{SignatureProof, SignatureProofBuilder},
     SerializeElement,
 };
 
@@ -236,8 +238,15 @@ This is a zero-knowledge proof that makes the following guarantees:
 - The new balances are non-negative.
 
 */
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct PayProof(());
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PayProof {
+    pay_token_proof: SignatureProof,
+    revocation_lock_proof: CommitmentProof<G1Projective>,
+    state_proof: CommitmentProof<G1Projective>,
+    close_state_proof: CommitmentProof<G1Projective>,
+    customer_balance_proof: RangeProof,
+    merchant_balance_proof: RangeProof,
+}
 
 /// Blinding factors for commitments associated with a particular payment.
 #[derive(Debug, Clone, Copy)]
@@ -271,14 +280,108 @@ impl PayProof {
     This function is typically called by the customer.
     */
     pub(crate) fn new(
-        _rng: &mut impl Rng,
-        _params: &customer::Config,
-        _pay_token: PayToken,
-        _old_state: &State,
-        _state: &State,
-        _blinding_factors: BlindingFactors,
+        rng: &mut impl Rng,
+        params: &customer::Config,
+        pay_token: PayToken,
+        old_state: &State,
+        state: &State,
+        revocation_lock_commitment: &RevocationLockCommitment,
+        state_commitment: &StateCommitment,
+        close_state_commitment: &CloseStateCommitment,
+        blinding_factors: BlindingFactors,
     ) -> Self {
-        todo!();
+        let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
+
+        let customer_range_proof_builder = RangeProofBuilder::generate_proof_commitments(
+            state.customer_balance().into_inner() as i64,
+            &params.range_proof_parameters,
+            rng,
+        )
+        .unwrap();
+
+        let merchant_range_proof_builder = RangeProofBuilder::generate_proof_commitments(
+            state.merchant_balance().into_inner() as i64,
+            &params.range_proof_parameters,
+            rng,
+        )
+        .unwrap();
+
+        let customer_rs = customer_range_proof_builder.commitment_scalar;
+        let merchant_rs = merchant_range_proof_builder.commitment_scalar;
+
+        let revocation_lock_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            rng,
+            &[None],
+            &params.revocation_commitment_parameters,
+        )
+        .expect("mismatched lengths");
+        let revlock_cs = revocation_lock_proof_builder.conjunction_commitment_scalars()[0];
+
+        let pay_token_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+            rng,
+            old_state.to_message(),
+            pay_token.0,
+            &[
+                None,
+                None,
+                Some(revlock_cs),
+                Some(customer_rs),
+                Some(merchant_rs),
+            ],
+            &params.merchant_public_key,
+        )
+        .expect("mismatched lengths");
+        let channel_id_cs = pay_token_proof_builder.conjunction_commitment_scalars()[0];
+
+        let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            rng,
+            &[
+                Some(channel_id_cs),
+                None,
+                Some(revlock_cs),
+                Some(customer_rs),
+                Some(merchant_rs),
+            ],
+            &pedersen_parameters,
+        )
+        .expect("mismatched lengths");
+
+        let cs = state_proof_builder.conjunction_commitment_scalars();
+        let close_state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            rng,
+            &[
+                Some(channel_id_cs),
+                None,
+                Some(revlock_cs),
+                Some(customer_rs),
+                Some(merchant_rs),
+            ],
+            &pedersen_parameters,
+        )
+        .expect("mismatched lengths");
+
+        let challenge_builder = ChallengeBuilder::new()
+            // integrate keys and constants
+            .with_public_key(&params.merchant_public_key)
+            .with_public_key(params.range_proof_parameters.public_key())
+            .with_scalar(state.nonce().to_scalar())
+            .with_scalar(CLOSE_SCALAR)
+            // integrate commitments from commitment proofs
+            .with_commitment(revocation_lock_commitment.0)
+            .with_blinded_message(state_commitment.0)
+            .with_blinded_message(close_state_commitment.0)
+            // integrate commitment scalars from commitment proofs
+            .with_commitment(revocation_lock_proof_builder.scalar_commitment)
+            .with_commitment(state_proof_builder.scalar_commitment)
+            .with_commitment(close_state_proof_builder.scalar_commitment)
+            // integrate signature and range proofs
+            .with_signature_proof_builder(&pay_token_proof_builder)
+            .with_range_proof_builder(&customer_range_proof_builder)
+            .with_range_proof_builder(&merchant_range_proof_builder)
+            // TODO: incorporate context here.
+            .finish();
+
+        todo!()
     }
 
     /**

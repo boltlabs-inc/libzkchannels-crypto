@@ -53,7 +53,9 @@ use crate::{
     Error, PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
-use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::PublicKey};
+use zkchannels_crypto::{
+    pedersen_commitments::PedersenParameters, ps_keys::PublicKey, range_proof::RangeProofParameters,
+};
 
 /// Keys and parameters used throughout the lifetime of a channel.
 #[derive(Debug)]
@@ -62,6 +64,7 @@ pub struct Config {
     pub(crate) merchant_public_key: PublicKey,
     /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
+    pub(crate) range_proof_parameters: RangeProofParameters,
 }
 
 impl Config {
@@ -69,10 +72,12 @@ impl Config {
     pub fn new(
         merchant_public_key: PublicKey,
         revocation_commitment_parameters: PedersenParameters<G1Projective>,
+        range_proof_parameters: RangeProofParameters,
     ) -> Self {
         Self {
             merchant_public_key,
             revocation_commitment_parameters,
+            range_proof_parameters,
         }
     }
 
@@ -84,6 +89,11 @@ impl Config {
     /// The parameters for committing to revocation locks.
     pub fn revocation_commitment_parameters(&self) -> &PedersenParameters<G1Projective> {
         &self.revocation_commitment_parameters
+    }
+
+    /// The parameters for constructing range proofs.
+    pub fn range_proof_parameters(&self) -> &RangeProofParameters {
+        &self.range_proof_parameters
     }
 }
 
@@ -266,10 +276,15 @@ impl Ready {
             self.pay_token,
             &self.state,
             &new_state,
+            &revocation_lock_commitment,
+            &state_commitment,
+            &close_state_commitment,
             blinding_factors,
         );
 
+        // Save nonce.
         let old_nonce = *self.state.nonce();
+
         Ok((
             Started {
                 config: self.config,

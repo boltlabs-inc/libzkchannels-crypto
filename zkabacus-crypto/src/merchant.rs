@@ -11,7 +11,9 @@ use crate::{
     PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
-use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPair};
+use zkchannels_crypto::{
+    pedersen_commitments::PedersenParameters, ps_keys::KeyPair, range_proof::RangeProofParameters,
+};
 
 /// A merchant that is ready to establish channels and process payments.
 /// This is a merchant that has completed zkAbacus.Init.
@@ -25,19 +27,17 @@ pub struct Config {
     pub(crate) signing_keypair: KeyPair,
     /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
+    pub(crate) range_proof_parameters: RangeProofParameters,
 }
 
 impl Config {
     /// Instantiate a new merchant with all parameters.
     /// This executes zkAbacus.Init.
-    #[allow(clippy::new_without_default)]
     pub fn new(rng: &mut impl Rng) -> Self {
-        let signing_keypair = KeyPair::new(5, rng);
-        let revocation_commitment_parameters = PedersenParameters::new(1, rng);
-
         Self {
-            signing_keypair,
-            revocation_commitment_parameters,
+            signing_keypair: KeyPair::new(5, rng),
+            revocation_commitment_parameters: PedersenParameters::new(1, rng),
+            range_proof_parameters: RangeProofParameters::new(rng),
         }
     }
 
@@ -46,6 +46,7 @@ impl Config {
         customer::Config {
             merchant_public_key: self.signing_keypair.public_key().clone(),
             revocation_commitment_parameters: self.revocation_commitment_parameters.clone(),
+            range_proof_parameters: self.range_proof_parameters.clone(),
         }
     }
 

@@ -9,10 +9,11 @@ other public information into the challenge.
 
 use crate::{
     pedersen_commitments::{Commitment, PedersenParameters},
-    ps_blind_signatures::BlindedMessage,
+    ps_blind_signatures::{BlindedMessage, BlindedSignature},
     ps_keys::PublicKey,
-    range_proof::RangeProofBuilder,
-    signature_proof::SignatureProofBuilder,
+    ps_signatures::Signature,
+    range_proof::{RangeProof, RangeProofBuilder},
+    signature_proof::{SignatureProof, SignatureProofBuilder},
     types::*,
 };
 use group::{Group, GroupEncoding};
@@ -65,13 +66,30 @@ impl ChallengeBuilder {
         self,
         signature_proof_builder: &SignatureProofBuilder,
     ) -> Self {
-        self.with_bytes(signature_proof_builder.message_commitment.0.to_bytes())
-            .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
+        self.with_commitment(signature_proof_builder.message_commitment)
+            .with_blinded_signature(&signature_proof_builder.blinded_signature)
             .with_commitment(
                 signature_proof_builder
                     .commitment_proof_builder
                     .scalar_commitment,
             )
+    }
+
+    /// Incorporate a [`SignatureProof`] into the challenge.
+    pub fn with_signature_proof(self, proof: &SignatureProof) -> Self {
+        self.with_commitment(proof.message_commitment)
+            .with_blinded_signature(&proof.blinded_signature)
+            .with_commitment(proof.commitment_proof.scalar_commitment)
+    }
+
+    /// Incorporate a [`Signature`] into the challenge.
+    pub fn with_signature(self, signature: &Signature) -> Self {
+        self.with_bytes(&signature.to_bytes())
+    }
+
+    /// Incorporate a [`BlindedSignature`] into the challenge.
+    pub fn with_blinded_signature(self, signature: &BlindedSignature) -> Self {
+        self.with_bytes(&signature.to_bytes())
     }
 
     /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
@@ -82,6 +100,14 @@ impl ChallengeBuilder {
             .digit_proof_builders
             .iter()
             .fold(self, |this, proof| this.with_signature_proof_builder(proof))
+    }
+
+    /// Incorporate pieces of the [`RangeProof`] into the challenge.
+    pub fn with_range_proof(self, range_proof: &RangeProof) -> Self {
+        range_proof
+            .digit_proofs
+            .iter()
+            .fold(self, |this, proof| this.with_signature_proof(proof))
     }
 
     /// Incorporate public key material into the challenge.

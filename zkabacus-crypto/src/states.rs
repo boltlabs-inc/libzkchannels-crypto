@@ -68,6 +68,12 @@ impl MerchantBalance {
     pub(crate) fn to_scalar(self) -> Scalar {
         self.0.to_scalar()
     }
+
+    /// Convert into the inner `u64` value. Per internal invariants, this will always produce a
+    /// `u64` which is less than `i64::MAX`.
+    pub fn into_inner(self) -> u64 {
+        self.0.into_inner()
+    }
 }
 
 /// Channel balance for customer.
@@ -94,6 +100,12 @@ impl CustomerBalance {
 
     pub(crate) fn to_scalar(self) -> Scalar {
         self.0.to_scalar()
+    }
+
+    /// Convert into the inner `u64` value. Per internal invariants, this will always produce a
+    /// `u64` which is less than `i64::MAX`.
+    pub fn into_inner(self) -> u64 {
+        self.0.into_inner()
     }
 }
 
@@ -371,7 +383,7 @@ impl CloseStateSignature {
 /// [`State`].
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct PayToken(Signature);
+pub(crate) struct PayToken(pub(crate) Signature);
 
 /// A blinded pay token.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

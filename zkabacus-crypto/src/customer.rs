@@ -50,7 +50,7 @@ use crate::{
     revlock::*,
     states::*,
     types::*,
-    PaymentAmount,
+    PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
 use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::PublicKey};
@@ -126,24 +126,24 @@ impl Requested {
     This is part of zkAbacus.Initialize.
     */
     pub fn new(
+        rng: &mut impl Rng,
         config: Config,
         channel_id: ChannelId,
         merchant_balance: MerchantBalance,
         customer_balance: CustomerBalance,
     ) -> (Self, RequestMessage) {
         // Construct initial state.
-        let mut rng = rand::thread_rng();
-        let state = State::new(&mut rng, channel_id, merchant_balance, customer_balance);
+        let state = State::new(rng, channel_id, merchant_balance, customer_balance);
         let close_state = state.close_state();
 
         // Commit to state and corresponding close state.
-        let (state_commitment, pay_token_blinding_factor) = state.commit(&mut rng, &config);
+        let (state_commitment, pay_token_blinding_factor) = state.commit(rng, &config);
         let (close_state_commitment, close_state_blinding_factor) =
-            close_state.commit(&mut rng, &config);
+            close_state.commit(rng, &config);
 
         // Form proof that the state / close state are correct.
         let proof = EstablishProof::new(
-            &mut rng,
+            rng,
             &config,
             &state,
             close_state_blinding_factor,
@@ -235,17 +235,16 @@ pub struct StartMessage {
 impl Ready {
     /// Start a payment of the given [`PaymentAmount`].
     /// This is part of zkAbacus.Pay.
-    pub fn start(self, amount: PaymentAmount) -> (Started, StartMessage) {
+    pub fn start(self, rng: &mut impl Rng, amount: PaymentAmount) -> (Started, StartMessage) {
         // Generate correctly-updated state.
-        let mut rng = rand::thread_rng();
-        let new_state = self.state.apply_payment(&mut rng, amount);
+        let new_state = self.state.apply_payment(rng, amount);
 
         // Commit to new state and old revocation lock.
         let (revocation_lock_commitment, revocation_lock_bf) =
-            self.state.commit_to_revocation(&mut rng, &self.config);
-        let (state_commitment, state_bf) = self.state.commit(&mut rng, &self.config);
+            self.state.commit_to_revocation(rng, &self.config);
+        let (state_commitment, state_bf) = self.state.commit(rng, &self.config);
         let (close_state_commitment, close_state_bf) =
-            self.state.close_state().commit(&mut rng, &self.config);
+            self.state.close_state().commit(rng, &self.config);
 
         // Save the blinding factors together.
         let blinding_factors = BlindingFactors {
@@ -256,7 +255,7 @@ impl Ready {
 
         // Form proof that the payment correctly updates a valid state.
         let pay_proof = PayProof::new(
-            &mut rng,
+            rng,
             &self.config,
             self.pay_token,
             &self.state,

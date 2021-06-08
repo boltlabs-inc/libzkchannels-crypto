@@ -14,6 +14,7 @@ use crate::{
 use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPair};
 
 /// A merchant that is ready to establish channels and process payments.
+/// This is a merchant that has completed zkAbacus.Init.
 ///
 /// Holds keys and parameters used throughout the lifetime of a merchant node, across
 /// all its channels.
@@ -28,6 +29,7 @@ pub struct Config {
 
 impl Config {
     /// Instantiate a new merchant with all parameters.
+    /// This executes zkAbacus.Init.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
@@ -50,6 +52,7 @@ impl Config {
 
     /**
     Respond to a customer request to initialize a new channel.
+    This executes zkAbacus.Initialize.
 
     Fails in the case where the given [`EstablishProof`] does not verify with respect to the
     public variables (channel ID, balances, and provided commitments).
@@ -91,7 +94,7 @@ impl Config {
     }
 
     /**
-    Activate a channel with the given ID.
+    Activate a channel with the given ID. This is part of zkAbacus.Activate.
 
     This should only be called if the [`StateCommitment`] is stored in the merchant database with
     a known [`ChannelId`].
@@ -107,6 +110,7 @@ impl Config {
     /**
     On receiving a payment request, issue a [`ClosingSignature`](crate::ClosingSignature) on the
     updated state, if the provided evidence is valid.
+    This is part of zkAbacus.Pay.
 
     This should only be called if the [`Nonce`] has never been seen before.
 
@@ -149,6 +153,8 @@ impl Config {
 /**
 A merchant that has approved a new payment on a channel, but has not received revocation
 information for the previous channel state.
+
+This is an intermediary state in zkAbacus.Pay.
 */
 #[derive(Debug)]
 pub struct Unrevoked<'a> {
@@ -161,6 +167,7 @@ impl<'a> Unrevoked<'a> {
     /**
     Complete a payment by issuing a pay token on the updated state, if the revocation information
     is well-formed.
+    This is part of zkAbacus.Pay.
 
     This should only be called if the revocation lock has never been seen before.
 

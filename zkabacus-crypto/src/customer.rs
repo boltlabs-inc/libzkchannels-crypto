@@ -65,6 +65,7 @@ pub struct Config {
 }
 
 /// An activated channel that allows payments and closing.
+/// This is a channel that has completed zkAbacus.Activate.
 #[derive(Debug)]
 pub struct Ready {
     config: Config,
@@ -74,6 +75,7 @@ pub struct Ready {
 }
 
 /// A channel that has been requested but not yet approved.
+/// This is an intermediary state of zkAbacus.Initialize.
 #[derive(Debug)]
 pub struct Requested {
     config: Config,
@@ -83,6 +85,7 @@ pub struct Requested {
 }
 
 /// Message sent to the merchant to request a new channel.
+/// This is sent as part of zkAbacus.Initialize.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct RequestMessage {
@@ -97,6 +100,7 @@ pub struct RequestMessage {
 impl Requested {
     /**
     Generate a new channel request from public parameters.
+    This is part of zkAbacus.Initialize.
     */
     pub fn new(
         config: Config,
@@ -139,6 +143,7 @@ impl Requested {
     }
 
     /// Complete channel initiation: validate approval received from the merchant.
+    /// This is part of zkAbacus.Initialize.
     pub fn complete(
         self,
         closing_signature: crate::ClosingSignature,
@@ -159,6 +164,7 @@ impl Requested {
 }
 
 /// A channel that has been approved but not yet activated.
+/// This is a channel that has completed zkAbacus.Initialize.
 #[derive(Debug)]
 pub struct Inactive {
     config: Config,
@@ -169,6 +175,7 @@ pub struct Inactive {
 
 impl Inactive {
     /// Activate the channel with the fresh pay token from the merchant.
+    /// This is part of zkAbacus.Activate.
     pub fn activate(self, pay_token: crate::PayToken) -> Result<Ready, Inactive> {
         // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
@@ -186,6 +193,7 @@ impl Inactive {
 }
 
 /// Message sent to the merchant after starting a payment.
+/// This is sent as part of zkAbacus.Pay.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct StartMessage {
@@ -203,6 +211,7 @@ pub struct StartMessage {
 
 impl Ready {
     /// Start a payment of the given [`PaymentAmount`].
+    /// This is part of zkAbacus.Pay.
     pub fn start(self, amount: PaymentAmount) -> (Started, StartMessage) {
         // Generate correctly-updated state.
         let mut rng = rand::thread_rng();
@@ -258,6 +267,7 @@ impl Ready {
 }
 
 /// A channel that has started a new payment.
+/// This is the first intermediary state in zkAbacus.Pay.
 #[derive(Debug)]
 pub struct Started {
     config: Config,
@@ -268,6 +278,7 @@ pub struct Started {
 }
 
 /// Message sent to the merchant to revoke the old balance and lock the channel.
+/// This is sent as part of zkAbacus.Pay.
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct LockMessage {
@@ -286,6 +297,7 @@ pub struct Closing {}
 
 impl Started {
     /// Revoke the ability to close the channel on the outdated balances.
+    /// This is part of zkAbacus.Pay.
     pub fn lock(
         self,
         closing_signature: crate::ClosingSignature,
@@ -321,6 +333,7 @@ impl Started {
 
 /// A channel that has made a payment but not yet been given permission by the merchant to make
 /// another payment.
+/// This is the second intermediary state of zkAbacus.Pay.
 #[derive(Debug)]
 pub struct Locked {
     config: Config,
@@ -331,6 +344,7 @@ pub struct Locked {
 
 impl Locked {
     /// Unlock the channel by validating the merchant's approval message.
+    /// This is the final step of zkAbacus.Pay.
     pub fn unlock(self, pay_token: crate::PayToken) -> Result<Ready, Locked> {
         // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);

@@ -95,8 +95,8 @@ impl Config {
     /**
     Activate a channel with the given ID. This is part of zkAbacus.Activate.
 
-    This should only be called if the [`StateCommitment`] is stored in the merchant database with
-    a known [`ChannelId`].
+    This should only be called _after_ the merchant has executed [`initialize()`](Config::initialize()) for the given
+    [`ChannelId`].
     */
     pub fn activate(
         &self,

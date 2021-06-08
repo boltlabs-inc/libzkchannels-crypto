@@ -64,6 +64,29 @@ pub struct Config {
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
 }
 
+impl Config {
+    /// Construct a new customer configuration from the merchant's public parameters.
+    pub fn new(
+        merchant_public_key: PublicKey,
+        revocation_commitment_parameters: PedersenParameters<G1Projective>,
+    ) -> Self {
+        Self {
+            merchant_public_key,
+            revocation_commitment_parameters,
+        }
+    }
+
+    /// The merchant public key for blind signing and proofs.
+    pub fn merchant_public_key(&self) -> &PublicKey {
+        &self.merchant_public_key
+    }
+
+    /// The parameters for committing to revocation locks.
+    pub fn revocation_commitment_parameters(&self) -> &PedersenParameters<G1Projective> {
+        &self.revocation_commitment_parameters
+    }
+}
+
 /// An activated channel that allows payments and closing.
 /// This is a channel that has completed zkAbacus.Activate.
 #[derive(Debug)]

@@ -102,7 +102,7 @@ impl From<bool> for Verification {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct Balance(u64);
 
 impl Balance {

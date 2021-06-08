@@ -31,8 +31,8 @@ use serde::*;
 use zkchannels_crypto::{pointcheval_sanders::*, BlindingFactor, Message};
 
 /// Channel identifier, binds each payment to a specific channel.
-#[derive(Debug, Clone, Copy)]
-pub struct ChannelId(Scalar);
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ChannelId(#[serde(with = "SerializeElement")] Scalar);
 
 impl ChannelId {
     /// Generate a new channel ID uniformly at random.
@@ -46,7 +46,7 @@ impl ChannelId {
 }
 
 /// Channel balance for merchant.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct MerchantBalance(Balance);
 
 impl MerchantBalance {
@@ -79,7 +79,7 @@ impl MerchantBalance {
 }
 
 /// Channel balance for customer.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct CustomerBalance(Balance);
 
 impl CustomerBalance {
@@ -127,12 +127,12 @@ pub(crate) struct State {
 /// When signed by the merchant, this can be used by the customer to close the channel.
 /// It removes the nonce from the [`State`] to maintain privacy during closing, even in the case of
 /// merchant abort during payment.
-#[derive(Debug)]
-pub(crate) struct CloseState<'a> {
-    channel_id: &'a ChannelId,
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct CloseState {
+    channel_id: ChannelId,
     revocation_lock: RevocationLock,
-    merchant_balance: &'a MerchantBalance,
-    customer_balance: &'a CustomerBalance,
+    merchant_balance: MerchantBalance,
+    customer_balance: CustomerBalance,
 }
 
 #[allow(unused)]
@@ -200,7 +200,7 @@ impl State {
     /// Get the [`CloseState`] corresponding to this `State`.
     ///
     /// This is typically called by the customer.
-    pub fn close_state(&self) -> CloseState<'_> {
+    pub fn close_state(&self) -> CloseState {
         let State {
             channel_id,
             revocation_secret,
@@ -209,10 +209,10 @@ impl State {
             ..
         } = self;
         CloseState {
-            channel_id,
+            channel_id: *channel_id,
             revocation_lock: revocation_secret.revocation_lock(),
-            merchant_balance,
-            customer_balance,
+            merchant_balance: *merchant_balance,
+            customer_balance: *customer_balance,
         }
     }
 
@@ -270,7 +270,7 @@ impl State {
 }
 
 #[allow(unused)]
-impl CloseState<'_> {
+impl CloseState {
     /// Form a commitment (and corresponding blinding factor) to the [`CloseState`] and a constant,
     /// fixed close tag.
     ///
@@ -321,7 +321,7 @@ pub struct StateCommitment(pub(crate) BlindedMessage);
 pub struct CloseStateCommitment(pub(crate) BlindedMessage);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub(crate) struct CloseStateSignature(pub(crate) Signature);
 
@@ -362,11 +362,7 @@ impl CloseStateSignature {
     /// Verify the merchant signature against the given [`CloseState`].
     ///
     /// This is typically called by the customer.
-    pub(crate) fn verify(
-        &self,
-        param: &customer::Config,
-        close_state: CloseState<'_>,
-    ) -> Verification {
+    pub(crate) fn verify(&self, param: &customer::Config, close_state: CloseState) -> Verification {
         param
             .merchant_public_key
             .verify(&close_state.to_message(), &self.0)

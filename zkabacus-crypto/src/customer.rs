@@ -41,7 +41,7 @@ The customer has the option to close at multiple points in the protocol:
 - [`Locked`]. A locked channel can close on the updated balances.
 
 At any of these points, the customer can call the associated `close()` function to retrieve the
-[`Closing`] information.
+[`ClosingMessage`] information.
 */
 
 use crate::{
@@ -53,6 +53,7 @@ use crate::{
     Error, PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
+use serde::*;
 use zkchannels_crypto::{
     pedersen::PedersenParameters, pointcheval_sanders::PublicKey, proofs::RangeProofParameters,
 };
@@ -264,7 +265,7 @@ impl Ready {
     }
 
     /// Extract data used to close the channel.
-    pub fn close(self) -> Closing {
+    pub fn close(self) -> ClosingMessage {
         todo!()
     }
 }
@@ -294,9 +295,13 @@ pub struct LockMessage {
 }
 
 /// The information necessary to perform a close for a state.
-#[derive(Debug, Clone)]
-#[allow(missing_copy_implementations)]
-pub struct Closing {}
+/// This is sent as part of zkAbacus.Close.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClosingMessage {
+    close_signature: CloseStateSignature,
+    close_state: CloseState,
+    revocation_secret: RevocationSecret,
+}
 
 impl Started {
     /// Revoke the ability to close the channel on the outdated balances.
@@ -329,7 +334,7 @@ impl Started {
     }
 
     /// Extract data used to close the channel on the previous balances.
-    pub fn close(self) -> Closing {
+    pub fn close(self) -> ClosingMessage {
         todo!()
     }
 }
@@ -364,7 +369,7 @@ impl Locked {
     }
 
     /// Extract data used to close the channel.
-    pub fn close(self) -> Closing {
+    pub fn close(self) -> ClosingMessage {
         todo!()
     }
 }

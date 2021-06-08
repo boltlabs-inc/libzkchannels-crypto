@@ -9,7 +9,8 @@ the customer is behaving correctly without learning any additional information a
 use serde::*;
 
 use crate::{
-    customer, merchant, revlock::*, states::*, types::*, Nonce, Rng, Verification, CLOSE_SCALAR,
+    customer, merchant, revlock::*, states::*, types::*, Nonce, PaymentAmount, Rng, Verification,
+    CLOSE_SCALAR,
 };
 use zkchannels_crypto::{
     challenge::ChallengeBuilder,
@@ -424,10 +425,137 @@ impl PayProof {
     */
     pub fn verify(
         &self,
-        _params: &merchant::Config,
-        _verification_objects: &PayProofVerification,
+        params: &merchant::Config,
+        verification_objects: &PayProofVerification,
     ) -> Verification {
-        todo!();
+        let PayProofVerification {
+            revocation_lock_commitment,
+            state_commitment,
+            close_state_commitment,
+            nonce,
+            amount,
+        } = verification_objects;
+
+        let challenge = ChallengeBuilder::new()
+            // integrate keys and consants
+            .with_public_key(&params.signing_keypair.public_key())
+            .with_public_key(params.range_proof_parameters.public_key())
+            .with_scalar(nonce.to_scalar())
+            .with_scalar(CLOSE_SCALAR)
+            // integrate commitments from commitment proofs
+            .with_commitment(revocation_lock_commitment.0)
+            .with_blinded_message(state_commitment.0)
+            .with_blinded_message(close_state_commitment.0)
+            // integrate commitment scalars from commitment proofs
+            .with_commitment(self.revocation_lock_proof.scalar_commitment)
+            .with_commitment(self.state_proof.scalar_commitment)
+            .with_commitment(self.close_state_proof.scalar_commitment)
+            // integrate signature and range proofs
+            .with_signature_proof(&self.pay_token_proof)
+            .with_range_proof(&self.customer_balance_proof)
+            .with_range_proof(&self.merchant_balance_proof)
+            // TODO: incorporate context here.
+            .finish();
+
+        let pedersen_parameters = params
+            .signing_keypair
+            .public_key()
+            .to_g1_pedersen_parameters();
+
+        let pay_token_proof_verifies = self
+            .pay_token_proof
+            .verify_knowledge_of_signature(params.signing_keypair.public_key(), challenge)
+            .expect("length mismatch");
+
+        let revlock_proof_verifies = self
+            .revocation_lock_proof
+            .verify_knowledge_of_opening_of_commitment(
+                &params.revocation_commitment_parameters,
+                revocation_lock_commitment.0,
+                challenge,
+            )
+            .expect("length mismatch");
+
+        let state_proof_verifies = self
+            .state_proof
+            .verify_knowledge_of_opening_of_commitment(
+                &pedersen_parameters,
+                verification_objects.state_commitment.0.as_commitment(),
+                challenge,
+            )
+            .expect("length mismatch");
+
+        let close_state_proof_verifies = self
+            .close_state_proof
+            .verify_knowledge_of_opening_of_commitment(
+                &pedersen_parameters,
+                verification_objects
+                    .close_state_commitment
+                    .0
+                    .as_commitment(),
+                challenge,
+            )
+            .expect("length mismatch");
+
+        let state_proof_rs = self.state_proof.conjunction_response_scalars();
+        let close_state_proof_rs = self.close_state_proof.conjunction_response_scalars();
+        let pay_token_proof_rs = self.pay_token_proof.conjunction_response_scalars();
+
+        let customer_balance_proof_verifies = self
+            .customer_balance_proof
+            .verify_range_proof(&params.range_proof_parameters, challenge, state_proof_rs[3])
+            .unwrap();
+        let merchant_balance_proof_verifies = self
+            .merchant_balance_proof
+            .verify_range_proof(&params.range_proof_parameters, challenge, state_proof_rs[4])
+            .unwrap();
+
+        // check channel identifiers match.
+        let channel_ids_match = state_proof_rs[0] == close_state_proof_rs[0]
+            && close_state_proof_rs[0] == pay_token_proof_rs[0];
+
+        // check close state contains close tag.
+        let expected_close_tag = challenge.0 * CLOSE_SCALAR + self.close_tag_cs;
+        let close_tags_match = close_state_proof_rs[1] == expected_close_tag;
+
+        // check old revocation locks match each other
+        let old_revlocks_match =
+            self.revocation_lock_proof.conjunction_response_scalars()[0] == pay_token_proof_rs[2];
+
+        // check new revocation locks match each other
+        let new_revlocks_match = state_proof_rs[2] == close_state_proof_rs[2];
+
+        // check pay token nonce matches the passed in nonce
+        let pay_token_nonce_matches_expected =
+            pay_token_proof_rs[1] == challenge.0 * nonce.to_scalar() + self.nonce_cs;
+
+        // check new balances match between state and close state
+        let new_customer_balances_match = state_proof_rs[3] == close_state_proof_rs[3];
+        let new_merchant_balances_match = state_proof_rs[4] == close_state_proof_rs[4];
+
+        // check that customer and merchant balances were properly updated
+        let customer_balance_properly_updated =
+            pay_token_proof_rs[3] == state_proof_rs[3] - challenge.0 * amount.to_scalar();
+        let merchant_balance_properly_updated =
+            pay_token_proof_rs[4] == state_proof_rs[4] + challenge.0 * amount.to_scalar();
+
+        Verification::from(
+            pay_token_proof_verifies
+                && revlock_proof_verifies
+                && state_proof_verifies
+                && close_state_proof_verifies
+                && customer_balance_proof_verifies
+                && merchant_balance_proof_verifies
+                && channel_ids_match
+                && close_tags_match
+                && old_revlocks_match
+                && new_revlocks_match
+                && pay_token_nonce_matches_expected
+                && new_customer_balances_match
+                && new_merchant_balances_match
+                && customer_balance_properly_updated
+                && merchant_balance_properly_updated,
+        )
     }
 }
 
@@ -454,7 +582,7 @@ pub struct PayProofVerification<'a> {
     /// Expected nonce revealed at the beginning of Pay.
     pub nonce: Nonce,
     /// Expected payment amount.
-    pub amount: crate::PaymentAmount,
+    pub amount: PaymentAmount,
 }
 
 #[cfg(test)]

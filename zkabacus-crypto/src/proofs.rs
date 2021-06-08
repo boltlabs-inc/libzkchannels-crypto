@@ -240,6 +240,10 @@ This is a zero-knowledge proof that makes the following guarantees:
 */
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PayProof {
+    #[serde(with = "SerializeElement")]
+    nonce_cs: Scalar,
+    #[serde(with = "SerializeElement")]
+    close_tag_cs: Scalar,
     pay_token_proof: SignatureProof,
     revocation_lock_proof: CommitmentProof<G1Projective>,
     state_proof: CommitmentProof<G1Projective>,
@@ -360,7 +364,7 @@ impl PayProof {
         )
         .expect("mismatched lengths");
 
-        let challenge_builder = ChallengeBuilder::new()
+        let challenge = ChallengeBuilder::new()
             // integrate keys and constants
             .with_public_key(&params.merchant_public_key)
             .with_public_key(params.range_proof_parameters.public_key())
@@ -381,7 +385,36 @@ impl PayProof {
             // TODO: incorporate context here.
             .finish();
 
-        todo!()
+        Self {
+            nonce_cs: pay_token_proof_builder.conjunction_commitment_scalars()[1],
+            close_tag_cs: close_state_proof_builder.conjunction_commitment_scalars()[1],
+            pay_token_proof: pay_token_proof_builder
+                .generate_proof_response(challenge)
+                .unwrap(),
+            revocation_lock_proof: revocation_lock_proof_builder
+                .generate_proof_response(todo!(), blinding_factors.for_revocation_lock.0, challenge)
+                .unwrap(),
+            state_proof: state_proof_builder
+                .generate_proof_response(
+                    &state.to_message(),
+                    blinding_factors.for_pay_token.0,
+                    challenge,
+                )
+                .unwrap(),
+            close_state_proof: close_state_proof_builder
+                .generate_proof_response(
+                    &state.close_state().to_message(),
+                    blinding_factors.for_close_state.0,
+                    challenge,
+                )
+                .unwrap(),
+            customer_balance_proof: customer_range_proof_builder
+                .generate_proof_response(challenge)
+                .unwrap(),
+            merchant_balance_proof: merchant_range_proof_builder
+                .generate_proof_response(challenge)
+                .unwrap(),
+        }
     }
 
     /**

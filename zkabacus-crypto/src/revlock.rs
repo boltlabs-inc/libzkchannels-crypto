@@ -48,7 +48,7 @@ pub struct RevocationLockCommitment(pub(crate) Commitment<G1Projective>);
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLockBlindingFactor(BlindingFactor);
+pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 
 impl RevocationLockBlindingFactor {
     /// Generate a blinding factor uniformly at random.

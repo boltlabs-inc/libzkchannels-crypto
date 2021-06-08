@@ -15,6 +15,7 @@ use crate::{
 use zkchannels_crypto::{
     challenge::ChallengeBuilder,
     commitment_proof::{CommitmentProof, CommitmentProofBuilder},
+    message::Message,
     pedersen_commitments::Commitment,
     range_proof::{RangeProof, RangeProofBuilder},
     signature_proof::{SignatureProof, SignatureProofBuilder},
@@ -369,7 +370,7 @@ impl PayProof {
             // integrate keys and constants
             .with_public_key(&params.merchant_public_key)
             .with_public_key(params.range_proof_parameters.public_key())
-            .with_scalar(state.nonce().to_scalar())
+            .with_scalar(old_state.nonce().to_scalar())
             .with_scalar(CLOSE_SCALAR)
             // integrate commitments from commitment proofs
             .with_commitment(revocation_lock_commitment.0)
@@ -393,7 +394,11 @@ impl PayProof {
                 .generate_proof_response(challenge)
                 .unwrap(),
             revocation_lock_proof: revocation_lock_proof_builder
-                .generate_proof_response(todo!(), blinding_factors.for_revocation_lock.0, challenge)
+                .generate_proof_response(
+                    &Message::from(old_state.revocation_lock().to_scalar()),
+                    blinding_factors.for_revocation_lock.0,
+                    challenge,
+                )
                 .unwrap(),
             state_proof: state_proof_builder
                 .generate_proof_response(
@@ -535,9 +540,9 @@ impl PayProof {
 
         // check that customer and merchant balances were properly updated
         let customer_balance_properly_updated =
-            pay_token_proof_rs[3] == state_proof_rs[3] - challenge.0 * amount.to_scalar();
+            state_proof_rs[3] == pay_token_proof_rs[3] - challenge.0 * amount.to_scalar();
         let merchant_balance_properly_updated =
-            pay_token_proof_rs[4] == state_proof_rs[4] + challenge.0 * amount.to_scalar();
+            state_proof_rs[4] == pay_token_proof_rs[4] + challenge.0 * amount.to_scalar();
 
         Verification::from(
             pay_token_proof_verifies
@@ -594,10 +599,14 @@ mod tests {
     };
     use rand::SeedableRng;
 
+    fn rng() -> impl Rng {
+        let seed: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
+        rand::rngs::StdRng::from_seed(seed)
+    }
+
     #[test]
     fn establish_proof_verifies() {
-        let seed: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
-        let mut rng = rand::rngs::StdRng::from_seed(seed);
+        let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);
         let params = merchant_params.to_customer_config();
         let channel_id = ChannelId::new(&mut rng);
@@ -628,6 +637,66 @@ mod tests {
             merchant_balance: *state.merchant_balance(),
             customer_balance: *state.customer_balance(),
         };
+
+        assert!(matches!(
+            proof.verify(&merchant_params, &vos),
+            Verification::Verified
+        ));
+    }
+
+    #[test]
+    fn pay_proof_verifies() {
+        let mut rng = rng();
+        let merchant_params = merchant::Config::new(&mut rng);
+        let params = merchant_params.to_customer_config();
+        let channel_id = ChannelId::new(&mut rng);
+        let old_state = State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new(0).unwrap(),
+            CustomerBalance::try_new(100).unwrap(),
+        );
+
+        let payment_amount = PaymentAmount::pay_merchant(10).unwrap();
+        let new_state = old_state.apply_payment(&mut rng, payment_amount).unwrap();
+        let close_state = new_state.close_state();
+
+        let (old_state_com, old_pt_bf) = old_state.commit(&mut rng, &params);
+        let pay_token =
+            BlindedPayToken::new(&mut rng, &merchant_params, &old_state_com).unblind(old_pt_bf);
+
+        let (revlock_com, rl_bf) = old_state.commit_to_revocation(&mut rng, &params);
+        let (state_com, pt_bf) = new_state.commit(&mut rng, &params);
+        let (close_state_com, cs_bf) = close_state.commit(&mut rng, &params);
+
+        let blinding_factors = BlindingFactors {
+            for_revocation_lock: rl_bf,
+            for_pay_token: pt_bf,
+            for_close_state: cs_bf,
+        };
+
+        let nonce = *old_state.nonce();
+
+        let proof = PayProof::new(
+            &mut rng,
+            &params,
+            pay_token,
+            &old_state,
+            &new_state,
+            &revlock_com,
+            &state_com,
+            &close_state_com,
+            blinding_factors,
+        );
+
+        let vos = PayProofVerification {
+            revocation_lock_commitment: &revlock_com,
+            state_commitment: &state_com,
+            close_state_commitment: &close_state_com,
+            nonce,
+            amount: payment_amount,
+        };
+
         assert!(matches!(
             proof.verify(&merchant_params, &vos),
             Verification::Verified

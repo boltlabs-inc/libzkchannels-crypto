@@ -65,7 +65,7 @@ impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
         )?;
 
         // Compare to challenge, commitments to message, scalars
-        let lhs = self.scalar_commitment.0 + (commitment.0 * challenge.0);
+        let lhs = self.scalar_commitment.0 + (commitment.0 * challenge.to_scalar());
         Ok(rhs.0 == lhs)
     }
 
@@ -159,7 +159,7 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
         let response_scalars = iter::once(&blinding_factor.0)
             .chain(&**msg)
             .zip(&*self.commitment_scalars)
-            .map(|(mi, cs)| challenge.0 * mi + cs)
+            .map(|(mi, cs)| challenge.to_scalar() * mi + cs)
             .collect::<Vec<_>>();
 
         Ok(CommitmentProof {

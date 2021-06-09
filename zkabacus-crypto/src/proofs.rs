@@ -100,7 +100,7 @@ impl EstablishProof {
 
         // Retrieve commitment scalars from the close state proof for public values:
         // the channel id, the close tag, and the balances.
-        // (Recall: the commitment scalars for the channel id and balances will match the 
+        // (Recall: the commitment scalars for the channel id and balances will match the
         // state proof by construction)
         let commitment_scalars = close_state_proof_builder.conjunction_commitment_scalars();
         Self {
@@ -182,27 +182,28 @@ impl EstablishProof {
         let close_state_proof_rs = self.close_state_proof.conjunction_response_scalars();
 
         // check channel identifiers match expected.
-        let expected_channel_id =
-            challenge.0 * verification_objects.channel_id.to_scalar() + self.channel_id_cs;
+        let expected_channel_id = challenge.to_scalar()
+            * verification_objects.channel_id.to_scalar()
+            + self.channel_id_cs;
         let channel_ids_match = state_proof_rs[0] == expected_channel_id
             && close_state_proof_rs[0] == expected_channel_id;
 
         // check close state contains close tag.
-        let expected_close_tag = challenge.0 * CLOSE_SCALAR + self.close_tag_cs;
+        let expected_close_tag = challenge.to_scalar() * CLOSE_SCALAR + self.close_tag_cs;
         let close_tags_match = close_state_proof_rs[1] == expected_close_tag;
 
         // check revocation locks match each other
         let revlocks_match = state_proof_rs[2] == close_state_proof_rs[2];
 
         // check customer balances match expected
-        let expected_customer_balance = challenge.0
+        let expected_customer_balance = challenge.to_scalar()
             * verification_objects.customer_balance.to_scalar()
             + self.customer_balance_cs;
         let customer_balances_match = state_proof_rs[3] == expected_customer_balance
             && close_state_proof_rs[3] == expected_customer_balance;
 
         // check merchant balances match expected
-        let expected_merchant_balance = challenge.0
+        let expected_merchant_balance = challenge.to_scalar()
             * verification_objects.merchant_balance.to_scalar()
             + self.merchant_balance_cs;
         let merchant_balances_match = state_proof_rs[4] == expected_merchant_balance
@@ -549,7 +550,7 @@ impl PayProof {
             && close_state_proof_rs[0] == pay_token_proof_rs[0];
 
         // check close state contains close tag.
-        let expected_close_tag = challenge.0 * CLOSE_SCALAR + self.close_tag_cs;
+        let expected_close_tag = challenge.to_scalar() * CLOSE_SCALAR + self.close_tag_cs;
         let close_tags_match = close_state_proof_rs[1] == expected_close_tag;
 
         // check old revocation locks match each other
@@ -561,7 +562,7 @@ impl PayProof {
 
         // check pay token nonce matches the passed in nonce
         let pay_token_nonce_matches_expected =
-            pay_token_proof_rs[1] == challenge.0 * nonce.to_scalar() + self.nonce_cs;
+            pay_token_proof_rs[1] == challenge.to_scalar() * nonce.to_scalar() + self.nonce_cs;
 
         // check new balances match between state and close state
         let new_customer_balances_match = state_proof_rs[3] == close_state_proof_rs[3];
@@ -569,9 +570,9 @@ impl PayProof {
 
         // check that customer and merchant balances were properly updated
         let customer_balance_properly_updated =
-            state_proof_rs[3] == pay_token_proof_rs[3] - challenge.0 * amount.to_scalar();
+            state_proof_rs[3] == pay_token_proof_rs[3] - challenge.to_scalar() * amount.to_scalar();
         let merchant_balance_properly_updated =
-            state_proof_rs[4] == pay_token_proof_rs[4] + challenge.0 * amount.to_scalar();
+            state_proof_rs[4] == pay_token_proof_rs[4] + challenge.to_scalar() * amount.to_scalar();
 
         Verification::from(
             pay_token_proof_verifies
@@ -638,7 +639,7 @@ mod tests {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);
         let params = merchant_params.to_customer_config();
-        
+
         // Create a new state.
         let channel_id = ChannelId::new(&mut rng);
         let state = State::new(

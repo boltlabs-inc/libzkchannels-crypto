@@ -22,7 +22,14 @@ use std::convert::TryFrom;
 
 /// A challenge scalar for use in a Schnorr-style proof.
 #[derive(Debug, Clone, Copy)]
-pub struct Challenge(pub Scalar);
+pub struct Challenge(Scalar);
+
+impl Challenge {
+    /// Converts a `Challenge` to its `Scalar` representation.
+    pub fn to_scalar(&self) -> Scalar {
+        self.0
+    }
+}
 
 /// Holds state used when building a [`Challenge`] using the Fiat-Shamir heuristic, as in a
 /// non-interactive Schnorr proof.

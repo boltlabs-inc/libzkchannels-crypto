@@ -13,13 +13,11 @@ This crate includes cryptographic primitives instantiated over the pairing-frien
 #![forbid(broken_intra_doc_links)]
 
 pub mod challenge;
-pub mod commitment_proof;
 pub mod pedersen_commitments;
+pub mod proofs;
 pub mod ps_blind_signatures;
 pub mod ps_keys;
 pub mod ps_signatures;
-pub mod range_proof;
-pub mod signature_proof;
 
 mod serde;
 

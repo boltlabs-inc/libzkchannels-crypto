@@ -88,9 +88,9 @@ https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 use crate::ps_signatures::Signer;
 use crate::{
     challenge::Challenge,
+    proofs::{SignatureProof, SignatureProofBuilder},
     ps_keys::{KeyPair, PublicKey},
     ps_signatures::Signature,
-    signature_proof::*,
 };
 use crate::{common::*, Error};
 use arrayvec::ArrayVec;

@@ -48,9 +48,9 @@ i. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryp
 */
 use crate::{
     challenge::Challenge,
-    commitment_proof::{CommitmentProof, CommitmentProofBuilder},
     common::*,
     pedersen_commitments::Commitment,
+    proofs::{CommitmentProof, CommitmentProofBuilder},
     ps_blind_signatures::BlindedSignature,
     ps_keys::PublicKey,
     ps_signatures::Signature,

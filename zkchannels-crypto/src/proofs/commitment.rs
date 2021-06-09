@@ -36,17 +36,20 @@ use crate::{
     pedersen::{Commitment, PedersenParameters},
     proofs::Challenge,
 };
+use arrayvec::ArrayVec;
 use ff::Field;
 use group::Group;
-use std::{convert::TryInto, iter};
 
 /// Fully constructed proof of knowledge of the opening of a commitment.
 #[derive(Debug, Clone)]
 pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
     /// The commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
-    /// The response scalars, with the response scalar for the blinding factor prepended.
-    response_scalars: Vec<Scalar>,
+    /// The response scalar for the blinding factor, conceptually prepended to the tuple of response
+    /// scalars for this commitment proof.
+    blinding_factor_response_scalar: Scalar,
+    /// The remaining response scalars.
+    message_response_scalars: [Scalar; N],
 }
 
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
@@ -59,23 +62,22 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     ) -> bool {
         // Construct commitment to response scalars.
         let rhs = params.commit(
-            &Message::new(
-                self.response_scalars[1..]
-                    .try_into()
-                    .expect("length mismatch is impossible"),
-            ),
-            BlindingFactor(self.response_scalars[0]),
+            &Message::new(self.message_response_scalars),
+            BlindingFactor::from_scalar(self.blinding_factor_response_scalar),
         );
 
+        let expected_commitment =
+            self.scalar_commitment.to_element() + (commitment.to_element() * challenge.to_scalar());
+
         // Compare to challenge, commitments to message, scalars
-        rhs.0 == self.scalar_commitment.0 + (commitment.0 * challenge.0)
+        rhs.to_element() == expected_commitment
     }
 
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.
     ///
     /// This does not include the response scalar for the blinding factor.
-    pub fn conjunction_response_scalars(&self) -> &[Scalar] {
-        &self.response_scalars[1..]
+    pub fn conjunction_response_scalars(&self) -> &[Scalar; N] {
+        &self.message_response_scalars
     }
 }
 
@@ -86,8 +88,11 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
     /// Commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
-    /// The commitment scalars for the blinding factor and message (in that order).
-    commitment_scalars: Vec<Scalar>,
+    /// The commitment scalar for the blinding factor.
+    blinding_factor_commitment_scalar: Scalar,
+    /// The commitment scalars for the message, conceptually appended to the commitment scalar for
+    /// the blinding factor.
+    message_commitment_scalars: [Scalar; N],
 }
 
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
@@ -104,28 +109,25 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         conjunction_commitment_scalars: &[Option<Scalar>; N],
         params: &PedersenParameters<G, N>,
     ) -> Self {
+        let blinding_factor_commitment_scalar = Scalar::random(&mut *rng);
         // Choose commitment scalars (that haven't already been specified)
-        let commitment_scalars = iter::once(Scalar::random(&mut *rng))
-            .chain(
-                conjunction_commitment_scalars
-                    .iter()
-                    .map(|&maybe_scalar| maybe_scalar.unwrap_or_else(|| Scalar::random(&mut *rng))),
-            )
-            .collect::<Vec<_>>();
+        let message_commitment_scalars = conjunction_commitment_scalars
+            .iter()
+            .map(|&maybe_scalar| maybe_scalar.unwrap_or_else(|| Scalar::random(&mut *rng)))
+            .collect::<ArrayVec<_, N>>()
+            .into_inner()
+            .expect("length mismatch impossible");
 
         // Commit to the scalars
         let scalar_commitment = params.commit(
-            &Message::new(
-                commitment_scalars[1..]
-                    .try_into()
-                    .expect("length mismatch impossible"),
-            ),
-            BlindingFactor(commitment_scalars[0]),
+            &Message::new(message_commitment_scalars),
+            BlindingFactor::from_scalar(blinding_factor_commitment_scalar),
         );
 
         Self {
             scalar_commitment,
-            commitment_scalars,
+            blinding_factor_commitment_scalar,
+            message_commitment_scalars,
         }
     }
 
@@ -134,9 +136,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     ///
     /// This does not include the commitment scalar corresponding to the blinding factor.
     pub fn conjunction_commitment_scalars(&self) -> &[Scalar; N] {
-        (&self.commitment_scalars[1..])
-            .try_into()
-            .expect("length mismatch impossible")
+        &self.message_commitment_scalars
     }
 
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
@@ -152,15 +152,20 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         challenge: Challenge,
     ) -> CommitmentProof<G, N> {
         // Generate response scalars.
-        let response_scalars = iter::once(&blinding_factor.0)
-            .chain(&**msg)
-            .zip(&*self.commitment_scalars)
-            .map(|(mi, cs)| challenge.0 * mi + cs)
-            .collect::<Vec<_>>();
+        let blinding_factor_response_scalar = challenge.to_scalar() * blinding_factor.to_scalar()
+            + self.blinding_factor_commitment_scalar;
+        let message_response_scalars = msg
+            .iter()
+            .zip(&self.message_commitment_scalars)
+            .map(|(mi, cs)| challenge.to_scalar() * mi + cs)
+            .collect::<ArrayVec<_, N>>()
+            .into_inner()
+            .expect("length mismatch impossible");
 
         CommitmentProof {
             scalar_commitment: self.scalar_commitment,
-            response_scalars,
+            blinding_factor_response_scalar,
+            message_response_scalars,
         }
     }
 }

@@ -16,7 +16,14 @@ use std::convert::TryFrom;
 
 /// A challenge scalar for use in a Schnorr-style proof.
 #[derive(Debug, Clone, Copy)]
-pub struct Challenge(pub Scalar);
+pub struct Challenge(Scalar);
+
+impl Challenge {
+    /// Retrieve the internal scalar value.
+    pub fn to_scalar(self) -> Scalar {
+        self.0
+    }
+}
 
 /// Holds state used when building a [`Challenge`] using the Fiat-Shamir heuristic, as in a
 /// non-interactive Schnorr proof.
@@ -45,7 +52,7 @@ impl ChallengeBuilder {
     where
         G: Group<Scalar = Scalar> + GroupEncoding,
     {
-        self.with_bytes(com.0.to_bytes())
+        self.with_bytes(com.to_element().to_bytes())
     }
 
     /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge
@@ -59,7 +66,7 @@ impl ChallengeBuilder {
     where
         G: Group<Scalar = Scalar> + GroupEncoding,
     {
-        self.with_bytes(com.scalar_commitment.0.to_bytes())
+        self.with_bytes(com.scalar_commitment.to_element().to_bytes())
     }
 
     /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge
@@ -69,9 +76,14 @@ impl ChallengeBuilder {
         self,
         signature_proof_builder: &SignatureProofBuilder<N>,
     ) -> Self {
-        self.with_bytes(signature_proof_builder.message_commitment.0.to_bytes())
-            .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
-            .with_commitment_proof(&signature_proof_builder.commitment_proof_builder)
+        self.with_bytes(
+            signature_proof_builder
+                .message_commitment
+                .to_element()
+                .to_bytes(),
+        )
+        .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
+        .with_commitment_proof(&signature_proof_builder.commitment_proof_builder)
     }
 
     /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.

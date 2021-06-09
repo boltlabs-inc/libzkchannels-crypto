@@ -274,7 +274,7 @@ impl<const N: usize> KeyPair<N> {
 
         BlindedSignature(Signature {
             sigma1: (self.public_key().g1 * u).into(),
-            sigma2: ((self.secret_key().x1 + msg.0 .0) * u).into(),
+            sigma2: ((self.secret_key().x1 + msg.0.to_element()) * u).into(),
         })
     }
 }

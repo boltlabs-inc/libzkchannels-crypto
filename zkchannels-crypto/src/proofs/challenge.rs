@@ -51,7 +51,7 @@ impl ChallengeBuilder {
     /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge
     ///
     /// (e.g. the pieces that will also be in the finalized
-    /// [`CommitmentProof`](crate::commitment_proof::CommitmentProof)).
+    /// [`CommitmentProof`](crate::proofs::CommitmentProof)).
     pub fn with_commitment_proof<G, const N: usize>(
         self,
         com: &CommitmentProofBuilder<G, N>,
@@ -64,7 +64,7 @@ impl ChallengeBuilder {
 
     /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge
     /// (e.g. the pieces that will also be in the finalized
-    /// [`SignatureProof`](crate::signature_proof::SignatureProof)).
+    /// [`SignatureProof`](crate::proofs::SignatureProof)).
     pub fn with_signature_proof<const N: usize>(
         self,
         signature_proof_builder: &SignatureProofBuilder<N>,
@@ -76,7 +76,7 @@ impl ChallengeBuilder {
 
     /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
     /// (e.g. the pieces that will also be in the finalized
-    /// [`RangeProof`](crate::range_proof::RangeProof)).
+    /// [`RangeProof`](crate::proofs::RangeProof)).
     pub fn with_range_proof(self, range_proof_builder: &RangeProofBuilder) -> Self {
         range_proof_builder
             .digit_proof_builders

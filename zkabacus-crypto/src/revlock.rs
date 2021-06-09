@@ -88,15 +88,10 @@ impl RevocationLock {
         params: &customer::Config,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> RevocationLockCommitment {
-        RevocationLockCommitment(
-            params
-                .revocation_commitment_parameters
-                .commit(
-                    &Message::from(self.to_scalar()),
-                    revocation_lock_blinding_factor.0,
-                )
-                .expect("mismatched lengths"),
-        )
+        RevocationLockCommitment(params.revocation_commitment_parameters.commit(
+            &Message::from(self.to_scalar()),
+            revocation_lock_blinding_factor.0,
+        ))
     }
 
     /// Convert a revocation lock to its canonical `Scalar` representation.
@@ -119,14 +114,11 @@ impl RevocationLockCommitment {
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Verification {
         let verify_pair = revocation_lock.verify(revocation_secret);
-        let verify_commitment = parameters
-            .revocation_commitment_parameters
-            .decommit(
-                &Message::from(revocation_lock.to_scalar()),
-                revocation_lock_blinding_factor.0,
-                self.0,
-            )
-            .expect("mismatched lengths");
+        let verify_commitment = parameters.revocation_commitment_parameters.decommit(
+            &Message::from(revocation_lock.to_scalar()),
+            revocation_lock_blinding_factor.0,
+            self.0,
+        );
 
         if matches!(verify_pair, Verification::Verified) && verify_commitment {
             Verification::Verified

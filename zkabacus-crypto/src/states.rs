@@ -204,8 +204,7 @@ impl State {
         let blinding_factor = BlindingFactor::new(rng);
         let commitment = param
             .merchant_public_key
-            .blind_message(&msg, blinding_factor)
-            .expect("mismatched message length.");
+            .blind_message(&msg, blinding_factor);
 
         (
             StateCommitment(commitment),
@@ -240,8 +239,7 @@ impl CloseState<'_> {
         let blinding_factor = BlindingFactor::new(rng);
         let commitment = param
             .merchant_public_key
-            .blind_message(&msg, blinding_factor)
-            .expect("mismatched lengths");
+            .blind_message(&msg, blinding_factor);
 
         (
             CloseStateCommitment(commitment),

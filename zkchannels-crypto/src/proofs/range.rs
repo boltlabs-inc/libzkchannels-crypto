@@ -190,7 +190,7 @@ impl RangeProofBuilder {
                     &params.public_key,
                 )
             })
-            .collect::<Result<ArrayVec<_, RP_PARAMETER_L>, Error>>()?
+            .collect::<ArrayVec<_, RP_PARAMETER_L>>()
             .into_inner()
             .expect("impossible; len will always be RP_PARAMETER_L");
 
@@ -212,15 +212,15 @@ impl RangeProofBuilder {
     }
 
     /// Run the response phase of a Schnorr-style proof of knowledge that a value is in a range.
-    pub fn generate_proof_response(self, challenge: Challenge) -> Result<RangeProof, Error> {
+    pub fn generate_proof_response(self, challenge: Challenge) -> RangeProof {
         let digit_proofs = ArrayVec::from(self.digit_proof_builders)
             .into_iter()
             .map(|builder| builder.generate_proof_response(challenge))
-            .collect::<Result<ArrayVec<_, RP_PARAMETER_L>, Error>>()?
+            .collect::<ArrayVec<_, RP_PARAMETER_L>>()
             .into_inner()
             .expect("impossible; len will always be RP_PARAMETER_L");
 
-        Ok(RangeProof { digit_proofs })
+        RangeProof { digit_proofs }
     }
 }
 
@@ -235,14 +235,14 @@ impl RangeProof {
         &self,
         params: &RangeProofParameters,
         challenge: Challenge,
-    ) -> Result<bool, Error> {
+    ) -> bool {
         for proof in &self.digit_proofs {
-            if !proof.verify_knowledge_of_signature(&params.public_key, challenge)? {
-                return Ok(false);
+            if !proof.verify_knowledge_of_signature(&params.public_key, challenge) {
+                return false;
             }
         }
 
-        Ok(true)
+        true
     }
 
     /// Verify that the response scalar for a given value is correctly constructed from the range
@@ -257,8 +257,8 @@ impl RangeProof {
         params: &RangeProofParameters,
         challenge: Challenge,
         expected_response_scalar: Scalar,
-    ) -> Result<bool, Error> {
-        let valid_digits = self.verify_range_proof_digits(params, challenge)?;
+    ) -> bool {
+        let valid_digits = self.verify_range_proof_digits(params, challenge);
 
         // Construct cumulative response scalar from the response scalars of the individual digits.
         let mut response_scalar = Scalar::zero();
@@ -270,6 +270,6 @@ impl RangeProof {
             u_pow *= Scalar::from(RP_PARAMETER_U);
         }
 
-        Ok(valid_digits && response_scalar == expected_response_scalar)
+        valid_digits && response_scalar == expected_response_scalar
     }
 }

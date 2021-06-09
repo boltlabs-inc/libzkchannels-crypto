@@ -10,7 +10,7 @@ use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
     serde::SerializeElement,
-    BlindingFactor, Error,
+    BlindingFactor,
 };
 use arrayvec::ArrayVec;
 use ff::Field;
@@ -230,15 +230,8 @@ impl<const N: usize> PublicKey<N> {
     }
 
     /// Blind a message using the given blinding factor.
-    pub fn blind_message(
-        &self,
-        msg: &Message<N>,
-        bf: BlindingFactor,
-    ) -> Result<BlindedMessage, Error> {
-        match self.to_g1_pedersen_parameters().commit(msg, bf) {
-            Ok(com) => Ok(BlindedMessage(com)),
-            Err(m) => Err(m),
-        }
+    pub fn blind_message(&self, msg: &Message<N>, bf: BlindingFactor) -> BlindedMessage {
+        BlindedMessage(self.to_g1_pedersen_parameters().commit(msg, bf))
     }
 }
 

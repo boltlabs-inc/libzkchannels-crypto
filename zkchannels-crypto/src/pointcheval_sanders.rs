@@ -6,7 +6,12 @@
 //! draft titled ["BLS
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 
-use crate::{common::*, pedersen::*, serde::*, BlindingFactor, Error};
+use crate::{
+    common::*,
+    pedersen::{Commitment, PedersenParameters},
+    serde::SerializeElement,
+    BlindingFactor, Error,
+};
 use arrayvec::ArrayVec;
 use ff::Field;
 use serde::*;

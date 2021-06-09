@@ -84,7 +84,7 @@
 
 use crate::{
     common::*,
-    pointcheval_sanders::*,
+    pointcheval_sanders::{KeyPair, PublicKey, Signature},
     proofs::{Challenge, SignatureProof, SignatureProofBuilder},
     Error,
 };

@@ -9,10 +9,14 @@
 //!    Internet-draft, IETF. 2021. URL:
 //!    https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 
-use crate::{common::*, serde::*, Error};
+use crate::{
+    common::*,
+    serde::{SerializeElement, SerializeG1},
+    Error,
+};
 use arrayvec::ArrayVec;
 use group::Group;
-use serde::*;
+use serde::{Deserialize, Serialize};
 use std::iter;
 
 /// A Pedersen commitment to a message.

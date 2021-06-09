@@ -92,6 +92,8 @@ impl BlindingFactor {
 }
 
 mod common {
+    //! Common types used internally.
+
     pub use crate::{BlindingFactor, Message};
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
     pub use group::{Group, GroupEncoding};

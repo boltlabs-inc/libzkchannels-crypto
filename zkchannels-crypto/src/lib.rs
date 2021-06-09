@@ -1,9 +1,9 @@
-/*!
-This crate includes cryptographic primitives instantiated over the pairing-friendly curve BLS12-381:
-- Pedersen Commitments instantiated using G1 and G2.
-- Pointcheval Sanders signatures and blind signatures (CT-RSA 2016).
-- Schnorr-style zero-knowledge proofs for commitments, signatures, conjunctions, linear relationships, and ranges
-*/
+//! This crate includes cryptographic primitives instantiated over the pairing-friendly curve
+//! BLS12-381:
+//! - Pedersen Commitments instantiated using G1 and G2.
+//! - Pointcheval Sanders signatures and blind signatures (CT-RSA 2016).
+//! - Schnorr-style zero-knowledge proofs for commitments, signatures, conjunctions, linear
+//!   relationships, and ranges
 
 #![warn(missing_docs)]
 #![warn(missing_copy_implementations, missing_debug_implementations)]

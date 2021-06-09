@@ -4,6 +4,7 @@
 //! (https://eprint.iacr.org/2015/525.pdf); The BLS12-381 curve is defined in the (now expired) IRTF
 //! draft titled ["BLS
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
+
 use crate::{common::*, ps_keys::*, serde::*};
 use ff::Field;
 use serde::*;
@@ -23,18 +24,14 @@ pub trait Verifier<const N: usize> {
 /// A signature on a message, generated using Pointcheval-Sanders.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Signature {
-    /**
-    First part of a signature.
-
-    In some papers, this is denoted `h`.
-    */
+    /// First part of a signature.
+    ///
+    /// In some papers, this is denoted `h`.
     #[serde(with = "SerializeElement")]
     pub(crate) sigma1: G1Affine,
-    /**
-    Second part of a signature.
-
-    In some papers, this is denoted `H`.
-    */
+    /// Second part of a signature.
+    ///
+    /// In some papers, this is denoted `H`.
     #[serde(with = "SerializeElement")]
     pub(crate) sigma2: G1Affine,
 }
@@ -57,12 +54,10 @@ impl Signature {
         buf
     }
 
-    /**
-    Check whether the signature is well-formed.
-
-    This checks that first element is not the identity element. This implementation uses only
-    checked APIs to ensure that both parts of the signature are in the expected group (G1).
-    */
+    /// Check whether the signature is well-formed.
+    ///
+    /// This checks that first element is not the identity element. This implementation uses only
+    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
     pub fn is_well_formed(&self) -> bool {
         !bool::from(self.sigma1.is_identity())
     }

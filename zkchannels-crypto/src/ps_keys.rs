@@ -1,17 +1,13 @@
-/*!
-This defines a class of keys for use across the schemes in this crate.
-
-The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over BLS12-381.
-They can also be used for non-blind PS signatures.
-
-The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
-(https://eprint.iacr.org/2015/525.pdf).
-
-The BLS12-381 curve is defined in the (now expired) IRTF
-draft titled ["BLS
-Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
-
-*/
+//! This defines a class of keys for use across the schemes in this crate.
+//!
+//! The keys themselves are formed as for blind multi-message Pointcheval-Sanders signatures over
+//! BLS12-381. They can also be used for non-blind PS signatures.
+//!
+//! The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
+//! (https://eprint.iacr.org/2015/525.pdf).
+//!
+//! The BLS12-381 curve is defined in the (now expired) IRTF draft titled ["BLS
+//! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 
 use crate::{common::*, pedersen_commitments::PedersenParameters, SerializeElement};
 use arrayvec::ArrayVec;
@@ -84,12 +80,10 @@ impl<const N: usize> SecretKey<N> {
 }
 
 impl<const N: usize> PublicKey<N> {
-    /**
-    Derive a new `PublicKey` from an existing [`SecretKey`] and a generator from G1.
-
-    This is called internally, and we require `g1` is chosen uniformly at random and is not
-    the identity.
-    */
+    /// Derive a new `PublicKey` from an existing [`SecretKey`] and a generator from G1.
+    ///
+    /// This is called internally, and we require `g1` is chosen uniformly at random and is not the
+    /// identity.
     fn from_secret_key(rng: &mut impl Rng, sk: &SecretKey<N>, g1: &G1Projective) -> Self {
         // select g2 randomly from G2*.
         let g2: G2Projective = random_non_identity(&mut *rng);

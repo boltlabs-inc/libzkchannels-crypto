@@ -1,23 +1,20 @@
-/*!
-Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381.
+//! Pointcheval-Sanders blind signatures with efficient protocols over BLS12-381.
+//!
+//! More information on the constructs involved can be found in the documentation for the
+//! [`ps_signatures`](crate::ps_signatures) module.
 
-More information on the constructs involved can be found in the documentation for the
-[`ps_signatures`](crate::ps_signatures) module.
-*/
 use crate::{
     common::*, pedersen_commitments::*, ps_keys::*, ps_signatures::Signature, BlindingFactor, Error,
 };
 use ff::Field;
 use serde::*;
 
-/**
-A message, blinded for use in PS blind signature protocols.
-
-Mathematically, this is a commitment produced using the G1 generators of the [`PublicKey`] as
-the parameters;
-programmatically, a `BlindedMessage` can be constructed using
-[`PublicKey::blind_message`].
-*/
+/// A message, blinded for use in PS blind signature protocols.
+///
+/// Mathematically, this is a commitment produced using the G1 generators of the [`PublicKey`] as
+/// the parameters;
+/// programmatically, a `BlindedMessage` can be constructed using
+/// [`PublicKey::blind_message`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedMessage(Commitment<G1Projective>);
 
@@ -60,12 +57,10 @@ impl BlindedSignature {
         self.0.randomize(rng);
     }
 
-    /**
-    Check whether the signature is well-formed.
-
-    This checks that first element is not the identity element. This implementation uses only
-    checked APIs to ensure that both parts of the signature are in the expected group (G1).
-    */
+    /// Check whether the signature is well-formed.
+    ///
+    /// This checks that first element is not the identity element. This implementation uses only
+    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
     pub fn is_well_formed(&self) -> bool {
         self.0.is_well_formed()
     }

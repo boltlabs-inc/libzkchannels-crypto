@@ -60,13 +60,13 @@ use crate::{
 
 /// Fully constructed proof of knowledge of a signature.
 #[derive(Debug, Clone)]
-pub struct SignatureProof {
+pub struct SignatureProof<const N: usize> {
     /// Commitment to the signed message.
     pub message_commitment: Commitment<G2Projective>,
     /// Blinded, randomized version of the signature.
     pub blinded_signature: BlindedSignature,
     /// Proof of knowledge of opening of the `message_commitment`.
-    pub commitment_proof: CommitmentProof<G2Projective>,
+    pub commitment_proof: CommitmentProof<G2Projective, N>,
 }
 
 /**
@@ -75,9 +75,9 @@ A partially-built [`SignatureProof`].
 Built up to (but not including) the challenge phase of a Schnorr proof.
 */
 #[derive(Debug, Clone)]
-pub struct SignatureProofBuilder {
+pub struct SignatureProofBuilder<const N: usize> {
     /// Underlying message in the signature.
-    pub message: Message,
+    pub message: Message<N>,
     /// Commitment to the message.
     pub message_commitment: Commitment<G2Projective>,
     /// Blinding factor for the `message_commitment`.
@@ -85,10 +85,10 @@ pub struct SignatureProofBuilder {
     /// Randomized and blinded version of the original signature.
     pub blinded_signature: BlindedSignature,
     /// Commitment phase output for the underlying proof of knowledge of the opening of the `message_commitment`.
-    pub commitment_proof_builder: CommitmentProofBuilder<G2Projective>,
+    pub commitment_proof_builder: CommitmentProofBuilder<G2Projective, N>,
 }
 
-impl SignatureProofBuilder {
+impl<const N: usize> SignatureProofBuilder<N> {
     /**
     Run the commitment phase of a Schnorr-style signature proof.
 
@@ -101,10 +101,10 @@ impl SignatureProofBuilder {
     */
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
-        message: Message,
+        message: Message<N>,
         signature: Signature,
         conjunction_commitment_scalars: &[Option<Scalar>],
-        params: &PublicKey,
+        params: &PublicKey<N>,
     ) -> Result<Self, Error> {
         // Run commitment phase for PoK of opening of commitment to message.
         let params = params.to_g2_pedersen_parameters();
@@ -136,7 +136,7 @@ impl SignatureProofBuilder {
     /// conjunctions of proofs.
     ///
     /// This does not include the commitment scalar corresponding to the blinding factor.
-    pub fn conjunction_commitment_scalars(&self) -> &[Scalar] {
+    pub fn conjunction_commitment_scalars(&self) -> &[Scalar; N] {
         &self
             .commitment_proof_builder
             .conjunction_commitment_scalars()
@@ -146,7 +146,7 @@ impl SignatureProofBuilder {
     pub fn generate_proof_response(
         self,
         challenge_scalar: Challenge,
-    ) -> Result<SignatureProof, Error> {
+    ) -> Result<SignatureProof<N>, Error> {
         // Run response phase for PoK of opening of commitment to message
         let commitment_proof = self.commitment_proof_builder.generate_proof_response(
             &self.message,
@@ -162,7 +162,7 @@ impl SignatureProofBuilder {
     }
 }
 
-impl SignatureProof {
+impl<const N: usize> SignatureProof<N> {
     /**
     Check that a [`SignatureProof`] is valid.
 
@@ -177,7 +177,7 @@ impl SignatureProof {
     */
     pub fn verify_knowledge_of_signature(
         &self,
-        params: &PublicKey,
+        params: &PublicKey<N>,
         challenge: Challenge,
     ) -> Result<bool, Error> {
         // signature is well-formed

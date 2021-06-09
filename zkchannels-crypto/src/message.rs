@@ -5,33 +5,27 @@ use serde::*;
 use std::ops::Deref;
 
 /// Fixed-length message type used across schemes.
-#[derive(Debug, Clone)]
-pub struct Message(Vec<Scalar>);
+#[derive(Debug, Clone, Copy)]
+pub struct Message<const N: usize>([Scalar; N]);
 
-impl Deref for Message {
-    type Target = [Scalar];
+impl<const N: usize> Deref for Message<N> {
+    type Target = [Scalar; N];
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl Message {
+impl<const N: usize> Message<N> {
     /// Create a new message from a Vec<Scalar>.
-    pub fn new(m: Vec<Scalar>) -> Self {
-        Message(m)
+    pub fn new(scalars: [Scalar; N]) -> Self {
+        Message(scalars)
     }
 }
 
-impl From<Vec<Scalar>> for Message {
-    fn from(scalars: Vec<Scalar>) -> Self {
-        Self(scalars)
-    }
-}
-
-impl From<Scalar> for Message {
+impl From<Scalar> for Message<1> {
     fn from(scalar: Scalar) -> Self {
-        Self(vec![scalar])
+        Self([scalar])
     }
 }
 

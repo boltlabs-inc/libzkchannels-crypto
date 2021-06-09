@@ -110,7 +110,7 @@ pub struct RangeProofParameters {
     /// A signature on every `u`-ary digit
     digit_signatures: [Signature; RP_PARAMETER_U as usize],
     /// Public key corresponding _exclusively with the signatures above.
-    public_key: PublicKey,
+    public_key: PublicKey<1>,
 }
 
 impl RangeProofParameters {
@@ -121,10 +121,10 @@ impl RangeProofParameters {
     but discards the secret half after use. This is to prevent misuse; it should never be used again.
     */
     pub fn new(rng: &mut impl Rng) -> Self {
-        let keypair = KeyPair::new(1, rng);
+        let keypair = KeyPair::<1>::new(rng);
         let mut digit_signatures = ArrayVec::new();
         for i in 0..RP_PARAMETER_U {
-            let digit = Message::new(vec![Scalar::from(i)]);
+            let digit = Message::new([Scalar::from(i)]);
             let sig = keypair
                 .try_sign(rng, &digit)
                 .expect("message/keypair length will always be 1");
@@ -145,7 +145,7 @@ impl RangeProofParameters {
 #[derive(Debug)]
 pub struct RangeProofBuilder {
     /// Partially-constructed PoK of the opening of signatures on each of the digits of the value.
-    pub(crate) digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L],
+    pub(crate) digit_proof_builders: [SignatureProofBuilder<1>; RP_PARAMETER_L],
     /// Commitment scalar for the value being proven in the range.
     pub commitment_scalar: Scalar,
 }
@@ -157,7 +157,7 @@ pub struct RangeProofBuilder {
 #[derive(Debug)]
 pub struct RangeProof {
     /// Complete PoKs of the opening of a signature on each digit of the value.
-    pub digit_proofs: [SignatureProof; RP_PARAMETER_L],
+    pub digit_proofs: [SignatureProof<1>; RP_PARAMETER_L],
 }
 
 #[allow(unused)]
@@ -185,14 +185,14 @@ impl RangeProofBuilder {
         }
 
         // Compute signature proof builders on each digit.
-        let digit_proof_builders: [SignatureProofBuilder; RP_PARAMETER_L] = digits
+        let digit_proof_builders: [SignatureProofBuilder<1>; RP_PARAMETER_L] = digits
             .iter()
             .map(|&digit| {
                 SignatureProofBuilder::generate_proof_commitments(
                     rng,
                     // N.B. u64s are being encoded to `Scalar`s using the builtin bls12_381
                     // `From<u64>` implementation.
-                    Message::new(vec![Scalar::from(digit)]),
+                    Message::new([Scalar::from(digit)]),
                     params.digit_signatures[digit as usize],
                     &[None],
                     &params.public_key,

@@ -9,15 +9,15 @@ use ff::Field;
 use serde::*;
 
 /// A `Signer` may be used to sign a message.
-pub trait Signer {
+pub trait Signer<const N: usize> {
     /// Try to sign a message. Fails if the keypair caller length does not match message length.
-    fn try_sign(&self, rng: &mut impl Rng, msg: &Message) -> Result<Signature, String>;
+    fn try_sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Result<Signature, String>;
 }
 
 /// A `Verifier` may be used to verify a message.
-pub trait Verifier {
+pub trait Verifier<const N: usize> {
     /// Verify a signature on a given message.
-    fn verify(&self, msg: &Message, sig: &Signature) -> bool;
+    fn verify(&self, msg: &Message<N>, sig: &Signature) -> bool;
 }
 
 /// A signature on a message, generated using Pointcheval-Sanders.
@@ -68,8 +68,8 @@ impl Signature {
     }
 }
 
-impl Signer for SecretKey {
-    fn try_sign(&self, rng: &mut impl Rng, msg: &Message) -> Result<Signature, String> {
+impl<const N: usize> Signer<N> for SecretKey<N> {
+    fn try_sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Result<Signature, String> {
         if self.ys.len() != msg.len() {
             return Err(format!(
                 "Message is incorrect length ({}, expected {})",
@@ -97,8 +97,8 @@ impl Signer for SecretKey {
     }
 }
 
-impl Verifier for PublicKey {
-    fn verify(&self, msg: &Message, sig: &Signature) -> bool {
+impl<const N: usize> Verifier<N> for PublicKey<N> {
+    fn verify(&self, msg: &Message<N>, sig: &Signature) -> bool {
         if !sig.is_well_formed() {
             return false;
         }
@@ -119,14 +119,14 @@ impl Verifier for PublicKey {
     }
 }
 
-impl Signer for KeyPair {
-    fn try_sign(&self, rng: &mut impl Rng, msg: &Message) -> Result<Signature, String> {
+impl<const N: usize> Signer<N> for KeyPair<N> {
+    fn try_sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Result<Signature, String> {
         self.secret_key().try_sign(rng, msg)
     }
 }
 
-impl Verifier for KeyPair {
-    fn verify(&self, msg: &Message, sig: &Signature) -> bool {
+impl<const N: usize> Verifier<N> for KeyPair<N> {
+    fn verify(&self, msg: &Message<N>, sig: &Signature) -> bool {
         self.public_key().verify(msg, sig)
     }
 }

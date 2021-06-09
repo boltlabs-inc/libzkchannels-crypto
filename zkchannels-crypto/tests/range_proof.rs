@@ -234,11 +234,65 @@ fn range_proof_fails_with_wrong_input() {
 }
 
 #[test]
+fn range_proof_fails_if_unlinked() {
+    let mut rng = rng();
+    let length = 3;
+    // Generate message.
+    let range_tested_value: u32 = 10;
+    let msg = Message::new(vec![
+        Scalar::from(u64::from(range_tested_value)),
+        Scalar::random(&mut rng),
+        Scalar::random(&mut rng),
+    ]);
+    // Form commitment to message.
+    let params = PedersenParameters::<G1Projective>::new(length, &mut rng);
+    let bf = BlindingFactor::new(&mut rng);
+    let com = params.commit(&msg, bf).unwrap();
+
+    // Proof commitment phase: prepare range proof on the value.
+    let rp_params = RangeProofParameters::new(&mut rng);
+    let range_proof_builder = RangeProofBuilder::generate_proof_commitments(
+        range_tested_value.into(),
+        &rp_params,
+        &mut rng,
+    )
+    .unwrap();
+    // Failure case: *don't* use the range commitment scalar in the commitment proof.
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None, None, None], &params)
+            .unwrap();
+
+    // Form challenge using both proofs.
+    let challenge = ChallengeBuilder::new()
+        .with_range_proof(&range_proof_builder)
+        .with_commitment_proof(&proof_builder)
+        .finish();
+
+    // Complete proofs - response phase.
+    let range_proof = range_proof_builder
+        .generate_proof_response(challenge)
+        .unwrap();
+    let proof = proof_builder
+        .generate_proof_response(&msg, bf, challenge)
+        .unwrap();
+
+    // Commitment proof should still verify.
+    assert!(proof
+        .verify_knowledge_of_opening_of_commitment(&params, com, challenge)
+        .unwrap());
+    // Range proof should fail, since the commitment proof isn't built correctly w.r.t it.
+    let range_value_response_scalar = proof.conjunction_response_scalars()[0];
+    assert!(!range_proof
+        .verify_range_proof(&rp_params, challenge, range_value_response_scalar)
+        .unwrap());
+}
+
+#[test]
 fn range_proof_value_revealed() {
     let mut rng = rng();
     let length = 3;
     let range_tested_value: u32 = 10;
-    // Generate message and form commitment.
+    // Generate message.
     let msg = Message::new(vec![
         Scalar::from(u64::from(range_tested_value)),
         Scalar::random(&mut rng),

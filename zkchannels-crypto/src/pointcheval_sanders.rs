@@ -1,9 +1,9 @@
 //! Randomizable multi-message Pointcheval-Sanders signatures, blinded signatures, and keys over
 //! BLS12-381.
 //!
-//! The signature scheme used is defined in the 2016 paper, ["Short randomizable signatures"]
-//! (https://eprint.iacr.org/2015/525.pdf); The BLS12-381 curve is defined in the (now expired) IRTF
-//! draft titled ["BLS
+//! The signature scheme used is defined in the 2016 paper, ["Short randomizable
+//! signatures"](https://eprint.iacr.org/2015/525.pdf); The BLS12-381 curve is defined in the (now
+//! expired) IRTF draft titled ["BLS
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 
 use crate::{
@@ -55,11 +55,9 @@ pub struct KeyPair<const N: usize> {
 }
 
 impl<const N: usize> SecretKey<N> {
-    /// Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at random
-    /// and the given generator `g1` from G1.
-
-    /// This is called internally, and we require `g1` is chosen uniformly at random and is not
-    /// the identity element.
+    /// Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at
+    /// random and the given generator `g1` from G1. This is called internally, and we require `g1`
+    /// is chosen uniformly at random and is not the identity element.
     fn new(rng: &mut impl Rng, g1: &G1Projective) -> Self {
         let mut get_nonzero_scalar = || loop {
             let r = Scalar::random(&mut *rng);

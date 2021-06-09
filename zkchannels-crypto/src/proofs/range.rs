@@ -71,8 +71,7 @@
 //!
 //! 1. Jan Camenisch, Rafik Chaabouni, and abhi shelat. Efficient protocols for set membership and
 //!    range proofs. In Josef Pieprzyk, editor, Advances in Cryptology - ASIACRYPT 2008, pages
-//!    234–252, Berlin, Heidelberg,
-//! 2008. Springer Berlin Heidelberg.
+//!    234–252, Berlin, Heidelberg, 2008. Springer Berlin Heidelberg.
 //!
 //! 2. David Pointcheval and Olivier Sanders. Short Randomizable Signatures. In Kazue Sako, editor,
 //!    Topics in Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International
@@ -80,7 +79,7 @@
 //!
 //! 3. Dan Boneh, Sergey Gorbunov, Riad S. Wahby, Hoeteck Wee, and Zhenfei Zhang. BLS Signatures,
 //!    revision 4. Internet draft, Internet Engineering Task Force, 2020.
-//!    https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
+//!    <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04>
 
 use crate::{
     common::*,

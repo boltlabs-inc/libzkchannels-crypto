@@ -49,11 +49,9 @@
 
 use crate::{
     common::*,
-    pedersen_commitments::Commitment,
+    pedersen::Commitment,
+    pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
     proofs::{Challenge, CommitmentProof, CommitmentProofBuilder},
-    ps_blind_signatures::BlindedSignature,
-    ps_keys::PublicKey,
-    ps_signatures::Signature,
     BlindingFactor, Error,
 };
 

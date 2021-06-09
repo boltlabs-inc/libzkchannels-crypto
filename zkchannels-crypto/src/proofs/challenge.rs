@@ -6,9 +6,9 @@
 
 use crate::{
     common::*,
-    pedersen_commitments::{Commitment, PedersenParameters},
+    pedersen::{Commitment, PedersenParameters},
+    pointcheval_sanders::PublicKey,
     proofs::{CommitmentProofBuilder, RangeProofBuilder, SignatureProofBuilder},
-    ps_keys::PublicKey,
 };
 use group::{Group, GroupEncoding};
 use sha3::{Digest, Sha3_256};

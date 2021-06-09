@@ -31,7 +31,7 @@
 //! 1. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology,
 //!     4(3):161–174, Jan 1991.
 
-use crate::{common::*, pedersen_commitments::*, proofs::Challenge, Error};
+use crate::{common::*, pedersen::*, proofs::Challenge, Error};
 use ff::Field;
 use group::Group;
 use std::{convert::TryInto, iter};

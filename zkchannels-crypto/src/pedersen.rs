@@ -12,7 +12,6 @@
 use crate::{
     common::*,
     serde::{SerializeElement, SerializeG1},
-    Error,
 };
 use arrayvec::ArrayVec;
 use group::Group;
@@ -58,14 +57,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
     }
 
     /// Commit to a message using the provided blinding factor.
-    pub fn commit(&self, msg: &Message<N>, bf: BlindingFactor) -> Result<Commitment<G>, Error> {
-        if msg.len() != self.gs.len() {
-            return Err(Error::MessageLengthMismatch {
-                expected: self.gs.len(),
-                got: msg.len(),
-            });
-        }
-
+    pub fn commit(&self, msg: &Message<N>, bf: BlindingFactor) -> Commitment<G> {
         let com: G = self.h * bf.0
             + self
                 .gs
@@ -74,16 +66,11 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
                 .map(|(&g, m)| g * m)
                 .sum::<G>();
 
-        Ok(Commitment(com))
+        Commitment(com)
     }
 
     /// Verify a commitment to a message, using the given blinding factor
-    pub fn decommit(
-        &self,
-        msg: &Message<N>,
-        bf: BlindingFactor,
-        com: Commitment<G>,
-    ) -> Result<bool, Error> {
-        Ok(self.commit(msg, bf)? == com)
+    pub fn decommit(&self, msg: &Message<N>, bf: BlindingFactor, com: Commitment<G>) -> bool {
+        self.commit(msg, bf) == com
     }
 }

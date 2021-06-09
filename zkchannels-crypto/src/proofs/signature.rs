@@ -53,7 +53,7 @@ use crate::{
     pedersen::Commitment,
     pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
     proofs::{Challenge, CommitmentProof, CommitmentProofBuilder},
-    BlindingFactor, Error,
+    BlindingFactor,
 };
 
 /// Fully constructed proof of knowledge of a signature.
@@ -99,14 +99,14 @@ impl<const N: usize> SignatureProofBuilder<N> {
         signature: Signature,
         conjunction_commitment_scalars: &[Option<Scalar>; N],
         params: &PublicKey<N>,
-    ) -> Result<Self, Error> {
+    ) -> Self {
         // Run commitment phase for PoK of opening of commitment to message.
         let params = params.to_g2_pedersen_parameters();
         let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             conjunction_commitment_scalars,
             &params,
-        )?;
+        );
 
         // Run signature proof setup phase:
         // Blind and randomize signature
@@ -115,15 +115,15 @@ impl<const N: usize> SignatureProofBuilder<N> {
         blinded_signature.randomize(rng);
 
         // Form commitment to blinding factor + message
-        let message_commitment = params.commit(&message, message_blinding_factor)?;
+        let message_commitment = params.commit(&message, message_blinding_factor);
 
-        Ok(Self {
+        Self {
             message,
             message_commitment,
             message_blinding_factor,
             blinded_signature,
             commitment_proof_builder,
-        })
+        }
     }
 
     /// Get the commitment scalars corresponding to the message tuple to use when constructing
@@ -137,22 +137,19 @@ impl<const N: usize> SignatureProofBuilder<N> {
     }
 
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
-    pub fn generate_proof_response(
-        self,
-        challenge_scalar: Challenge,
-    ) -> Result<SignatureProof<N>, Error> {
+    pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof<N> {
         // Run response phase for PoK of opening of commitment to message
         let commitment_proof = self.commitment_proof_builder.generate_proof_response(
             &self.message,
             self.message_blinding_factor,
             challenge_scalar,
-        )?;
+        );
 
-        Ok(SignatureProof {
+        SignatureProof {
             message_commitment: self.message_commitment,
             blinded_signature: self.blinded_signature,
             commitment_proof,
-        })
+        }
     }
 }
 
@@ -171,7 +168,7 @@ impl<const N: usize> SignatureProof<N> {
         &self,
         params: &PublicKey<N>,
         challenge: Challenge,
-    ) -> Result<bool, Error> {
+    ) -> bool {
         // signature is well-formed
         let valid_signature = self.blinded_signature.is_well_formed();
 
@@ -182,7 +179,7 @@ impl<const N: usize> SignatureProof<N> {
                 &params.to_g2_pedersen_parameters(),
                 self.message_commitment,
                 challenge,
-            )?;
+            );
 
         // commitment proof matches blinded signature
         let Signature { sigma1, sigma2 } = self.blinded_signature.0;
@@ -190,7 +187,7 @@ impl<const N: usize> SignatureProof<N> {
             pairing(&sigma1, &(params.x2 + self.message_commitment.0).into())
                 == pairing(&sigma2, &params.g2);
 
-        Ok(valid_signature && valid_commitment_proof && commitment_proof_matches_signature)
+        valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }
 
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.

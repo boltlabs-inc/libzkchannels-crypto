@@ -35,7 +35,6 @@ use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
     proofs::Challenge,
-    Error,
 };
 use ff::Field;
 use group::Group;
@@ -57,7 +56,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
         params: &PedersenParameters<G, N>,
         commitment: Commitment<G>,
         challenge: Challenge,
-    ) -> Result<bool, Error> {
+    ) -> bool {
         // Construct commitment to response scalars.
         let rhs = params.commit(
             &Message::new(
@@ -66,11 +65,10 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
                     .expect("length mismatch is impossible"),
             ),
             BlindingFactor(self.response_scalars[0]),
-        )?;
+        );
 
         // Compare to challenge, commitments to message, scalars
-        let lhs = self.scalar_commitment.0 + (commitment.0 * challenge.0);
-        Ok(rhs.0 == lhs)
+        rhs.0 == self.scalar_commitment.0 + (commitment.0 * challenge.0)
     }
 
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.
@@ -105,7 +103,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         rng: &mut dyn Rng,
         conjunction_commitment_scalars: &[Option<Scalar>; N],
         params: &PedersenParameters<G, N>,
-    ) -> Result<Self, Error> {
+    ) -> Self {
         // Choose commitment scalars (that haven't already been specified)
         let commitment_scalars = iter::once(Scalar::random(&mut *rng))
             .chain(
@@ -123,12 +121,12 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
                     .expect("length mismatch impossible"),
             ),
             BlindingFactor(commitment_scalars[0]),
-        )?;
+        );
 
-        Ok(Self {
+        Self {
             scalar_commitment,
             commitment_scalars,
-        })
+        }
     }
 
     /// Get the commitment scalars corresponding to the message tuple to use when constructing
@@ -152,14 +150,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         msg: &Message<N>,
         blinding_factor: BlindingFactor,
         challenge: Challenge,
-    ) -> Result<CommitmentProof<G, N>, Error> {
-        if msg.len() + 1 != self.commitment_scalars.len() {
-            return Err(Error::MessageLengthMismatch {
-                expected: self.commitment_scalars.len() - 1,
-                got: msg.len(),
-            });
-        }
-
+    ) -> CommitmentProof<G, N> {
         // Generate response scalars.
         let response_scalars = iter::once(&blinding_factor.0)
             .chain(&**msg)
@@ -167,9 +158,9 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
             .map(|(mi, cs)| challenge.0 * mi + cs)
             .collect::<Vec<_>>();
 
-        Ok(CommitmentProof {
+        CommitmentProof {
             scalar_commitment: self.scalar_commitment,
             response_scalars,
-        })
+        }
     }
 }

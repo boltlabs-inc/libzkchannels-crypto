@@ -10,6 +10,7 @@
 //! allow serialize/deserialization when the group element is specifically G1 or specifically G2.
 
 use crate::types::*;
+use arrayvec::ArrayVec;
 use serde::{
     de::{Error as DeError, SeqAccess, Visitor},
     ser::SerializeSeq,
@@ -180,6 +181,58 @@ impl<G: SerializeElement> SerializeElement for Vec<G> {
                     elems.push(elem.0);
                 }
                 Ok(elems)
+            }
+        }
+
+        let visitor = ElementVisitor {
+            _phantom: PhantomData,
+        };
+
+        deserializer.deserialize_seq(visitor)
+    }
+}
+
+impl<G: SerializeElement, const N: usize> SerializeElement for [G; N] {
+    fn serialize<S>(this: &Self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(this.len()))?;
+        for g in this {
+            seq.serialize_element(&SerWrapper(g))?;
+        }
+        seq.end()
+    }
+
+    fn deserialize<'de, D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ElementVisitor<G, const N: usize> {
+            _phantom: PhantomData<G>,
+        }
+
+        impl<'de, G, const N: usize> Visitor<'de> for ElementVisitor<G, N>
+        where
+            G: SerializeElement,
+        {
+            type Value = [G; N];
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a sequence of elements")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut elems = ArrayVec::new();
+                while let Some(elem) = seq.next_element::<DeWrapper<G>>()? {
+                    elems.push(elem.0);
+                }
+                elems
+                    .into_inner()
+                    .map_err(|_| de::Error::custom("wrong number of elements for array"))
             }
         }
 

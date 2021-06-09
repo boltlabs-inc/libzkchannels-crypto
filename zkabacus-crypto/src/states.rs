@@ -218,8 +218,8 @@ impl State {
     }
 
     /// Get the message representation of a State.
-    fn to_message(&self) -> Message {
-        Message::from(vec![
+    fn to_message(&self) -> Message<5> {
+        Message::new([
             self.channel_id.to_scalar(),
             self.nonce.to_scalar(),
             self.revocation_secret.revocation_lock().to_scalar(),
@@ -254,8 +254,8 @@ impl CloseState<'_> {
     }
 
     /// Get the message representation of a CloseState.
-    fn to_message(&self) -> Message {
-        Message::from(vec![
+    fn to_message(&self) -> Message<5> {
+        Message::new([
             self.channel_id.to_scalar(),
             CLOSE_SCALAR,
             self.revocation_lock.to_scalar(),

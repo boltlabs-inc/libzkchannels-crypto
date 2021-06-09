@@ -36,28 +36,32 @@ blinding factor.
 use crate::{challenge::Challenge, pedersen_commitments::*, types::*, Error};
 use ff::Field;
 use group::Group;
-use std::iter;
+use std::{convert::TryInto, iter};
 
 /// Fully constructed proof of knowledge of the opening of a commitment.
 #[derive(Debug, Clone)]
-pub struct CommitmentProof<G: Group<Scalar = Scalar>> {
+pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
     /// The commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
     /// The response scalars, with the response scalar for the blinding factor prepended.
     response_scalars: Vec<Scalar>,
 }
 
-impl<G: Group<Scalar = Scalar>> CommitmentProof<G> {
+impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     /// Verify knowledge of the opening of a commitment.
     pub fn verify_knowledge_of_opening_of_commitment(
         &self,
-        params: &PedersenParameters<G>,
+        params: &PedersenParameters<G, N>,
         commitment: Commitment<G>,
         challenge: Challenge,
     ) -> Result<bool, Error> {
         // Construct commitment to response scalars.
         let rhs = params.commit(
-            &Message::new(self.response_scalars[1..].to_owned()),
+            &Message::new(
+                self.response_scalars[1..]
+                    .try_into()
+                    .expect("length mismatch is impossible"),
+            ),
             BlindingFactor(self.response_scalars[0]),
         )?;
 
@@ -80,14 +84,14 @@ A partially-built [`CommitmentProof`].
 Built up to (but not including) the challenge phase of a Schnorr proof.
 */
 #[derive(Debug, Clone)]
-pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>> {
+pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
     /// Commitment to the commitment scalars.
     pub scalar_commitment: Commitment<G>,
     /// The commitment scalars for the blinding factor and message (in that order).
     commitment_scalars: Vec<Scalar>,
 }
 
-impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
+impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     /**
     Run the commitment phase of a Schnorr-style commitment proof.
 
@@ -101,7 +105,7 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
         conjunction_commitment_scalars: &[Option<Scalar>],
-        params: &PedersenParameters<G>,
+        params: &PedersenParameters<G, N>,
     ) -> Result<Self, Error> {
         assert_eq!(params.message_len(), conjunction_commitment_scalars.len());
 
@@ -116,7 +120,11 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
 
         // Commit to the scalars
         let scalar_commitment = params.commit(
-            &Message::new(commitment_scalars[1..].to_owned()),
+            &Message::new(
+                commitment_scalars[1..]
+                    .try_into()
+                    .expect("length mismatch impossible"),
+            ),
             BlindingFactor(commitment_scalars[0]),
         )?;
 
@@ -130,8 +138,10 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     /// conjunctions of proofs.
     ///
     /// This does not include the commitment scalar corresponding to the blinding factor.
-    pub fn conjunction_commitment_scalars(&self) -> &[Scalar] {
-        &self.commitment_scalars[1..]
+    pub fn conjunction_commitment_scalars(&self) -> &[Scalar; N] {
+        (&self.commitment_scalars[1..])
+            .try_into()
+            .expect("length mismatch impossible")
     }
 
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
@@ -141,10 +151,10 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     /// scalars provided in [`generate_proof_commitments()`](CommitmentProofBuilder::generate_proof_commitments())).
     pub fn generate_proof_response(
         self,
-        msg: &Message,
+        msg: &Message<N>,
         blinding_factor: BlindingFactor,
         challenge: Challenge,
-    ) -> Result<CommitmentProof<G>, Error> {
+    ) -> Result<CommitmentProof<G, N>, Error> {
         if msg.len() + 1 != self.commitment_scalars.len() {
             return Err(Error::MessageLengthMismatch {
                 expected: self.commitment_scalars.len() - 1,

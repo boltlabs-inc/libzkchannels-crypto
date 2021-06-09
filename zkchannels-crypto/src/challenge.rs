@@ -57,7 +57,10 @@ impl ChallengeBuilder {
     ///
     /// (e.g. the pieces that will also be in the finalized
     /// [`CommitmentProof`](crate::commitment_proof::CommitmentProof)).
-    pub fn with_commitment_proof<G>(self, com: &CommitmentProofBuilder<G>) -> Self
+    pub fn with_commitment_proof<G, const N: usize>(
+        self,
+        com: &CommitmentProofBuilder<G, N>,
+    ) -> Self
     where
         G: Group<Scalar = Scalar> + GroupEncoding,
     {
@@ -67,7 +70,10 @@ impl ChallengeBuilder {
     /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge
     /// (e.g. the pieces that will also be in the finalized
     /// [`SignatureProof`](crate::signature_proof::SignatureProof)).
-    pub fn with_signature_proof(self, signature_proof_builder: &SignatureProofBuilder) -> Self {
+    pub fn with_signature_proof<const N: usize>(
+        self,
+        signature_proof_builder: &SignatureProofBuilder<N>,
+    ) -> Self {
         self.with_bytes(signature_proof_builder.message_commitment.0.to_bytes())
             .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
             .with_commitment_proof(&signature_proof_builder.commitment_proof_builder)
@@ -84,7 +90,7 @@ impl ChallengeBuilder {
     }
 
     /// Incorporate public key material into the challenge.
-    pub fn with_public_key(mut self, pk: &PublicKey) -> Self {
+    pub fn with_public_key<const N: usize>(mut self, pk: &PublicKey<N>) -> Self {
         self = self
             .with_bytes(pk.g1.to_bytes())
             .with_bytes(pk.g2.to_bytes())
@@ -101,7 +107,10 @@ impl ChallengeBuilder {
     }
 
     /// Incorporate Pedersen parameter key material into the challenge.
-    pub fn with_pedersen_parameters<G>(self, params: &PedersenParameters<G>) -> Self
+    pub fn with_pedersen_parameters<G, const N: usize>(
+        self,
+        params: &PedersenParameters<G, N>,
+    ) -> Self
     where
         G: Group<Scalar = Scalar> + GroupEncoding,
     {

@@ -72,11 +72,11 @@ impl BlindedSignature {
     }
 }
 
-impl PublicKey {
+impl<const N: usize> PublicKey<N> {
     /// Blind a message using the given blinding factor.
     pub fn blind_message(
         &self,
-        msg: &Message,
+        msg: &Message<N>,
         bf: BlindingFactor,
     ) -> Result<BlindedMessage, Error> {
         match self.to_g1_pedersen_parameters().commit(msg, bf) {
@@ -86,7 +86,7 @@ impl PublicKey {
     }
 }
 
-impl KeyPair {
+impl<const N: usize> KeyPair<N> {
     /// Sign a blinded message.
     ///
     /// **Warning**: this should *only* be used if the signer has verified a proof of knowledge of

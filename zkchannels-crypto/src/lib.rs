@@ -74,24 +74,22 @@ mod tests {
     use crate::{ps_keys::*, ps_signatures::*, types::*};
     use bls12_381::Scalar;
     use ff::Field;
-    use std::iter;
 
     #[test]
     fn make_keypair() {
         let mut rng = rand::thread_rng();
-        let _kp = KeyPair::new(3, &mut rng);
+        let _kp = KeyPair::<3>::new(&mut rng);
     }
 
     #[test]
     fn signing_is_correct() {
         let mut rng = rand::thread_rng();
-        let length = 3;
-        let kp = KeyPair::new(length, &mut rng);
-        let msg = Message::new(
-            iter::repeat_with(|| Scalar::random(&mut rng))
-                .take(length)
-                .collect(),
-        );
+        let kp = KeyPair::<3>::new(&mut rng);
+        let msg = Message::new([
+            Scalar::random(&mut rng),
+            Scalar::random(&mut rng),
+            Scalar::random(&mut rng),
+        ]);
 
         let sig = kp.try_sign(&mut rng, &msg).unwrap();
         assert!(
@@ -105,13 +103,12 @@ mod tests {
     #[test]
     fn blind_signing_is_correct() {
         let mut rng = rand::thread_rng();
-        let length = 3;
-        let kp = KeyPair::new(length, &mut rng);
-        let msg = Message::new(
-            iter::repeat_with(|| Scalar::random(&mut rng))
-                .take(length)
-                .collect(),
-        );
+        let kp = KeyPair::<3>::new(&mut rng);
+        let msg = Message::new([
+            Scalar::random(&mut rng),
+            Scalar::random(&mut rng),
+            Scalar::random(&mut rng),
+        ]);
 
         let bf = BlindingFactor::new(&mut rng);
         let blinded_msg = kp

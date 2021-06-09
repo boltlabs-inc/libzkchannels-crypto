@@ -115,15 +115,13 @@ impl RangeProofParameters {
     /// `digit_signatures`, but discards the secret half after use. This is to prevent misuse; it
     /// should never be used again.
     pub fn new(rng: &mut impl Rng) -> Self {
+        // Workaround for not being able to use `as` in const type variables for now.
+        const RP_PARAMETER_U_AS_USIZE: usize = RP_PARAMETER_U as usize;
+
         let keypair = KeyPair::<1>::new(rng);
-        let mut digit_signatures = ArrayVec::new();
-        for i in 0..RP_PARAMETER_U {
-            let digit = Message::new([Scalar::from(i)]);
-            let sig = keypair
-                .try_sign(rng, &digit)
-                .expect("message/keypair length will always be 1");
-            digit_signatures.push(sig);
-        }
+        let digit_signatures = (0..RP_PARAMETER_U)
+            .map(|i| keypair.sign(&mut *rng, &Message::new([Scalar::from(i)])))
+            .collect::<ArrayVec<_, RP_PARAMETER_U_AS_USIZE>>();
 
         Self {
             digit_signatures: digit_signatures.into_inner().expect("known length"),

@@ -18,7 +18,10 @@ pub mod proofs;
 
 mod serde;
 
-pub use crate::serde::{SerializeElement, SerializeG1, SerializeG2};
+pub use crate::{
+    common::Rng,
+    serde::{SerializeElement, SerializeG1, SerializeG2},
+};
 
 use crate::common::*;
 use ::serde::*;

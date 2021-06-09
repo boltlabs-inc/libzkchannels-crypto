@@ -1,13 +1,34 @@
 //! Pedersen commitments \[1\] over the prime-order pairing groups from BLS12-381 \[2\].
 //!
+//! Commitments may be formed using the [`PedersenParameters`] struct's [`commit`] and [`decommit`]
+//! methods. [`PedersenParameters`] may be formed either by uniform random sampling from an [`Rng`],
+//! or from a [`PublicKey`] via the [`to_g1_pedersen_parameters`] and [`to_g2_pedersen_parameters`]
+//! methods.
+//! ```
+//! # use zkchannels_crypto::{BlindingFactor, pedersen::PedersenParameters};
+//! # let mut rng = rand::thread_rng();
+//! let params = PedersenParameters::<5>::new(rng);
+//! let msg = Message::<5>::random(&mut rng);
+//! let bf = BlindingFactor::new(rng);
+//! let commitment = params.commit(&msg, bf);
+//! assert!(params.decommit(&msg, bf, com));
+//! ```
+//!
 //! ## References
 //!
 //! 1. Torben Pyrds Pedersen. "Non-interactive and information-theoretic secure verifiable secret
-//!    sharing". 1992. URL: https://www.cs.cornell.edu/courses/cs754/2001fa/129.PDF
+//!    sharing". 1992. URL: <https://www.cs.cornell.edu/courses/cs754/2001fa/129.PDF>
 //!
 //! 2. D. Boneh, S. Gorbunov, R. Wahby, H. Wee, and Z. Zhang. "BLS Signatures, Version 4".
 //!    Internet-draft, IETF. 2021. URL:
-//!    https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
+//!    <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04>
+//!
+//! [`commit`]: PedersenParameters::commit
+//! [`decommit`]: PedersenParameters::decommit
+//! [`PublicKey`]: crate::pointcheval_sanders::PublicKey
+//! [`to_g1_pedersen_parameters`]: crate::pointcheval_sanders::PublicKey::to_g1_pedersen_parameters
+//! [`to_g2_pedersen_parameters`]: crate::pointcheval_sanders::PublicKey::to_g2_pedersen_parameters
+//! [`Rng`]: crate::Rng
 
 use crate::{
     common::*,
@@ -76,7 +97,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
         Commitment(com)
     }
 
-    /// Verify a commitment to a message, using the given blinding factor
+    /// Verify a commitment to a message, using the given blinding factor.
     pub fn decommit(&self, msg: &Message<N>, bf: BlindingFactor, com: Commitment<G>) -> bool {
         self.commit(msg, bf) == com
     }

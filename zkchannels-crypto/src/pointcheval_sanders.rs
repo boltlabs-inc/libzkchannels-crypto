@@ -223,6 +223,18 @@ impl<const N: usize> PublicKey<N> {
 
         verify_pairing == signature_pairing
     }
+
+    /// Blind a message using the given blinding factor.
+    pub fn blind_message(
+        &self,
+        msg: &Message<N>,
+        bf: BlindingFactor,
+    ) -> Result<BlindedMessage, Error> {
+        match self.to_g1_pedersen_parameters().commit(msg, bf) {
+            Ok(com) => Ok(BlindedMessage(com)),
+            Err(m) => Err(m),
+        }
+    }
 }
 
 impl<const N: usize> KeyPair<N> {
@@ -254,6 +266,19 @@ impl<const N: usize> KeyPair<N> {
     pub fn sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Signature {
         self.secret_key().sign(rng, msg)
     }
+
+    /// Sign a blinded message.
+    ///
+    /// **Warning**: this should *only* be used if the signer has verified a proof of knowledge of
+    /// the opening of the `BlindedMessage`.
+    pub fn blind_sign(&self, rng: &mut impl Rng, msg: &BlindedMessage) -> BlindedSignature {
+        let u = Scalar::random(rng);
+
+        BlindedSignature(Signature {
+            sigma1: (self.public_key().g1 * u).into(),
+            sigma2: ((self.secret_key().x1 + msg.0 .0) * u).into(),
+        })
+    }
 }
 
 /// A message, blinded for use in PS blind signature protocols.
@@ -270,13 +295,6 @@ pub struct BlindedMessage(Commitment<G1Projective>);
 /// This has the same representation as a regular [`Signature`], but different semantics.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedSignature(pub(crate) Signature);
-
-impl BlindedSignature {
-    /// Convert to a bytewise representation
-    pub fn to_bytes(&self) -> [u8; 96] {
-        self.0.to_bytes()
-    }
-}
 
 impl BlindedSignature {
     /// Blind a [`Signature`] using the given [`BlindingFactor`].
@@ -311,33 +329,9 @@ impl BlindedSignature {
     pub fn is_well_formed(&self) -> bool {
         self.0.is_well_formed()
     }
-}
 
-impl<const N: usize> PublicKey<N> {
-    /// Blind a message using the given blinding factor.
-    pub fn blind_message(
-        &self,
-        msg: &Message<N>,
-        bf: BlindingFactor,
-    ) -> Result<BlindedMessage, Error> {
-        match self.to_g1_pedersen_parameters().commit(msg, bf) {
-            Ok(com) => Ok(BlindedMessage(com)),
-            Err(m) => Err(m),
-        }
-    }
-}
-
-impl<const N: usize> KeyPair<N> {
-    /// Sign a blinded message.
-    ///
-    /// **Warning**: this should *only* be used if the signer has verified a proof of knowledge of
-    /// the opening of the `BlindedMessage`.
-    pub fn blind_sign(&self, rng: &mut impl Rng, msg: &BlindedMessage) -> BlindedSignature {
-        let u = Scalar::random(rng);
-
-        BlindedSignature(Signature {
-            sigma1: (self.public_key().g1 * u).into(),
-            sigma2: ((self.secret_key().x1 + msg.0 .0) * u).into(),
-        })
+    /// Convert to a bytewise representation.
+    pub fn to_bytes(&self) -> [u8; 96] {
+        self.0.to_bytes()
     }
 }

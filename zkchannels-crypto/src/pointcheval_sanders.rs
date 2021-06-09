@@ -17,48 +17,6 @@ use ff::Field;
 use serde::*;
 use std::iter;
 
-/// A signature on a message, generated using Pointcheval-Sanders.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct Signature {
-    /// First part of a signature.
-    ///
-    /// In some papers, this is denoted `h`.
-    #[serde(with = "SerializeElement")]
-    pub(crate) sigma1: G1Affine,
-    /// Second part of a signature.
-    ///
-    /// In some papers, this is denoted `H`.
-    #[serde(with = "SerializeElement")]
-    pub(crate) sigma2: G1Affine,
-}
-
-impl Signature {
-    /// Randomize a signature in place.
-    pub fn randomize(&mut self, rng: &mut impl Rng) {
-        let r = Scalar::random(rng);
-        *self = Signature {
-            sigma1: (self.sigma1 * r).into(),
-            sigma2: (self.sigma2 * r).into(),
-        };
-    }
-
-    /// Convert to a bytewise representation
-    pub fn to_bytes(&self) -> [u8; 96] {
-        let mut buf: [u8; 96] = [0; 96];
-        buf[..48].copy_from_slice(&self.sigma1.to_compressed());
-        buf[48..].copy_from_slice(&self.sigma2.to_compressed());
-        buf
-    }
-
-    /// Check whether the signature is well-formed.
-    ///
-    /// This checks that first element is not the identity element. This implementation uses only
-    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
-    pub fn is_well_formed(&self) -> bool {
-        !bool::from(self.sigma1.is_identity())
-    }
-}
-
 /// Pointcheval-Sanders secret key for multi-message operations.
 #[derive(Debug)]
 pub(crate) struct SecretKey<const N: usize> {
@@ -274,8 +232,60 @@ impl<const N: usize> KeyPair<N> {
 
         BlindedSignature(Signature {
             sigma1: (self.public_key().g1 * u).into(),
-            sigma2: ((self.secret_key().x1 + msg.0.to_element()) * u).into(),
+            sigma2: ((self.secret_key().x1 + msg.to_g1()) * u).into(),
         })
+    }
+}
+
+/// A signature on a message, generated using Pointcheval-Sanders.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct Signature {
+    /// First part of a signature.
+    ///
+    /// In some papers, this is denoted `h`.
+    #[serde(with = "SerializeElement")]
+    pub(crate) sigma1: G1Affine,
+    /// Second part of a signature.
+    ///
+    /// In some papers, this is denoted `H`.
+    #[serde(with = "SerializeElement")]
+    pub(crate) sigma2: G1Affine,
+}
+
+impl Signature {
+    /// Randomize a signature in place.
+    pub fn randomize(&mut self, rng: &mut impl Rng) {
+        let r = Scalar::random(rng);
+        *self = Signature {
+            sigma1: (self.sigma1 * r).into(),
+            sigma2: (self.sigma2 * r).into(),
+        };
+    }
+
+    /// Convert to a bytewise representation
+    pub fn to_bytes(&self) -> [u8; 96] {
+        let mut buf: [u8; 96] = [0; 96];
+        buf[..48].copy_from_slice(&self.sigma1.to_compressed());
+        buf[48..].copy_from_slice(&self.sigma2.to_compressed());
+        buf
+    }
+
+    /// Check whether the signature is well-formed.
+    ///
+    /// This checks that first element is not the identity element. This implementation uses only
+    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
+    pub fn is_well_formed(&self) -> bool {
+        !bool::from(self.sigma1.is_identity())
+    }
+
+    /// Extract the sigma_1 or `h` component.
+    pub fn sigma1(self) -> G1Affine {
+        self.sigma1
+    }
+
+    /// Extract the sigma_2 or `H` component.
+    pub fn sigma2(self) -> G1Affine {
+        self.sigma2
     }
 }
 
@@ -287,6 +297,19 @@ impl<const N: usize> KeyPair<N> {
 /// [`PublicKey::blind_message`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedMessage(Commitment<G1Projective>);
+
+impl BlindedMessage {
+    /// Extract the internal commitment object.
+    pub fn to_commitment(self) -> Commitment<G1Projective> {
+        self.0
+    }
+
+    /// Extract the group element corresponding to the internal commitment object. This is shorthand
+    /// for `self.to_commitment().to_element()`.
+    pub fn to_g1(self) -> G1Projective {
+        self.to_commitment().to_element()
+    }
+}
 
 /// A signature on a blinded message, generated using PS blind signing protocols.
 ///
@@ -300,7 +323,7 @@ impl BlindedSignature {
         let Signature { sigma1, sigma2 } = sig;
         Self(Signature {
             sigma1,
-            sigma2: (sigma2 + (sigma1 * bf.0)).into(),
+            sigma2: (sigma2 + (sigma1 * bf.to_scalar())).into(),
         })
     }
 
@@ -311,7 +334,7 @@ impl BlindedSignature {
         let Self(Signature { sigma1, sigma2 }) = self;
         Signature {
             sigma1,
-            sigma2: (sigma2 - (sigma1 * bf.0)).into(),
+            sigma2: (sigma2 - (sigma1 * bf.to_scalar())).into(),
         }
     }
 
@@ -331,5 +354,10 @@ impl BlindedSignature {
     /// Convert to a bytewise representation.
     pub fn to_bytes(&self) -> [u8; 96] {
         self.0.to_bytes()
+    }
+
+    /// Returns the internal signature object, which is still blinded!
+    pub fn to_internal_blinded_signature(self) -> Signature {
+        self.0
     }
 }

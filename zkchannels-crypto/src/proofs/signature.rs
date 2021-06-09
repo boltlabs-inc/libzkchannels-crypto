@@ -48,10 +48,9 @@
 //!    4(3):161–174, Jan 1991.
 
 use crate::{
-    challenge::Challenge,
     common::*,
     pedersen_commitments::Commitment,
-    proofs::{CommitmentProof, CommitmentProofBuilder},
+    proofs::{Challenge, CommitmentProof, CommitmentProofBuilder},
     ps_blind_signatures::BlindedSignature,
     ps_keys::PublicKey,
     ps_signatures::Signature,

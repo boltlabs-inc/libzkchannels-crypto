@@ -12,7 +12,6 @@
 #![warn(unused)]
 #![forbid(broken_intra_doc_links)]
 
-pub mod challenge;
 pub mod pedersen_commitments;
 pub mod proofs;
 pub mod ps_blind_signatures;

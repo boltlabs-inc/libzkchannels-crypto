@@ -83,13 +83,12 @@
 //!    https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 
 use crate::ps_signatures::Signer;
+use crate::{common::*, Error};
 use crate::{
-    challenge::Challenge,
-    proofs::{SignatureProof, SignatureProofBuilder},
+    proofs::{Challenge, SignatureProof, SignatureProofBuilder},
     ps_keys::{KeyPair, PublicKey},
     ps_signatures::Signature,
 };
-use crate::{common::*, Error};
 use arrayvec::ArrayVec;
 
 /// The arity of our digits used in the range proof.

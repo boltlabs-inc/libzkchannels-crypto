@@ -7,12 +7,151 @@
 use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
-    pointcheval_sanders::PublicKey,
-    proofs::{CommitmentProofBuilder, RangeProofBuilder, SignatureProofBuilder},
+    pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
+    proofs::{
+        CommitmentProof, CommitmentProofBuilder, RangeProof, RangeProofBuilder, SignatureProof,
+        SignatureProofBuilder,
+    },
 };
 use group::{Group, GroupEncoding};
 use sha3::{Digest, Sha3_256};
 use std::convert::TryFrom;
+
+/// A trait implemented by types which can feed their public components into a [`ChallengeBuilder`].
+pub trait ChallengeDigest {
+    /// Incorporate public components of this type into a [`ChallengeBuilder`].
+    fn digest(&self, builder: &mut ChallengeBuilder);
+}
+
+impl<'a, T: ChallengeDigest> ChallengeDigest for &'a T {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        (**self).digest(builder);
+    }
+}
+
+impl ChallengeDigest for Scalar {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.to_bytes());
+    }
+}
+
+impl ChallengeDigest for G1Affine {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.to_bytes());
+    }
+}
+
+impl ChallengeDigest for G2Affine {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.to_bytes());
+    }
+}
+
+impl ChallengeDigest for G1Projective {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.to_bytes());
+    }
+}
+
+impl ChallengeDigest for G2Projective {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.to_bytes());
+    }
+}
+
+impl<const N: usize> ChallengeDigest for PublicKey<N> {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.g1.to_bytes());
+        builder.digest_bytes(self.g2.to_bytes());
+        builder.digest_bytes(self.x2.to_bytes());
+
+        for y1 in &self.y1s {
+            builder.digest_bytes(y1.to_bytes());
+        }
+
+        for y2 in &self.y2s {
+            builder.digest_bytes(y2.to_bytes());
+        }
+    }
+}
+
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+    for PedersenParameters<G, N>
+{
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.h.to_bytes());
+        for g in &self.gs {
+            builder.digest_bytes(g.to_bytes());
+        }
+    }
+}
+
+impl ChallengeDigest for Signature {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.sigma1());
+        builder.digest(&self.sigma2());
+    }
+}
+
+impl ChallengeDigest for BlindedSignature {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.to_internal_blinded_signature());
+    }
+}
+
+impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeDigest for Commitment<G> {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.to_element().to_bytes());
+    }
+}
+
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+    for CommitmentProofBuilder<G, N>
+{
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.scalar_commitment);
+    }
+}
+
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+    for CommitmentProof<G, N>
+{
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.scalar_commitment);
+    }
+}
+
+impl<const N: usize> ChallengeDigest for SignatureProofBuilder<N> {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.message_commitment);
+        builder.digest(&self.blinded_signature);
+        builder.digest(&self.commitment_proof_builder);
+    }
+}
+
+impl<const N: usize> ChallengeDigest for SignatureProof<N> {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.message_commitment);
+        builder.digest(&self.blinded_signature);
+        builder.digest(&self.commitment_proof);
+    }
+}
+
+impl ChallengeDigest for RangeProofBuilder {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        for digit_proof in &self.digit_proof_builders {
+            builder.digest(digit_proof);
+        }
+    }
+}
+
+impl ChallengeDigest for RangeProof {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        for digit_proof in &self.digit_proofs {
+            builder.digest(digit_proof);
+        }
+    }
+}
 
 /// A challenge scalar for use in a Schnorr-style proof.
 #[derive(Debug, Clone, Copy)]
@@ -47,97 +186,25 @@ impl ChallengeBuilder {
         }
     }
 
-    /// Incorporate a commitment into the challenge.
-    pub fn with_commitment<G>(self, com: Commitment<G>) -> Self
-    where
-        G: Group<Scalar = Scalar> + GroupEncoding,
-    {
-        self.with_bytes(com.to_element().to_bytes())
+    /// Incorporate public data from some given type into the challenge.
+    pub fn digest<T: ChallengeDigest>(&mut self, object: &T) {
+        object.digest(self);
     }
 
-    /// Incorporate public pieces of the [`CommitmentProofBuilder`] into the challenge
-    ///
-    /// (e.g. the pieces that will also be in the finalized
-    /// [`CommitmentProof`](crate::proofs::CommitmentProof)).
-    pub fn with_commitment_proof<G, const N: usize>(
-        self,
-        com: &CommitmentProofBuilder<G, N>,
-    ) -> Self
-    where
-        G: Group<Scalar = Scalar> + GroupEncoding,
-    {
-        self.with_bytes(com.scalar_commitment.to_element().to_bytes())
-    }
-
-    /// Incorporate public pieces of the [`SignatureProofBuilder`] into the challenge
-    /// (e.g. the pieces that will also be in the finalized
-    /// [`SignatureProof`](crate::proofs::SignatureProof)).
-    pub fn with_signature_proof<const N: usize>(
-        self,
-        signature_proof_builder: &SignatureProofBuilder<N>,
-    ) -> Self {
-        self.with_bytes(
-            signature_proof_builder
-                .message_commitment
-                .to_element()
-                .to_bytes(),
-        )
-        .with_bytes(signature_proof_builder.blinded_signature.to_bytes())
-        .with_commitment_proof(&signature_proof_builder.commitment_proof_builder)
-    }
-
-    /// Incorporate public pieces of the [`RangeProofBuilder`] into the challenge.
-    /// (e.g. the pieces that will also be in the finalized
-    /// [`RangeProof`](crate::proofs::RangeProof)).
-    pub fn with_range_proof(self, range_proof_builder: &RangeProofBuilder) -> Self {
-        range_proof_builder
-            .digit_proof_builders
-            .iter()
-            .fold(self, |this, proof| this.with_signature_proof(proof))
-    }
-
-    /// Incorporate public key material into the challenge.
-    pub fn with_public_key<const N: usize>(mut self, pk: &PublicKey<N>) -> Self {
-        self = self
-            .with_bytes(pk.g1.to_bytes())
-            .with_bytes(pk.g2.to_bytes())
-            .with_bytes(pk.x2.to_bytes());
-        self = pk
-            .y1s
-            .iter()
-            .fold(self, |this, y1| this.with_bytes(y1.to_bytes()));
-        self = pk
-            .y2s
-            .iter()
-            .fold(self, |this, y2| this.with_bytes(y2.to_bytes()));
+    /// A conveniently chainable variant of [`ChallengeBuilder::digest`].
+    pub fn with<T: ChallengeDigest>(mut self, object: &T) -> Self {
+        object.digest(&mut self);
         self
     }
 
-    /// Incorporate Pedersen parameter key material into the challenge.
-    pub fn with_pedersen_parameters<G, const N: usize>(
-        self,
-        params: &PedersenParameters<G, N>,
-    ) -> Self
-    where
-        G: Group<Scalar = Scalar> + GroupEncoding,
-    {
-        params
-            .gs
-            .iter()
-            .fold(self.with_bytes(params.h.to_bytes()), |this, g| {
-                this.with_bytes(g.to_bytes())
-            })
-    }
-
-    /// Incorporate a [`Scalar`] into the challenge (that is, an element of the scalar fields
-    /// associated with the BLS12-381 pairing groups)
-    pub fn with_scalar(self, scalar: Scalar) -> Self {
-        self.with_bytes(scalar.to_bytes())
-    }
-
     /// Incorporate arbitrary bytes into the challenge.
-    pub fn with_bytes(mut self, bytes: impl AsRef<[u8]>) -> Self {
+    pub fn digest_bytes(&mut self, bytes: impl AsRef<[u8]>) {
         self.hasher.update(bytes);
+    }
+
+    /// A conveniently chainable variant of [`ChallengeBuilder::digest_bytes`].
+    pub fn with_bytes(mut self, bytes: impl AsRef<[u8]>) -> Self {
+        self.digest_bytes(bytes);
         self
     }
 

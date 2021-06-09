@@ -5,13 +5,14 @@
 //! or from a [`PublicKey`] via the [`to_g1_pedersen_parameters`] and [`to_g2_pedersen_parameters`]
 //! methods.
 //! ```
-//! # use zkchannels_crypto::{BlindingFactor, pedersen::PedersenParameters};
+//! # use zkchannels_crypto::{BlindingFactor, Message, pedersen::PedersenParameters};
+//! # use bls12_381::G1Projective;
 //! # let mut rng = rand::thread_rng();
-//! let params = PedersenParameters::<5>::new(rng);
+//! let params = PedersenParameters::<G1Projective, 5>::new(&mut rng);
 //! let msg = Message::<5>::random(&mut rng);
-//! let bf = BlindingFactor::new(rng);
+//! let bf = BlindingFactor::new(&mut rng);
 //! let commitment = params.commit(&msg, bf);
-//! assert!(params.decommit(&msg, bf, com));
+//! assert!(params.decommit(&msg, bf, commitment));
 //! ```
 //!
 //! ## References

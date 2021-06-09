@@ -103,7 +103,7 @@ impl<const N: usize> SignatureProofBuilder<N> {
         rng: &mut impl Rng,
         message: Message<N>,
         signature: Signature,
-        conjunction_commitment_scalars: &[Option<Scalar>],
+        conjunction_commitment_scalars: &[Option<Scalar>; N],
         params: &PublicKey<N>,
     ) -> Result<Self, Error> {
         // Run commitment phase for PoK of opening of commitment to message.

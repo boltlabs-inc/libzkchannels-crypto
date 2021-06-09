@@ -116,11 +116,6 @@ impl<const N: usize> PublicKey<N> {
         }
     }
 
-    /// Return the message length that this keypair can operate on.
-    pub fn message_len(&self) -> usize {
-        self.y1s.len()
-    }
-
     /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
     pub fn to_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective, N> {
         let gs = self
@@ -177,11 +172,5 @@ impl<const N: usize> KeyPair<N> {
     /// Get the secret portion of the `KeyPair`
     pub(crate) fn secret_key(&self) -> &SecretKey<N> {
         &self.sk
-    }
-
-    /// Return the message length that this keypair can operate on.
-    #[allow(clippy::len_without_is_empty)]
-    pub fn len(&self) -> usize {
-        N
     }
 }

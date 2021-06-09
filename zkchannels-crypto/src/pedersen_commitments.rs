@@ -82,9 +82,4 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
     ) -> Result<bool, Error> {
         Ok(self.commit(msg, bf)? == com)
     }
-
-    /// Return the message length that these parameters can commit to.
-    pub fn message_len(&self) -> usize {
-        self.gs.len()
-    }
 }

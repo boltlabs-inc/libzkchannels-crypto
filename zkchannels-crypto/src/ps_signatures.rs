@@ -4,7 +4,7 @@
 //! (https://eprint.iacr.org/2015/525.pdf); The BLS12-381 curve is defined in the (now expired) IRTF
 //! draft titled ["BLS
 //! Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
-use crate::{ps_keys::*, serde::*, types::*};
+use crate::{common::*, ps_keys::*, serde::*};
 use ff::Field;
 use serde::*;
 

@@ -33,7 +33,7 @@ blinding factor.
     4(3):161–174, Jan 1991.
 
 */
-use crate::{challenge::Challenge, pedersen_commitments::*, types::*, Error};
+use crate::{challenge::Challenge, common::*, pedersen_commitments::*, Error};
 use ff::Field;
 use group::Group;
 use std::{convert::TryInto, iter};

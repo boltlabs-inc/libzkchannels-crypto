@@ -15,9 +15,7 @@ use serde::*;
 use sha3::{Digest, Sha3_256};
 use std::convert::TryFrom;
 use zkchannels_crypto::{
-    message::{BlindingFactor, Message},
-    pedersen_commitments::Commitment,
-    SerializeElement,
+    pedersen_commitments::Commitment, BlindingFactor, Message, SerializeElement,
 };
 
 /// A revocation lock.

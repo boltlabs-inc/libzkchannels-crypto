@@ -5,8 +5,7 @@ More information on the constructs involved can be found in the documentation fo
 [`ps_signatures`](crate::ps_signatures) module.
 */
 use crate::{
-    message::BlindingFactor, pedersen_commitments::*, ps_keys::*, ps_signatures::Signature,
-    types::*, Error,
+    common::*, pedersen_commitments::*, ps_keys::*, ps_signatures::Signature, BlindingFactor, Error,
 };
 use ff::Field;
 use serde::*;

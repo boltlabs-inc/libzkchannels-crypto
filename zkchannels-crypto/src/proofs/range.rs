@@ -1,8 +1,8 @@
 //! Schnorr-style proofs of knowledge that a value lies within the range `[0, 2^63)`.
 //!
 //! **This range proof cannot be used alone!** It is only meaningful when used in conjunction with a
-//! [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or [`SignatureProof`], to show
-//! that the message _in that proof_ lies within the given range.
+//! [`CommitmentProof`](crate::proofs::CommitmentProof) or [`SignatureProof`], to show that the
+//! message _in that proof_ lies within the given range.
 //!
 //! These are Camenish, Chaabouni, and shelat-style range proofs \[1\] built using standard Schnorr.
 //! They prove a value is in range `[0, u^l)`, for some parameters `u` and `l`. This implementation
@@ -22,8 +22,8 @@
 //!
 //! This module provides tools to produce a PoK over the digit signatures for a given value.
 //! However, it alone *does not* show that the `u`-ary representation matches a meaningful value!
-//! This step requires a conjunction with a
-//! [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or [`SignatureProof`].
+//! This step requires a conjunction with a [`CommitmentProof`](crate::proofs::CommitmentProof) or
+//! [`SignatureProof`].
 //!
 //! This type of proof requires additional parameters (a range proof public key) and a more
 //! computationally intensive setup phase by the verifier (to generate `u` signatures). Luckily,
@@ -34,7 +34,7 @@
 //!
 //! ## Expected use
 //! Suppose you wish to show that the `j`th message element in a
-//! [`CommitmentProof`](crate::commitment_proof::CommitmentProof) is within the given range.
+//! [`CommitmentProof`](crate::proofs::CommitmentProof) is within the given range.
 //!
 //! 1. *Initiate the range proof.* Call [`RangeProofBuilder::generate_proof_commitments()`], passing
 //!     the value you wish to show is in a range.
@@ -42,15 +42,15 @@
 //! 2. *Link to the commitment proof*. The resulting [`RangeProofBuilder`] contains a field called
 //!     `commitment_scalar`. Place this element in the `j`th index of
 //!     `conjunction_commitment_scalars` and use it to [generate the CommitmentProof`
-//!     commitments](crate::commitment_proof::CommitmentProofBuilder::generate_proof_commitments()).
+//!     commitments](crate::proofs::CommitmentProofBuilder::generate_proof_commitments()).
 //!
 //! 3. *Generate a challenge*. In an interactive proof, the prover obtains a random challenge from
 //!     the verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform
 //!     an interactive proof into a non-interactive proof; see [`Challenge`] for details.
 //!
 //! 4. *Complete the proofs*. Call the `generate_proof_response()` function for the [commitment
-//!     proof](crate::commitment_proof::CommitmentProofBuilder::generate_proof_response()) and the
-//!     [range proof](RangeProofBuilder::generate_proof_response()).
+//!     proof](crate::proofs::CommitmentProofBuilder::generate_proof_response()) and the [range
+//!     proof](RangeProofBuilder::generate_proof_response()).
 //!
 //! To verify a range proof, the verifier must check the following:
 //!
@@ -60,9 +60,9 @@
 //!
 //! To do so, the verifier should first reconstruct the challenge. Verify 1 using the standard
 //! commitment proof [verification
-//! function](crate::commitment_proof::CommitmentProof::verify_knowledge_of_opening_of_commitment()).
-//! To verify 2 and 3, retrieve the `j`th response scalar using
-//! [`CommitmentProof::conjunction_response_scalars()`](crate::commitment_proof::CommitmentProof::conjunction_response_scalars())
+//! function](crate::proofs::CommitmentProof::verify_knowledge_of_opening_of_commitment()). To
+//! verify 2 and 3, retrieve the `j`th response scalar using
+//! [`CommitmentProof::conjunction_response_scalars()`](crate::proofs::CommitmentProof::conjunction_response_scalars())
 //! and pass it to [`verify_range_proof()`](RangeProof::verify_range_proof())
 //!
 //! The approach for a signature proof is similar.
@@ -111,7 +111,7 @@ pub struct RangeProofParameters {
 impl RangeProofParameters {
     /// Generate new parameters for use in range proofs.
     ///
-    /// Note that this generates a [`KeyPair`](crate::ps_keys::KeyPair) to produce the
+    /// Note that this generates a [`KeyPair`](crate::pointcheval_sanders::KeyPair) to produce the
     /// `digit_signatures`, but discards the secret half after use. This is to prevent misuse; it
     /// should never be used again.
     pub fn new(rng: &mut impl Rng) -> Self {
@@ -120,7 +120,7 @@ impl RangeProofParameters {
 
         let keypair = KeyPair::<1>::new(rng);
         let digit_signatures = (0..RP_PARAMETER_U)
-            .map(|i| keypair.sign(&mut *rng, &Message::new([Scalar::from(i)])))
+            .map(|i| keypair.sign(&mut *rng, &Scalar::from(i).into()))
             .collect::<ArrayVec<_, RP_PARAMETER_U_AS_USIZE>>();
 
         Self {
@@ -144,7 +144,7 @@ pub struct RangeProofBuilder {
 
 /// Proof of knowledge that a `u`-ary representation of a value falls within the given range.
 /// This is **not** a complete range proof unless supplied in conjunction with a
-/// [`CommitmentProof`](crate::commitment_proof::CommitmentProof) or a [`SignatureProof`].
+/// [`CommitmentProof`](crate::proofs::CommitmentProof) or a [`SignatureProof`].
 #[allow(unused)]
 #[derive(Debug)]
 pub struct RangeProof {
@@ -184,7 +184,7 @@ impl RangeProofBuilder {
                     rng,
                     // N.B. u64s are being encoded to `Scalar`s using the builtin bls12_381
                     // `From<u64>` implementation.
-                    Message::new([Scalar::from(digit)]),
+                    Scalar::from(digit).into(),
                     params.digit_signatures[digit as usize],
                     &[None],
                     &params.public_key,

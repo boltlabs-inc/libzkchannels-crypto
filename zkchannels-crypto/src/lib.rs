@@ -70,12 +70,24 @@ impl From<Scalar> for Message<1> {
 
 /// Blinding factor for a commitment, message, or signature.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindingFactor(#[serde(with = "SerializeElement")] pub(crate) Scalar);
+pub struct BlindingFactor(#[serde(with = "SerializeElement")] Scalar);
 
 impl BlindingFactor {
     /// Generate a new blinding factor uniformly at random from the set of possible [`Scalar`]s.
     pub fn new(rng: &mut impl Rng) -> Self {
         Self(Scalar::random(rng))
+    }
+
+    /// Construct a blinding factor from the scalar representing it.
+    ///
+    /// **warning:** this should never be used unless unblinding something!
+    pub fn from_scalar(scalar: Scalar) -> Self {
+        Self(scalar)
+    }
+
+    /// Convert to the inner scalar representing this blinding factor.
+    pub fn to_scalar(&self) -> Scalar {
+        self.0
     }
 }
 

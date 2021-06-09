@@ -26,9 +26,10 @@
 //! 3. *Response*. The prover constructs response scalars, which mask each element of the message
 //!     tuple and the blinding factor with the corresponding commitment scalar and the challenge.
 //!
-//! Note that steps 1-3 are identical to those for a [commitment proof](crate::commitment_proof).
-//! The [`SignatureProof`] consists of the commitment to the commitment scalars; the response
-//! scalars; the blinded, randomized signature; and the commitment to the message tuple from step 0.
+//! Note that steps 1-3 are identical to those for a [commitment
+//! proof](crate::proofs::CommitmentProof). The [`SignatureProof`] consists of the commitment to the
+//! commitment scalars; the response scalars; the blinded, randomized signature; and the commitment
+//! to the message tuple from step 0.
 //!
 //! Given the proof, the verifier checks the following:
 //! 1. The underlying commitment proof is consistent (i.e. with the commitment to commitment

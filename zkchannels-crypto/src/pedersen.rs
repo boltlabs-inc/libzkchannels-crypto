@@ -21,9 +21,16 @@ use std::iter;
 /// A Pedersen commitment to a message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(bound = "G: SerializeElement")]
-pub struct Commitment<G>(#[serde(with = "SerializeElement")] pub(crate) G)
+pub struct Commitment<G>(#[serde(with = "SerializeElement")] G)
 where
     G: Group<Scalar = Scalar>;
+
+impl<G: Group<Scalar = Scalar>> Commitment<G> {
+    /// Get the inner group element representing the commitment.
+    pub fn to_element(self) -> G {
+        self.0
+    }
+}
 
 /// Parameters for Pedersen commitments.
 ///

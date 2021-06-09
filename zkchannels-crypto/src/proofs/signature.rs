@@ -183,9 +183,10 @@ impl<const N: usize> SignatureProof<N> {
 
         // commitment proof matches blinded signature
         let Signature { sigma1, sigma2 } = self.blinded_signature.0;
-        let commitment_proof_matches_signature =
-            pairing(&sigma1, &(params.x2 + self.message_commitment.0).into())
-                == pairing(&sigma2, &params.g2);
+        let commitment_proof_matches_signature = pairing(
+            &sigma1,
+            &(params.x2 + self.message_commitment.to_element()).into(),
+        ) == pairing(&sigma2, &params.g2);
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }
@@ -193,7 +194,7 @@ impl<const N: usize> SignatureProof<N> {
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.
     ///
     /// This does not include the response scalar for the blinding factor.
-    pub fn conjunction_response_scalars(&self) -> &[Scalar] {
-        &self.commitment_proof.conjunction_response_scalars()
+    pub fn conjunction_response_scalars(&self) -> &[Scalar; N] {
+        self.commitment_proof.conjunction_response_scalars()
     }
 }

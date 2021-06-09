@@ -76,11 +76,9 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     }
 }
 
-/**
-A partially-built [`CommitmentProof`].
-
-Built up to (but not including) the challenge phase of a Schnorr proof.
-*/
+/// A partially-built [`CommitmentProof`].
+///
+/// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
     /// Commitment to the commitment scalars.
@@ -90,16 +88,14 @@ pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
 }
 
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
-    /**
-    Run the commitment phase of a Schnorr-style commitment proof.
-
-    The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
-    scalars in the case that they need to satisfy some sort of constraint, for example when
-    implementing equality or linear combination constraints on top of the proof.
-
-    Return a `MessageLengthMismatch` error if the `conjunction_commitment_scalars` are malformed
-    with respect to the `PedersenParameters`.
-    */
+    /// Run the commitment phase of a Schnorr-style commitment proof.
+    ///
+    /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
+    /// commitment scalars in the case that they need to satisfy some sort of constraint, for
+    /// example when implementing equality or linear combination constraints on top of the proof.
+    ///
+    /// Return a `MessageLengthMismatch` error if the `conjunction_commitment_scalars` are malformed
+    /// with respect to the `PedersenParameters`.
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
         conjunction_commitment_scalars: &[Option<Scalar>; N],
@@ -142,9 +138,10 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
 
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
     ///
-    /// Return a `MessageLengthMismatch` error if the message is malformed with respect to the
-    /// proof builder (that is, if it is not the same length as the parameters and commitment
-    /// scalars provided in [`generate_proof_commitments()`](CommitmentProofBuilder::generate_proof_commitments())).
+    /// Return a `MessageLengthMismatch` error if the message is malformed with respect to the proof
+    /// builder (that is, if it is not the same length as the parameters and commitment scalars
+    /// provided in
+    /// [`generate_proof_commitments()`](CommitmentProofBuilder::generate_proof_commitments())).
     pub fn generate_proof_response(
         self,
         msg: &Message<N>,

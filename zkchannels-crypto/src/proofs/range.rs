@@ -111,12 +111,11 @@ pub struct RangeProofParameters {
 }
 
 impl RangeProofParameters {
-    /**
-    Generate new parameters for use in range proofs.
-
-    Note that this generates a [`KeyPair`](crate::ps_keys::KeyPair) to produce the `digit_signatures`,
-    but discards the secret half after use. This is to prevent misuse; it should never be used again.
-    */
+    /// Generate new parameters for use in range proofs.
+    ///
+    /// Note that this generates a [`KeyPair`](crate::ps_keys::KeyPair) to produce the
+    /// `digit_signatures`, but discards the secret half after use. This is to prevent misuse; it
+    /// should never be used again.
     pub fn new(rng: &mut impl Rng) -> Self {
         let keypair = KeyPair::<1>::new(rng);
         let mut digit_signatures = ArrayVec::new();

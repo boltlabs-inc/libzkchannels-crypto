@@ -53,13 +53,11 @@ pub struct KeyPair<const N: usize> {
 }
 
 impl<const N: usize> SecretKey<N> {
-    /**
-    Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at random
-    and the given generator `g1` from G1.
+    /// Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at random
+    /// and the given generator `g1` from G1.
 
-    This is called internally, and we require `g1` is chosen uniformly at random and is not
-    the identity element.
-    */
+    /// This is called internally, and we require `g1` is chosen uniformly at random and is not
+    /// the identity element.
     fn new(rng: &mut impl Rng, g1: &G1Projective) -> Self {
         let mut get_nonzero_scalar = || loop {
             let r = Scalar::random(&mut *rng);
@@ -148,12 +146,10 @@ impl<const N: usize> PublicKey<N> {
 }
 
 impl<const N: usize> KeyPair<N> {
-    /**
-    Generate a new `KeyPair` of a given length.
-
-    Generators are chosen uniformly at random from G1* and G2*. The scalars in the secret key
-    are chosen uniformly at random and are non-zero.
-    */
+    /// Generate a new `KeyPair` of a given length.
+    ///
+    /// Generators are chosen uniformly at random from G1* and G2*. The scalars in the secret key
+    /// are chosen uniformly at random and are non-zero.
     pub fn new(rng: &mut impl Rng) -> Self {
         // select g1 uniformly at random.
         let g1: G1Projective = random_non_identity(&mut *rng);

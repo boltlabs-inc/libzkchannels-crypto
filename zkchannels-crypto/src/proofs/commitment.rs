@@ -102,11 +102,9 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     */
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
-        conjunction_commitment_scalars: &[Option<Scalar>],
+        conjunction_commitment_scalars: &[Option<Scalar>; N],
         params: &PedersenParameters<G, N>,
     ) -> Result<Self, Error> {
-        assert_eq!(params.message_len(), conjunction_commitment_scalars.len());
-
         // Choose commitment scalars (that haven't already been specified)
         let commitment_scalars = iter::once(Scalar::random(&mut *rng))
             .chain(

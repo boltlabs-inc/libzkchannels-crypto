@@ -12,9 +12,9 @@
 use crate::common::*;
 use arrayvec::ArrayVec;
 use serde::{
-    de::{Error as DeError, SeqAccess, Visitor},
+    de::{self, SeqAccess, Visitor},
     ser::SerializeSeq,
-    *,
+    Deserialize, Deserializer, Serialize, Serializer,
 };
 use std::marker::PhantomData;
 
@@ -69,7 +69,7 @@ impl SerializeElement for G1Affine {
         let maybe_g1: Option<G1Affine> =
             G1Affine::from_compressed(&serde_big_array::BigArray::deserialize(deserializer)?)
                 .into();
-        maybe_g1.ok_or_else(|| DeError::custom("invalid element encoding"))
+        maybe_g1.ok_or_else(|| de::Error::custom("invalid element encoding"))
     }
 }
 
@@ -104,7 +104,7 @@ impl SerializeElement for G2Affine {
         let maybe_g1: Option<G2Affine> =
             G2Affine::from_compressed(&serde_big_array::BigArray::deserialize(deserializer)?)
                 .into();
-        maybe_g1.ok_or_else(|| DeError::custom("invalid element encoding"))
+        maybe_g1.ok_or_else(|| de::Error::custom("invalid element encoding"))
     }
 }
 
@@ -138,7 +138,7 @@ impl SerializeElement for Scalar {
     {
         let bytes = <[u8; 32]>::deserialize(deserializer)?;
         let maybe_scalar: Option<Scalar> = Scalar::from_bytes(&bytes).into();
-        maybe_scalar.ok_or_else(|| D::Error::custom("invalid scalar encoding"))
+        maybe_scalar.ok_or_else(|| de::Error::custom("invalid scalar encoding"))
     }
 }
 

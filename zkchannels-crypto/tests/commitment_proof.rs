@@ -46,17 +46,6 @@ fn commitment_proof_verifies() {
     assert!(proof
         .verify_knowledge_of_opening_of_commitment(&params, com, challenge)
         .unwrap());
-
-    // Proof must not verify with a different commit.
-    let bad_msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let bad_com = params.commit(&bad_msg, bf).unwrap();
-    assert!(!proof
-        .verify_knowledge_of_opening_of_commitment(&params, bad_com, challenge)
-        .unwrap());
 }
 
 #[test]
@@ -85,6 +74,165 @@ fn commitment_proof_incorrect_message_length() {
     let _proof = proof_builder
         .generate_proof_response(&wrong_msg, bf, challenge)
         .unwrap();
+}
+
+#[test]
+fn commitment_proof_fails_on_wrong_commit() {
+    let mut rng = rng();
+    let length = 3;
+
+    // Generate message.
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+
+    // Form the "correct" commmitment.
+    let params = PedersenParameters::<G1Projective>::new(length, &mut rng);
+    let bf = BlindingFactor::new(&mut rng);
+    let _com = params.commit(&msg, bf).unwrap();
+
+    // Build proof.
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params).unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_commitment_proof(&proof_builder)
+        .finish();
+    let proof = proof_builder
+        .generate_proof_response(&msg, bf, challenge)
+        .unwrap();
+
+    // Proof must not verify on a commitment with the wrong blinding factor.
+    let bad_bf = BlindingFactor::new(&mut rng);
+    let bad_bf_com = params.commit(&msg, bad_bf).unwrap();
+    assert!(
+        !proof
+            .verify_knowledge_of_opening_of_commitment(&params, bad_bf_com, challenge)
+            .unwrap(),
+        "Proof verified on commitment with wrong blinding factor."
+    );
+
+    // Proof must not verify on a commitment with the wrong parameters.
+    let bad_params = PedersenParameters::<G1Projective>::new(length, &mut rng);
+    let bad_params_com = bad_params.commit(&msg, bf).unwrap();
+    assert!(
+        !proof
+            .verify_knowledge_of_opening_of_commitment(&params, bad_params_com, challenge)
+            .unwrap(),
+        "Proof verified on commitment with wrong parameters."
+    );
+
+    // Proof must to verify on a commitment with the wrong message.
+    let bad_msg = Message::new(vec![
+        Scalar::random(&mut rng),
+        Scalar::random(&mut rng),
+        Scalar::random(&mut rng),
+    ]);
+    assert_ne!(&*msg, &*bad_msg, "Accidentally generated matching messages");
+    let bad_msg_com = params.commit(&bad_msg, bf).unwrap();
+    assert!(
+        !proof
+            .verify_knowledge_of_opening_of_commitment(&params, bad_msg_com, challenge)
+            .unwrap(),
+        "Proof verified on commitment with wrong message."
+    );
+}
+
+#[test]
+fn commitment_proof_fails_on_bad_response_phase() {
+    let mut rng = rng();
+    let length = 3;
+
+    // Generate message.
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+
+    // Form commmitment.
+    let params = PedersenParameters::<G1Projective>::new(length, &mut rng);
+    let bf = BlindingFactor::new(&mut rng);
+    let com = params.commit(&msg, bf).unwrap();
+
+    // Start proof, making a copy for each version of this test.
+    let proof_builder_for_msg =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params).unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_commitment_proof(&proof_builder_for_msg)
+        .finish();
+    let proof_builder_for_bf = proof_builder_for_msg.clone();
+
+    // Run response phase with wrong message.
+    let bad_msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    assert_ne!(
+        &*msg, &*bad_msg,
+        "Accidentally generated matching messages."
+    );
+    let proof = proof_builder_for_msg
+        .generate_proof_response(&bad_msg, bf, challenge)
+        .unwrap();
+    assert!(
+        !proof
+            .verify_knowledge_of_opening_of_commitment(&params, com, challenge)
+            .unwrap(),
+        "Proof verified with bad message in response phase."
+    );
+
+    // Run response phase with wrong blinding factor.
+    let bad_bf = BlindingFactor::new(&mut rng);
+    let bad_bf_proof = proof_builder_for_bf
+        .generate_proof_response(&msg, bad_bf, challenge)
+        .unwrap();
+    assert!(
+        !bad_bf_proof
+            .verify_knowledge_of_opening_of_commitment(&params, com, challenge)
+            .unwrap(),
+        "Proof verified with bad blinding factor in response phase."
+    )
+}
+
+#[test]
+fn commitment_proof_fails_on_wrong_challenge() {
+    let mut rng = rng();
+    let length = 3;
+
+    // Generate message.
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+
+    // Form commmitment.
+    let params = PedersenParameters::<G1Projective>::new(length, &mut rng);
+    let bf = BlindingFactor::new(&mut rng);
+    let com = params.commit(&msg, bf).unwrap();
+
+    // Build proof using normally-generated challenge.
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params).unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_commitment_proof(&proof_builder)
+        .finish();
+    let proof = proof_builder
+        .generate_proof_response(&msg, bf, challenge)
+        .unwrap();
+
+    // Proof must *not* verify with the wrong challenge.
+    let bad_challenge = ChallengeBuilder::new().with_commitment(com).finish();
+    assert_ne!(
+        bad_challenge.0, challenge.0,
+        "Accidentally generated matching challenge."
+    );
+    assert!(!proof
+        .verify_knowledge_of_opening_of_commitment(&params, com, bad_challenge)
+        .unwrap());
 }
 
 #[test]

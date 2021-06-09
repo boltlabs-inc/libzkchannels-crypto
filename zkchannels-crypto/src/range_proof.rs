@@ -92,7 +92,7 @@ use crate::{
     ps_signatures::Signature,
     signature_proof::*,
 };
-use crate::{types::*, Error};
+use crate::{common::*, Error};
 use arrayvec::ArrayVec;
 
 /// The arity of our digits used in the range proof.

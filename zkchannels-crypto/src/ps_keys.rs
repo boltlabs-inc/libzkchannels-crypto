@@ -13,7 +13,7 @@ Signatures"](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/).
 
 */
 
-use crate::{pedersen_commitments::PedersenParameters, types::*, SerializeElement};
+use crate::{common::*, pedersen_commitments::PedersenParameters, SerializeElement};
 use arrayvec::ArrayVec;
 use ff::Field;
 use serde::*;

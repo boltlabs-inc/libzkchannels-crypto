@@ -14,7 +14,6 @@ This crate includes cryptographic primitives instantiated over the pairing-frien
 
 pub mod challenge;
 pub mod commitment_proof;
-pub mod message;
 pub mod pedersen_commitments;
 pub mod ps_blind_signatures;
 pub mod ps_keys;
@@ -22,6 +21,14 @@ pub mod ps_signatures;
 pub mod range_proof;
 pub mod signature_proof;
 
+mod serde;
+
+pub use crate::serde::{SerializeElement, SerializeG1, SerializeG2};
+
+use crate::common::*;
+use ::serde::*;
+use ff::Field;
+use std::ops::Deref;
 use thiserror::*;
 
 /// Error types that may arise from cryptographic operations.
@@ -41,12 +48,44 @@ pub enum Error {
     },
 }
 
-mod serde;
+/// Fixed-length message type used across schemes.
+#[derive(Debug, Clone, Copy)]
+pub struct Message<const N: usize>([Scalar; N]);
 
-pub use crate::serde::{SerializeElement, SerializeG1, SerializeG2};
+impl<const N: usize> Deref for Message<N> {
+    type Target = [Scalar; N];
 
-mod types {
-    pub use crate::message::*;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<const N: usize> Message<N> {
+    /// Create a new message from a Vec<Scalar>.
+    pub fn new(scalars: [Scalar; N]) -> Self {
+        Message(scalars)
+    }
+}
+
+impl From<Scalar> for Message<1> {
+    fn from(scalar: Scalar) -> Self {
+        Self([scalar])
+    }
+}
+
+/// Blinding factor for a commitment, message, or signature.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct BlindingFactor(#[serde(with = "SerializeElement")] pub(crate) Scalar);
+
+impl BlindingFactor {
+    /// Generate a new blinding factor uniformly at random from the set of possible [`Scalar`]s.
+    pub fn new(rng: &mut impl Rng) -> Self {
+        Self(Scalar::random(rng))
+    }
+}
+
+mod common {
+    pub use crate::{BlindingFactor, Message};
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
     pub use group::{Group, GroupEncoding};
 
@@ -71,7 +110,8 @@ mod types {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ps_keys::*, ps_signatures::*, types::*};
+    use super::*;
+    use crate::{ps_keys::*, ps_signatures::*};
     use bls12_381::Scalar;
     use ff::Field;
 

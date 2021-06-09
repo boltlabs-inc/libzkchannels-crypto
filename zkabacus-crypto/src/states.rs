@@ -27,9 +27,9 @@ use crate::{
 };
 use serde::*;
 use zkchannels_crypto::{
-    message::{BlindingFactor, Message},
     ps_blind_signatures::*,
     ps_signatures::{Signature, Verifier},
+    BlindingFactor, Message,
 };
 
 /// Channel identifier, binds each payment to a specific channel.

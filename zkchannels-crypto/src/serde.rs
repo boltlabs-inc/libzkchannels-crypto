@@ -9,7 +9,7 @@
 //! element used, want to use the `Serialize` and `Deserialize` derive macros, but only want to
 //! allow serialize/deserialization when the group element is specifically G1 or specifically G2.
 
-use crate::types::*;
+use crate::common::*;
 use arrayvec::ArrayVec;
 use serde::{
     de::{Error as DeError, SeqAccess, Visitor},
@@ -245,7 +245,7 @@ impl<G: SerializeElement, const N: usize> SerializeElement for [G; N] {
 }
 
 mod sealed {
-    use crate::types::*;
+    use crate::common::*;
 
     pub trait SerializeG1 {}
     impl SerializeG1 for G1Projective {}

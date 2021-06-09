@@ -126,9 +126,9 @@ mod tests {
             Scalar::random(&mut rng),
         ]);
 
-        let sig = kp.try_sign(&mut rng, &msg).unwrap();
+        let sig = kp.sign(&mut rng, &msg);
         assert!(
-            kp.verify(&msg, &sig),
+            kp.public_key().verify(&msg, &sig),
             "Signature didn't verify!! {:?}, {:?}",
             kp,
             msg
@@ -153,6 +153,9 @@ mod tests {
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
         let sig = blind_sig.unblind(bf);
 
-        assert!(kp.verify(&msg, &sig), "Signature didn't verify!!");
+        assert!(
+            kp.public_key().verify(&msg, &sig),
+            "Signature didn't verify!!"
+        );
     }
 }

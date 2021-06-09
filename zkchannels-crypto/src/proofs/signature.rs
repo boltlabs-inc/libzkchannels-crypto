@@ -69,11 +69,9 @@ pub struct SignatureProof<const N: usize> {
     pub commitment_proof: CommitmentProof<G2Projective, N>,
 }
 
-/**
-A partially-built [`SignatureProof`].
-
-Built up to (but not including) the challenge phase of a Schnorr proof.
-*/
+/// A partially-built [`SignatureProof`].
+///
+/// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
 pub struct SignatureProofBuilder<const N: usize> {
     /// Underlying message in the signature.
@@ -89,16 +87,14 @@ pub struct SignatureProofBuilder<const N: usize> {
 }
 
 impl<const N: usize> SignatureProofBuilder<N> {
-    /**
-    Run the commitment phase of a Schnorr-style signature proof.
-
-    The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
-    scalars in the case that they need to satisfy some sort of constraint, for example when
-    implementing equality or linear combination constraints on top of the proof.
-
-    Return a `MessageLengthMismatch` error if the provided message or `conjunction_commitment_scalars`
-    are malformed with respect to the provided `PublicKey`.
-    */
+    /// Run the commitment phase of a Schnorr-style signature proof.
+    ///
+    /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
+    /// commitment scalars in the case that they need to satisfy some sort of constraint, for
+    /// example when implementing equality or linear combination constraints on top of the proof.
+    ///
+    /// Return a `MessageLengthMismatch` error if the provided message or
+    /// `conjunction_commitment_scalars` are malformed with respect to the provided `PublicKey`.
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
         message: Message<N>,
@@ -163,18 +159,16 @@ impl<const N: usize> SignatureProofBuilder<N> {
 }
 
 impl<const N: usize> SignatureProof<N> {
-    /**
-    Check that a [`SignatureProof`] is valid.
-
-    Checks that:
-
-    - the blinded signature is correctly formed (first element is non-identity)
-    - the internal commitment proof is valid
-    - the commitment proof is formed on the same message as the blinded signature
-
-    Return a `MessageLengthMismatch` error if the proof is malformed with respect to the
-    provided `PublicKey`.
-    */
+    /// Check that a [`SignatureProof`] is valid.
+    ///
+    /// Checks that:
+    ///
+    /// - the blinded signature is correctly formed (first element is non-identity)
+    /// - the internal commitment proof is valid
+    /// - the commitment proof is formed on the same message as the blinded signature
+    ///
+    /// Return a `MessageLengthMismatch` error if the proof is malformed with respect to the
+    /// provided `PublicKey`.
     pub fn verify_knowledge_of_signature(
         &self,
         params: &PublicKey<N>,

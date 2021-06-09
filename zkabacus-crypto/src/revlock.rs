@@ -14,9 +14,7 @@ use ff::Field;
 use serde::*;
 use sha3::{Digest, Sha3_256};
 use std::convert::TryFrom;
-use zkchannels_crypto::{
-    pedersen_commitments::Commitment, BlindingFactor, Message, SerializeElement,
-};
+use zkchannels_crypto::{pedersen::Commitment, BlindingFactor, Message, SerializeElement};
 
 /// A revocation lock.
 #[derive(Debug, Serialize, Deserialize)]

@@ -53,7 +53,7 @@ use crate::{
     PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
-use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::PublicKey};
+use zkchannels_crypto::{pedersen::PedersenParameters, pointcheval_sanders::PublicKey};
 
 /// Keys and parameters used throughout the lifetime of a channel.
 #[derive(Debug)]

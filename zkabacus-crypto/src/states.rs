@@ -26,11 +26,7 @@ use crate::{
     customer, merchant, revlock::*, types::*, Nonce, PaymentAmount, Rng, Verification, CLOSE_SCALAR,
 };
 use serde::*;
-use zkchannels_crypto::{
-    ps_blind_signatures::*,
-    ps_signatures::{Signature, Verifier},
-    BlindingFactor, Message,
-};
+use zkchannels_crypto::{pointcheval_sanders::*, BlindingFactor, Message};
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]

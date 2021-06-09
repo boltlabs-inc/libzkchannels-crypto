@@ -11,7 +11,7 @@ use crate::{
     PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
-use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPair};
+use zkchannels_crypto::{pedersen::PedersenParameters, pointcheval_sanders::KeyPair};
 
 /// A merchant that is ready to establish channels and process payments.
 /// This is a merchant that has completed zkAbacus.Init.

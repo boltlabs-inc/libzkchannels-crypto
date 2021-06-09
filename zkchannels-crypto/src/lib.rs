@@ -12,11 +12,9 @@
 #![warn(unused)]
 #![forbid(broken_intra_doc_links)]
 
-pub mod pedersen_commitments;
+pub mod pedersen;
+pub mod pointcheval_sanders;
 pub mod proofs;
-pub mod ps_blind_signatures;
-pub mod ps_keys;
-pub mod ps_signatures;
 
 mod serde;
 
@@ -108,7 +106,7 @@ mod common {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ps_keys::*, ps_signatures::*};
+    use crate::pointcheval_sanders::*;
     use bls12_381::Scalar;
     use ff::Field;
 

@@ -82,12 +82,11 @@
 //!    revision 4. Internet draft, Internet Engineering Task Force, 2020.
 //!    https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
 
-use crate::ps_signatures::Signer;
-use crate::{common::*, Error};
 use crate::{
+    common::*,
+    pointcheval_sanders::*,
     proofs::{Challenge, SignatureProof, SignatureProofBuilder},
-    ps_keys::{KeyPair, PublicKey},
-    ps_signatures::Signature,
+    Error,
 };
 use arrayvec::ArrayVec;
 

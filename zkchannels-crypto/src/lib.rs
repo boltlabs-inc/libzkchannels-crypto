@@ -22,8 +22,9 @@ pub use crate::serde::{SerializeElement, SerializeG1, SerializeG2};
 
 use crate::common::*;
 use ::serde::*;
+use arrayvec::ArrayVec;
 use ff::Field;
-use std::ops::Deref;
+use std::{iter, ops::Deref};
 use thiserror::*;
 
 /// Error types that may arise from cryptographic operations.
@@ -56,9 +57,20 @@ impl<const N: usize> Deref for Message<N> {
 }
 
 impl<const N: usize> Message<N> {
-    /// Create a new message from a Vec<Scalar>.
+    /// Create a new message from an array of scalars.
     pub fn new(scalars: [Scalar; N]) -> Self {
         Message(scalars)
+    }
+
+    /// Create a new message consisting of random scalars. Useful for testing purposes.
+    pub fn random(rng: &mut impl Rng) -> Self {
+        Message(
+            iter::repeat_with(|| Scalar::random(&mut *rng))
+                .take(N)
+                .collect::<ArrayVec<_, N>>()
+                .into_inner()
+                .expect("length mismatch impossible"),
+        )
     }
 }
 

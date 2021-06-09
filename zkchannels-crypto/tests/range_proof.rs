@@ -10,11 +10,10 @@ use zkchannels_crypto::{
     ps_signatures::Signer,
     range_proof::{RangeProofBuilder, RangeProofParameters},
     signature_proof::SignatureProofBuilder,
-    Rng,
 };
 
 // Seeded rng for replicable tests.
-fn rng() -> impl Rng {
+fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
     const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
     rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }

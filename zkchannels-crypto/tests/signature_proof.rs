@@ -2,15 +2,13 @@ use bls12_381::Scalar;
 use ff::Field;
 use rand::SeedableRng;
 use std::iter;
-use zkchannels_crypto::challenge::ChallengeBuilder;
-use zkchannels_crypto::message::Message;
-use zkchannels_crypto::ps_keys::KeyPair;
-use zkchannels_crypto::ps_signatures::Signer;
-use zkchannels_crypto::signature_proof::SignatureProofBuilder;
-use zkchannels_crypto::Rng;
+use zkchannels_crypto::{
+    challenge::ChallengeBuilder, message::Message, ps_keys::KeyPair, ps_signatures::Signer,
+    signature_proof::SignatureProofBuilder,
+};
 
 // Seeded rng for replicable tests.
-fn rng() -> impl Rng {
+fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
     const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
     rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }

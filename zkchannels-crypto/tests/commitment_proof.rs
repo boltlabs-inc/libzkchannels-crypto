@@ -7,11 +7,10 @@ use zkchannels_crypto::{
     commitment_proof::CommitmentProofBuilder,
     message::{BlindingFactor, Message},
     pedersen_commitments::PedersenParameters,
-    Rng,
 };
 
 // Seeded rng for replicable tests.
-fn rng() -> impl Rng {
+fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
     const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
     rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }

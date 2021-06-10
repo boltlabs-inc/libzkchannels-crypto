@@ -50,7 +50,206 @@ fn signature_proof_verifies() {
 }
 
 #[test]
-fn signature_linear_relation() {
+fn signature_proof_fails_with_wrong_message() {
+    let mut rng = rng();
+    let length = 3;
+
+    // Generate message and form signature.
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    let bad_msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    let kp = KeyPair::new(length, &mut rng);
+    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+
+    // Construct proof with the wrong message.
+    let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+        &mut rng,
+        bad_msg,
+        sig,
+        &[None; 3],
+        kp.public_key(),
+    )
+    .unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_signature_proof(&sig_proof_builder)
+        .finish();
+    let proof = sig_proof_builder
+        .generate_proof_response(challenge)
+        .unwrap();
+
+    // Proof must not verify.
+    assert!(!proof
+        .verify_knowledge_of_signature(kp.public_key(), challenge)
+        .unwrap());
+}
+
+#[test]
+fn signature_proof_fails_with_wrong_parameters_for_signature() {
+    let mut rng = rng();
+    let length = 3;
+
+    // Generate message and form signature.
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    let kp = KeyPair::new(length, &mut rng);
+    let bad_kp = KeyPair::new(length, &mut rng);
+
+    // Sign message with the wrong parameters.
+    let sig = bad_kp.try_sign(&mut rng, &msg).unwrap();
+
+    // Construct proof.
+    let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg,
+        sig,
+        &[None; 3],
+        kp.public_key(),
+    )
+    .unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_signature_proof(&sig_proof_builder)
+        .finish();
+    let proof = sig_proof_builder
+        .generate_proof_response(challenge)
+        .unwrap();
+
+    // Proof must not verify.
+    assert!(!proof
+        .verify_knowledge_of_signature(kp.public_key(), challenge)
+        .unwrap());
+}
+
+#[test]
+fn signature_proof_fails_with_wrong_parameters_for_proof() {
+    let mut rng = rng();
+    let length = 3;
+
+    // Generate message and form signature.
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    let kp = KeyPair::new(length, &mut rng);
+    let bad_kp = KeyPair::new(length, &mut rng);
+
+    // Sign message.
+    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+
+    // Construct proof with the wrong parameters.
+    let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg,
+        sig,
+        &[None; 3],
+        bad_kp.public_key(),
+    )
+    .unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_signature_proof(&sig_proof_builder)
+        .finish();
+    let proof = sig_proof_builder
+        .generate_proof_response(challenge)
+        .unwrap();
+
+    // Proof must not verify.
+    assert!(!proof
+        .verify_knowledge_of_signature(kp.public_key(), challenge)
+        .unwrap());
+}
+
+#[test]
+fn signature_proof_fails_with_wrong_parameters_for_verification() {
+    let mut rng = rng();
+    let length = 3;
+
+    // Generate message and form signature.
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    let kp = KeyPair::new(length, &mut rng);
+    let bad_kp = KeyPair::new(length, &mut rng);
+
+    // Sign message.
+    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+
+    // Construct proof.
+    let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg,
+        sig,
+        &[None; 3],
+        kp.public_key(),
+    )
+    .unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_signature_proof(&sig_proof_builder)
+        .finish();
+    let proof = sig_proof_builder
+        .generate_proof_response(challenge)
+        .unwrap();
+
+    // Proof must not verify against the wrong parameters.
+    assert!(!proof
+        .verify_knowledge_of_signature(bad_kp.public_key(), challenge)
+        .unwrap());
+}
+
+#[test]
+fn signature_proof_fails_with_wrong_challenge() {
+    let mut rng = rng();
+    let length = 3;
+
+    // Generate message and form signature.
+    let msg = Message::new(
+        iter::repeat_with(|| Scalar::random(&mut rng))
+            .take(length)
+            .collect(),
+    );
+    let kp = KeyPair::new(length, &mut rng);
+
+    // Sign message.
+    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+
+    // Construct proof.
+    let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg,
+        sig,
+        &[None; 3],
+        kp.public_key(),
+    )
+    .unwrap();
+    let challenge = ChallengeBuilder::new()
+        .with_signature_proof(&sig_proof_builder)
+        .finish();
+    let bad_challenge = ChallengeBuilder::new()
+        .with_commitment(sig_proof_builder.message_commitment)
+        .finish();
+    let proof = sig_proof_builder
+        .generate_proof_response(challenge)
+        .unwrap();
+
+    // Proof must not verify against the wrong challenge.
+    assert!(!proof
+        .verify_knowledge_of_signature(kp.public_key(), bad_challenge)
+        .unwrap());
+}
+
+#[test]
+fn signature_proof_linear_relation() {
     let mut rng = rng();
     let length = 3;
     // Construct messages of the form [a, ., .]; [., ., a]
@@ -188,7 +387,7 @@ fn signature_proof_public_value() {
 }
 
 #[test]
-fn signature_linear_relation_public_addition() {
+fn signature_proof_linear_relation_public_addition() {
     let mut rng = rng();
     // Create messages of the form [a], [a + public_value].
     let public_value = Scalar::random(&mut rng);

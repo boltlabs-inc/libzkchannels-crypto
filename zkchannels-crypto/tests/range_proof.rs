@@ -166,6 +166,80 @@ fn range_proof_no_negative_value() {
 }
 
 #[test]
+#[should_panic(expected = "OutsideRange")]
+fn range_proof_test_upper_bound() {
+    let mut rng = rng();
+    let rp_params = RangeProofParameters::new(&mut rng);
+
+    // Test value is 2^63. This will wrap around when we convert it to an i64.
+    let too_large_value = i64::MAX as u64 + 1;
+
+    let _ =
+        RangeProofBuilder::generate_proof_commitments(too_large_value as i64, &rp_params, &mut rng)
+            .unwrap();
+}
+
+#[test]
+fn range_proof_test_extremes() {
+    let mut rng = rng();
+
+    // Form commitment to (0, 2^63 - 1).
+    let params = PedersenParameters::<G1Projective>::new(2, &mut rng);
+    let bf = BlindingFactor::new(&mut rng);
+    let msg = Message::new(vec![Scalar::from(0), Scalar::from((i64::MAX) as u64)]);
+    let com = params.commit(&msg, bf).unwrap();
+
+    // Proof commitment phase: build commitment proof with range proof
+    let rp_params = RangeProofParameters::new(&mut rng);
+    let zero_builder =
+        RangeProofBuilder::generate_proof_commitments(0, &rp_params, &mut rng).unwrap();
+    let max_builder =
+        RangeProofBuilder::generate_proof_commitments(i64::MAX, &rp_params, &mut rng).unwrap();
+    let com_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng,
+        &[
+            Some(zero_builder.commitment_scalar),
+            Some(max_builder.commitment_scalar),
+        ],
+        &params,
+    )
+    .unwrap();
+
+    let challenge = ChallengeBuilder::new()
+        .with_commitment(com_builder.scalar_commitment)
+        .with_range_proof(&zero_builder)
+        .with_range_proof(&max_builder)
+        .finish();
+
+    let zero_proof = zero_builder.generate_proof_response(challenge).unwrap();
+    let max_proof = max_builder.generate_proof_response(challenge).unwrap();
+    let com_proof = com_builder
+        .generate_proof_response(&msg, bf, challenge)
+        .unwrap();
+
+    // Verify that all proofs are valid.
+    let zero_verifies = zero_proof
+        .verify_range_proof(
+            &rp_params,
+            challenge,
+            com_proof.conjunction_response_scalars()[0],
+        )
+        .unwrap();
+    let max_verifies = max_proof
+        .verify_range_proof(
+            &rp_params,
+            challenge,
+            com_proof.conjunction_response_scalars()[1],
+        )
+        .unwrap();
+    let com_verifies = com_proof
+        .verify_knowledge_of_opening_of_commitment(&&params, com, challenge)
+        .unwrap();
+
+    assert!(zero_verifies && max_verifies && com_verifies);
+}
+
+#[test]
 fn range_proof_fails_with_wrong_input() {
     let mut rng = rng();
     let length = 3;

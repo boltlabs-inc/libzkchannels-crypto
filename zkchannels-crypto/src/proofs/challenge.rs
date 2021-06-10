@@ -4,16 +4,8 @@
 //! signatures, and range proofs, both individually and in conjunctions. There is also support for
 //! incorporating other public information into the challenge.
 
-use crate::{
-    common::*,
-    pedersen::{Commitment, PedersenParameters},
-    pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
-    proofs::{
-        CommitmentProof, CommitmentProofBuilder, RangeProof, RangeProofBuilder, SignatureProof,
-        SignatureProofBuilder,
-    },
-};
-use group::{Group, GroupEncoding};
+use crate::common::*;
+use group::GroupEncoding;
 use sha3::{Digest, Sha3_256};
 use std::convert::TryFrom;
 
@@ -56,100 +48,6 @@ impl ChallengeDigest for G1Projective {
 impl ChallengeDigest for G2Projective {
     fn digest(&self, builder: &mut ChallengeBuilder) {
         builder.digest_bytes(self.to_bytes());
-    }
-}
-
-impl<const N: usize> ChallengeDigest for PublicKey<N> {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.g1.to_bytes());
-        builder.digest_bytes(self.g2.to_bytes());
-        builder.digest_bytes(self.x2.to_bytes());
-
-        for y1 in &self.y1s {
-            builder.digest_bytes(y1.to_bytes());
-        }
-
-        for y2 in &self.y2s {
-            builder.digest_bytes(y2.to_bytes());
-        }
-    }
-}
-
-impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
-    for PedersenParameters<G, N>
-{
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.h.to_bytes());
-        for g in &self.gs {
-            builder.digest_bytes(g.to_bytes());
-        }
-    }
-}
-
-impl ChallengeDigest for Signature {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.sigma1());
-        builder.digest(&self.sigma2());
-    }
-}
-
-impl ChallengeDigest for BlindedSignature {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.to_internal_blinded_signature());
-    }
-}
-
-impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeDigest for Commitment<G> {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.to_element().to_bytes());
-    }
-}
-
-impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
-    for CommitmentProofBuilder<G, N>
-{
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.scalar_commitment);
-    }
-}
-
-impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
-    for CommitmentProof<G, N>
-{
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.scalar_commitment);
-    }
-}
-
-impl<const N: usize> ChallengeDigest for SignatureProofBuilder<N> {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.message_commitment);
-        builder.digest(&self.blinded_signature);
-        builder.digest(&self.commitment_proof_builder);
-    }
-}
-
-impl<const N: usize> ChallengeDigest for SignatureProof<N> {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.message_commitment);
-        builder.digest(&self.blinded_signature);
-        builder.digest(&self.commitment_proof);
-    }
-}
-
-impl ChallengeDigest for RangeProofBuilder {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        for digit_proof in &self.digit_proof_builders {
-            builder.digest(digit_proof);
-        }
-    }
-}
-
-impl ChallengeDigest for RangeProof {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        for digit_proof in &self.digit_proofs {
-            builder.digest(digit_proof);
-        }
     }
 }
 

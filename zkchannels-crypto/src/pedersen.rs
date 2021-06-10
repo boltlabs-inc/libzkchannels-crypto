@@ -1,9 +1,8 @@
 //! Pedersen commitments \[1\] over the prime-order pairing groups from BLS12-381 \[2\].
 //!
 //! Commitments may be formed using the [`PedersenParameters`] struct's [`commit`] and [`decommit`]
-//! methods. [`PedersenParameters`] may be formed either by uniform random sampling from an [`Rng`],
-//! or from a [`PublicKey`] via the [`to_g1_pedersen_parameters`] and [`to_g2_pedersen_parameters`]
-//! methods.
+//! methods. [`PedersenParameters`] may be constructed by uniform random sampling from an [`Rng`],
+//! using the [`PedersenParameters::new`] method.
 //! ```
 //! # use zkchannels_crypto::{BlindingFactor, Message, pedersen::PedersenParameters};
 //! # use bls12_381::G1Projective;
@@ -26,13 +25,11 @@
 //!
 //! [`commit`]: PedersenParameters::commit
 //! [`decommit`]: PedersenParameters::decommit
-//! [`PublicKey`]: crate::pointcheval_sanders::PublicKey
-//! [`to_g1_pedersen_parameters`]: crate::pointcheval_sanders::PublicKey::to_g1_pedersen_parameters
-//! [`to_g2_pedersen_parameters`]: crate::pointcheval_sanders::PublicKey::to_g2_pedersen_parameters
 //! [`Rng`]: crate::Rng
 
 use crate::{
     common::*,
+    proofs::{ChallengeBuilder, ChallengeDigest},
     serde::{SerializeElement, SerializeG1},
 };
 use arrayvec::ArrayVec;
@@ -51,6 +48,12 @@ impl<G: Group<Scalar = Scalar>> Commitment<G> {
     /// Get the inner group element representing the commitment.
     pub fn to_element(self) -> G {
         self.0
+    }
+}
+
+impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeDigest for Commitment<G> {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.to_element().to_bytes());
     }
 }
 
@@ -101,5 +104,16 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
     /// Verify a commitment to a message, using the given blinding factor.
     pub fn decommit(&self, msg: &Message<N>, bf: BlindingFactor, com: Commitment<G>) -> bool {
         self.commit(msg, bf) == com
+    }
+}
+
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+    for PedersenParameters<G, N>
+{
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.h.to_bytes());
+        for g in &self.gs {
+            builder.digest_bytes(g.to_bytes());
+        }
     }
 }

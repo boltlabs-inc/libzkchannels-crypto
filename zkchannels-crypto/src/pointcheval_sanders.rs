@@ -372,15 +372,10 @@ impl BlindedSignature {
     pub fn to_bytes(&self) -> [u8; 96] {
         self.0.to_bytes()
     }
-
-    /// Returns the internal signature object, which is still blinded!
-    pub fn to_internal_blinded_signature(self) -> Signature {
-        self.0
-    }
 }
 
 impl ChallengeDigest for BlindedSignature {
     fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.to_internal_blinded_signature());
+        builder.digest(&self.0);
     }
 }

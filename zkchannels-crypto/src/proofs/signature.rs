@@ -52,7 +52,9 @@ use crate::{
     common::*,
     pedersen::Commitment,
     pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
-    proofs::{Challenge, CommitmentProof, CommitmentProofBuilder},
+    proofs::{
+        Challenge, ChallengeBuilder, ChallengeDigest, CommitmentProof, CommitmentProofBuilder,
+    },
     BlindingFactor,
 };
 
@@ -60,11 +62,11 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct SignatureProof<const N: usize> {
     /// Commitment to the signed message.
-    pub message_commitment: Commitment<G2Projective>,
+    message_commitment: Commitment<G2Projective>,
     /// Blinded, randomized version of the signature.
-    pub blinded_signature: BlindedSignature,
+    blinded_signature: BlindedSignature,
     /// Proof of knowledge of opening of the `message_commitment`.
-    pub commitment_proof: CommitmentProof<G2Projective, N>,
+    commitment_proof: CommitmentProof<G2Projective, N>,
 }
 
 /// A partially-built [`SignatureProof`].
@@ -73,15 +75,15 @@ pub struct SignatureProof<const N: usize> {
 #[derive(Debug, Clone)]
 pub struct SignatureProofBuilder<const N: usize> {
     /// Underlying message in the signature.
-    pub message: Message<N>,
+    message: Message<N>,
     /// Commitment to the message.
-    pub message_commitment: Commitment<G2Projective>,
+    message_commitment: Commitment<G2Projective>,
     /// Blinding factor for the `message_commitment`.
-    pub message_blinding_factor: BlindingFactor,
+    message_blinding_factor: BlindingFactor,
     /// Randomized and blinded version of the original signature.
-    pub blinded_signature: BlindedSignature,
+    blinded_signature: BlindedSignature,
     /// Commitment phase output for the underlying proof of knowledge of the opening of the `message_commitment`.
-    pub commitment_proof_builder: CommitmentProofBuilder<G2Projective, N>,
+    commitment_proof_builder: CommitmentProofBuilder<G2Projective, N>,
 }
 
 impl<const N: usize> SignatureProofBuilder<N> {
@@ -90,9 +92,6 @@ impl<const N: usize> SignatureProofBuilder<N> {
     /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
     /// commitment scalars in the case that they need to satisfy some sort of constraint, for
     /// example when implementing equality or linear combination constraints on top of the proof.
-    ///
-    /// Return a `MessageLengthMismatch` error if the provided message or
-    /// `conjunction_commitment_scalars` are malformed with respect to the provided `PublicKey`.
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
         message: Message<N>,
@@ -153,6 +152,14 @@ impl<const N: usize> SignatureProofBuilder<N> {
     }
 }
 
+impl<const N: usize> ChallengeDigest for SignatureProofBuilder<N> {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.message_commitment);
+        builder.digest(&self.blinded_signature);
+        builder.digest(&self.commitment_proof_builder);
+    }
+}
+
 impl<const N: usize> SignatureProof<N> {
     /// Check that a [`SignatureProof`] is valid.
     ///
@@ -161,9 +168,6 @@ impl<const N: usize> SignatureProof<N> {
     /// - the blinded signature is correctly formed (first element is non-identity)
     /// - the internal commitment proof is valid
     /// - the commitment proof is formed on the same message as the blinded signature
-    ///
-    /// Return a `MessageLengthMismatch` error if the proof is malformed with respect to the
-    /// provided `PublicKey`.
     pub fn verify_knowledge_of_signature(
         &self,
         params: &PublicKey<N>,
@@ -182,11 +186,11 @@ impl<const N: usize> SignatureProof<N> {
             );
 
         // commitment proof matches blinded signature
-        let Signature { sigma1, sigma2 } = self.blinded_signature.0;
+        let sig = self.blinded_signature.0;
         let commitment_proof_matches_signature = pairing(
-            &sigma1,
+            &sig.sigma1(),
             &(params.x2 + self.message_commitment.to_element()).into(),
-        ) == pairing(&sigma2, &params.g2);
+        ) == pairing(&sig.sigma2(), &params.g2);
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }
@@ -196,5 +200,13 @@ impl<const N: usize> SignatureProof<N> {
     /// This does not include the response scalar for the blinding factor.
     pub fn conjunction_response_scalars(&self) -> &[Scalar; N] {
         self.commitment_proof.conjunction_response_scalars()
+    }
+}
+
+impl<const N: usize> ChallengeDigest for SignatureProof<N> {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.message_commitment);
+        builder.digest(&self.blinded_signature);
+        builder.digest(&self.commitment_proof);
     }
 }

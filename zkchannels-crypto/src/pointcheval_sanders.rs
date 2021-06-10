@@ -9,6 +9,7 @@
 use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
+    proofs::{ChallengeBuilder, ChallengeDigest},
     serde::SerializeElement,
     BlindingFactor,
 };
@@ -135,7 +136,7 @@ impl<const N: usize> PublicKey<N> {
     }
 
     /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
-    pub fn to_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective, N> {
+    pub(crate) fn to_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective, N> {
         let gs = self
             .y2s
             .iter()
@@ -150,7 +151,7 @@ impl<const N: usize> PublicKey<N> {
     }
 
     /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
-    pub fn to_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective, N> {
+    pub(crate) fn to_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective, N> {
         let gs = self
             .y1s
             .iter()
@@ -191,6 +192,22 @@ impl<const N: usize> PublicKey<N> {
     }
 }
 
+impl<const N: usize> ChallengeDigest for PublicKey<N> {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest_bytes(self.g1.to_bytes());
+        builder.digest_bytes(self.g2.to_bytes());
+        builder.digest_bytes(self.x2.to_bytes());
+
+        for y1 in &self.y1s {
+            builder.digest_bytes(y1.to_bytes());
+        }
+
+        for y2 in &self.y2s {
+            builder.digest_bytes(y2.to_bytes());
+        }
+    }
+}
+
 impl<const N: usize> KeyPair<N> {
     /// Generate a new `KeyPair` of a given length.
     ///
@@ -211,14 +228,9 @@ impl<const N: usize> KeyPair<N> {
         &self.pk
     }
 
-    /// Get the secret portion of the `KeyPair`
-    pub(crate) fn secret_key(&self) -> &SecretKey<N> {
-        &self.sk
-    }
-
     /// Sign a message.
     pub fn sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Signature {
-        self.secret_key().sign(rng, msg)
+        self.sk.sign(rng, msg)
     }
 
     /// Sign a blinded message.
@@ -230,7 +242,7 @@ impl<const N: usize> KeyPair<N> {
 
         BlindedSignature(Signature {
             sigma1: (self.public_key().g1 * u).into(),
-            sigma2: ((self.secret_key().x1 + msg.to_g1()) * u).into(),
+            sigma2: ((self.sk.x1 + msg.to_g1()) * u).into(),
         })
     }
 }
@@ -242,12 +254,12 @@ pub struct Signature {
     ///
     /// In some papers, this is denoted `h`.
     #[serde(with = "SerializeElement")]
-    pub(crate) sigma1: G1Affine,
+    sigma1: G1Affine,
     /// Second part of a signature.
     ///
     /// In some papers, this is denoted `H`.
     #[serde(with = "SerializeElement")]
-    pub(crate) sigma2: G1Affine,
+    sigma2: G1Affine,
 }
 
 impl Signature {
@@ -284,6 +296,13 @@ impl Signature {
     /// Extract the sigma_2 or `H` component.
     pub fn sigma2(self) -> G1Affine {
         self.sigma2
+    }
+}
+
+impl ChallengeDigest for Signature {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.sigma1);
+        builder.digest(&self.sigma2);
     }
 }
 
@@ -357,5 +376,11 @@ impl BlindedSignature {
     /// Returns the internal signature object, which is still blinded!
     pub fn to_internal_blinded_signature(self) -> Signature {
         self.0
+    }
+}
+
+impl ChallengeDigest for BlindedSignature {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.to_internal_blinded_signature());
     }
 }

@@ -84,10 +84,15 @@
 use crate::{
     common::*,
     pointcheval_sanders::{KeyPair, PublicKey, Signature},
-    proofs::{Challenge, SignatureProof, SignatureProofBuilder},
-    Error,
+    proofs::{Challenge, ChallengeBuilder, ChallengeDigest, SignatureProof, SignatureProofBuilder},
 };
 use arrayvec::ArrayVec;
+use thiserror::Error;
+
+/// The error type returned when attempting to form a range proof for a value outside the range.
+#[derive(Debug, Clone, Copy, Error)]
+#[error("cannot form a range proof for a value outside the range of [0, 2^63) (received {0})")]
+pub struct ValueOutsideRange(pub i64);
 
 /// The arity of our digits used in the range proof.
 const RP_PARAMETER_U: u64 = 128;
@@ -136,9 +141,9 @@ impl RangeProofParameters {
 #[derive(Debug)]
 pub struct RangeProofBuilder {
     /// Partially-constructed PoK of the opening of signatures on each of the digits of the value.
-    pub(crate) digit_proof_builders: [SignatureProofBuilder<1>; RP_PARAMETER_L],
+    digit_proof_builders: [SignatureProofBuilder<1>; RP_PARAMETER_L],
     /// Commitment scalar for the value being proven in the range.
-    pub commitment_scalar: Scalar,
+    commitment_scalar: Scalar,
 }
 
 /// Proof of knowledge that a `u`-ary representation of a value falls within the given range.
@@ -148,7 +153,7 @@ pub struct RangeProofBuilder {
 #[derive(Debug)]
 pub struct RangeProof {
     /// Complete PoKs of the opening of a signature on each digit of the value.
-    pub digit_proofs: [SignatureProof<1>; RP_PARAMETER_L],
+    digit_proofs: [SignatureProof<1>; RP_PARAMETER_L],
 }
 
 #[allow(unused)]
@@ -159,11 +164,11 @@ impl RangeProofBuilder {
         value: i64,
         params: &RangeProofParameters,
         rng: &mut impl Rng,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ValueOutsideRange> {
         // Make sure value lies within the correct range: a normal i64 is in the range [-2^63, 2^63).
         // A non-negative i64 must be in the range [0, 2^63).
         if value.is_negative() {
-            return Err(Error::OutsideRange(value));
+            return Err(ValueOutsideRange(value));
         }
         // It is now safe to convert to u64 (the value cannot be in the overflow range [2^63, 2^64).)
         let mut decomposing_value = value as u64;
@@ -223,13 +228,17 @@ impl RangeProofBuilder {
     }
 }
 
+impl ChallengeDigest for RangeProofBuilder {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        for digit_proof in &self.digit_proof_builders {
+            builder.digest(digit_proof);
+        }
+    }
+}
+
 #[allow(unused)]
 impl RangeProof {
     /// Verify that the PoKs on the opening of signatures for each digit are valid.
-    ///
-    /// Return `MessageLengthMismatch` error if the digit proofs are malformed with respect to the
-    /// `RangeProofParameters`.
-    /// If none are, return a bool indicating whether ALL the signatures are valid.
     fn verify_range_proof_digits(
         &self,
         params: &RangeProofParameters,
@@ -246,11 +255,6 @@ impl RangeProof {
 
     /// Verify that the response scalar for a given value is correctly constructed from the range
     /// proof digits.
-    ///
-    /// Return `MessageLengthMismatch` error if the proof is malformed with respect to the provided
-    /// `RangeProofParameters`.
-    /// Otherwise, return a bool indicating whether the digit proofs are valid and are correctly
-    /// formed with respect to the given `Scalar`.
     pub fn verify_range_proof(
         &self,
         params: &RangeProofParameters,
@@ -270,5 +274,13 @@ impl RangeProof {
         }
 
         valid_digits && response_scalar == expected_response_scalar
+    }
+}
+
+impl ChallengeDigest for RangeProof {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        for digit_proof in &self.digit_proofs {
+            builder.digest(digit_proof);
+        }
     }
 }

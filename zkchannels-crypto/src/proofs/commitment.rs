@@ -34,7 +34,7 @@
 use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
-    proofs::Challenge,
+    proofs::{Challenge, ChallengeBuilder, ChallengeDigest},
 };
 use arrayvec::ArrayVec;
 use ff::Field;
@@ -44,7 +44,7 @@ use group::Group;
 #[derive(Debug, Clone)]
 pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
     /// The commitment to the commitment scalars.
-    pub scalar_commitment: Commitment<G>,
+    scalar_commitment: Commitment<G>,
     /// The response scalar for the blinding factor, conceptually prepended to the tuple of response
     /// scalars for this commitment proof.
     blinding_factor_response_scalar: Scalar,
@@ -79,6 +79,19 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     pub fn conjunction_response_scalars(&self) -> &[Scalar; N] {
         &self.message_response_scalars
     }
+
+    /// Get the commitment to the response scalars.
+    pub fn scalar_commitment(&self) -> Commitment<G> {
+        self.scalar_commitment
+    }
+}
+
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+    for CommitmentProof<G, N>
+{
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.scalar_commitment());
+    }
 }
 
 /// A partially-built [`CommitmentProof`].
@@ -87,7 +100,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
 #[derive(Debug, Clone)]
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
     /// Commitment to the commitment scalars.
-    pub scalar_commitment: Commitment<G>,
+    scalar_commitment: Commitment<G>,
     /// The commitment scalar for the blinding factor.
     blinding_factor_commitment_scalar: Scalar,
     /// The commitment scalars for the message, conceptually appended to the commitment scalar for
@@ -139,12 +152,12 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         &self.message_commitment_scalars
     }
 
+    /// Get the commitment to the response scalars.
+    pub fn scalar_commitment(&self) -> Commitment<G> {
+        self.scalar_commitment
+    }
+
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
-    ///
-    /// Return a `MessageLengthMismatch` error if the message is malformed with respect to the proof
-    /// builder (that is, if it is not the same length as the parameters and commitment scalars
-    /// provided in
-    /// [`generate_proof_commitments()`](CommitmentProofBuilder::generate_proof_commitments())).
     pub fn generate_proof_response(
         self,
         msg: &Message<N>,
@@ -167,5 +180,13 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
             blinding_factor_response_scalar,
             message_response_scalars,
         }
+    }
+}
+
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+    for CommitmentProofBuilder<G, N>
+{
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.scalar_commitment());
     }
 }

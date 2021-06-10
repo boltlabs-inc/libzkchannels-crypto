@@ -28,24 +28,6 @@ use ::serde::*;
 use arrayvec::ArrayVec;
 use ff::Field;
 use std::{iter, ops::Deref};
-use thiserror::*;
-
-/// Error types that may arise from cryptographic operations.
-#[derive(Debug, Error, Clone, Copy)]
-pub enum Error {
-    /// Caused by attempting to construct a range proof on an out-of-range value.
-    #[error("tried to build a range proof on a negative value ({0})")]
-    OutsideRange(i64),
-    /// Caused by attempting to commit to a message with a different length than the provided
-    /// parameters expected.
-    #[error("expected a message of length {expected}, got {got}")]
-    MessageLengthMismatch {
-        /// The length of the parameters, and expected length of the message.
-        expected: usize,
-        /// The actual length of the message.
-        got: usize,
-    },
-}
 
 /// Fixed-length message type used across schemes.
 #[derive(Debug, Clone, Copy)]
@@ -96,7 +78,7 @@ impl BlindingFactor {
     /// Construct a blinding factor from the scalar representing it.
     ///
     /// **warning:** this should never be used unless unblinding something!
-    pub fn from_scalar(scalar: Scalar) -> Self {
+    pub(crate) fn from_scalar(scalar: Scalar) -> Self {
         Self(scalar)
     }
 

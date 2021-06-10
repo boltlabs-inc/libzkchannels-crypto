@@ -114,9 +114,6 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
     /// commitment scalars in the case that they need to satisfy some sort of constraint, for
     /// example when implementing equality or linear combination constraints on top of the proof.
-    ///
-    /// Return a `MessageLengthMismatch` error if the `conjunction_commitment_scalars` are malformed
-    /// with respect to the `PedersenParameters`.
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
         conjunction_commitment_scalars: &[Option<Scalar>; N],

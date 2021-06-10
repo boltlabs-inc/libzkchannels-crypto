@@ -130,8 +130,7 @@ impl<const N: usize> SignatureProofBuilder<N> {
     ///
     /// This does not include the commitment scalar corresponding to the blinding factor.
     pub fn conjunction_commitment_scalars(&self) -> &[Scalar; N] {
-        &self
-            .commitment_proof_builder
+        self.commitment_proof_builder
             .conjunction_commitment_scalars()
     }
 

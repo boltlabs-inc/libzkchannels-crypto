@@ -14,5 +14,6 @@ ff = "0.9"
 rand_core = "0.6.0"
 rand = "0.8.3"
 serde = { version = "1", features = ["derive"] }
+sqlx = { version = "0.5.2", features = ["runtime-tokio-rustls", "sqlite"], optional = true }
 thiserror = "1"
 sha3 = "0.9.1"

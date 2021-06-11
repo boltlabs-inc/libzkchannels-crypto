@@ -53,22 +53,22 @@ use crate::{
     PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
-use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::PublicKey};
+use zkchannels_crypto::{pedersen::PedersenParameters, pointcheval_sanders::PublicKey};
 
 /// Keys and parameters used throughout the lifetime of a channel.
 #[derive(Debug)]
 pub struct Config {
     /// Merchant public parameters for blind signing and proofs.
-    pub(crate) merchant_public_key: PublicKey,
+    pub(crate) merchant_public_key: PublicKey<5>,
     /// Pedersen parameters for committing to revocation locks.
-    pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
+    pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
 }
 
 impl Config {
     /// Construct a new customer configuration from the merchant's public parameters.
     pub fn new(
-        merchant_public_key: PublicKey,
-        revocation_commitment_parameters: PedersenParameters<G1Projective>,
+        merchant_public_key: PublicKey<5>,
+        revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
     ) -> Self {
         Self {
             merchant_public_key,
@@ -77,12 +77,12 @@ impl Config {
     }
 
     /// The merchant public key for blind signing and proofs.
-    pub fn merchant_public_key(&self) -> &PublicKey {
+    pub fn merchant_public_key(&self) -> &PublicKey<5> {
         &self.merchant_public_key
     }
 
     /// The parameters for committing to revocation locks.
-    pub fn revocation_commitment_parameters(&self) -> &PedersenParameters<G1Projective> {
+    pub fn revocation_commitment_parameters(&self) -> &PedersenParameters<G1Projective, 1> {
         &self.revocation_commitment_parameters
     }
 }

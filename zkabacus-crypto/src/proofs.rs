@@ -9,7 +9,7 @@ the customer is behaving correctly without learning any additional information a
 use serde::*;
 
 use crate::{customer, merchant, revlock::*, states::*, types::*, Nonce, Rng, Verification};
-use zkchannels_crypto::pedersen_commitments::Commitment;
+use zkchannels_crypto::pedersen::Commitment;
 
 /**
 An establish proof demonstrates that a customer is trying to initialize a channel correctly.

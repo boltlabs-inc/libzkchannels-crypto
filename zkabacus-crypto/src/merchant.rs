@@ -11,7 +11,7 @@ use crate::{
     PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
-use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPair};
+use zkchannels_crypto::{pedersen::PedersenParameters, pointcheval_sanders::KeyPair};
 
 /// A merchant that is ready to establish channels and process payments.
 /// This is a merchant that has completed zkAbacus.Init.
@@ -22,9 +22,9 @@ use zkchannels_crypto::{pedersen_commitments::PedersenParameters, ps_keys::KeyPa
 #[allow(missing_copy_implementations)]
 pub struct Config {
     /// KeyPair for signing, blind signing, and proofs.
-    pub(crate) signing_keypair: KeyPair,
+    pub(crate) signing_keypair: KeyPair<5>,
     /// Pedersen parameters for committing to revocation locks.
-    pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
+    pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
 }
 
 impl Config {
@@ -32,8 +32,8 @@ impl Config {
     /// This executes zkAbacus.Init.
     #[allow(clippy::new_without_default)]
     pub fn new(rng: &mut impl Rng) -> Self {
-        let signing_keypair = KeyPair::new(5, rng);
-        let revocation_commitment_parameters = PedersenParameters::new(1, rng);
+        let signing_keypair = KeyPair::new(&mut *rng);
+        let revocation_commitment_parameters = PedersenParameters::new(&mut *rng);
 
         Self {
             signing_keypair,

@@ -3,8 +3,9 @@ use ff::Field;
 use rand::SeedableRng;
 use std::iter;
 use zkchannels_crypto::{
-    challenge::ChallengeBuilder, message::Message, ps_keys::KeyPair, ps_signatures::Signer,
-    signature_proof::SignatureProofBuilder,
+    pointcheval_sanders::KeyPair,
+    proofs::{ChallengeBuilder, SignatureProofBuilder},
+    Message,
 };
 
 // Seeded rng for replicable tests.
@@ -16,16 +17,11 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
 #[test]
 fn signature_proof_verifies() {
     let mut rng = rng();
-    let length = 3;
 
     // Generate message and form signature.
-    let msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let kp = KeyPair::new(length, &mut rng);
-    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+    let msg = Message::<3>::random(&mut rng);
+    let kp = KeyPair::new(&mut rng);
+    let sig = kp.sign(&mut rng, &msg);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -34,39 +30,23 @@ fn signature_proof_verifies() {
         sig,
         &[None; 3],
         kp.public_key(),
-    )
-    .unwrap();
-    let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder)
-        .finish();
-    let proof = sig_proof_builder
-        .generate_proof_response(challenge)
-        .unwrap();
+    );
+    let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+    let proof = sig_proof_builder.generate_proof_response(challenge);
 
     // Proof must verify with the same challenge and keypair.
-    assert!(proof
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
+    assert!(proof.verify_knowledge_of_signature(kp.public_key(), challenge));
 }
 
 #[test]
 fn signature_proof_fails_with_wrong_message() {
     let mut rng = rng();
-    let length = 3;
 
     // Generate message and form signature.
-    let msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let bad_msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let kp = KeyPair::new(length, &mut rng);
-    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+    let msg = Message::<3>::random(&mut rng);
+    let bad_msg = Message::<3>::random(&mut rng);
+    let kp = KeyPair::new(&mut rng);
+    let sig = kp.sign(&mut rng, &msg);
 
     // Construct proof with the wrong message.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -75,37 +55,25 @@ fn signature_proof_fails_with_wrong_message() {
         sig,
         &[None; 3],
         kp.public_key(),
-    )
-    .unwrap();
-    let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder)
-        .finish();
-    let proof = sig_proof_builder
-        .generate_proof_response(challenge)
-        .unwrap();
+    );
+    let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+    let proof = sig_proof_builder.generate_proof_response(challenge);
 
     // Proof must not verify.
-    assert!(!proof
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
+    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), challenge));
 }
 
 #[test]
 fn signature_proof_fails_with_wrong_parameters_for_signature() {
     let mut rng = rng();
-    let length = 3;
 
     // Generate message and form signature.
-    let msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let kp = KeyPair::new(length, &mut rng);
-    let bad_kp = KeyPair::new(length, &mut rng);
+    let msg = Message::<3>::random(&mut rng);
+    let kp = KeyPair::new(&mut rng);
+    let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message with the wrong parameters.
-    let sig = bad_kp.try_sign(&mut rng, &msg).unwrap();
+    let sig = bad_kp.sign(&mut rng, &msg);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -114,37 +82,25 @@ fn signature_proof_fails_with_wrong_parameters_for_signature() {
         sig,
         &[None; 3],
         kp.public_key(),
-    )
-    .unwrap();
-    let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder)
-        .finish();
-    let proof = sig_proof_builder
-        .generate_proof_response(challenge)
-        .unwrap();
+    );
+    let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+    let proof = sig_proof_builder.generate_proof_response(challenge);
 
     // Proof must not verify.
-    assert!(!proof
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
+    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), challenge));
 }
 
 #[test]
 fn signature_proof_fails_with_wrong_parameters_for_proof() {
     let mut rng = rng();
-    let length = 3;
 
     // Generate message and form signature.
-    let msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let kp = KeyPair::new(length, &mut rng);
-    let bad_kp = KeyPair::new(length, &mut rng);
+    let msg = Message::<3>::random(&mut rng);
+    let kp = KeyPair::new(&mut rng);
+    let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+    let sig = kp.sign(&mut rng, &msg);
 
     // Construct proof with the wrong parameters.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -153,37 +109,25 @@ fn signature_proof_fails_with_wrong_parameters_for_proof() {
         sig,
         &[None; 3],
         bad_kp.public_key(),
-    )
-    .unwrap();
-    let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder)
-        .finish();
-    let proof = sig_proof_builder
-        .generate_proof_response(challenge)
-        .unwrap();
+    );
+    let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+    let proof = sig_proof_builder.generate_proof_response(challenge);
 
     // Proof must not verify.
-    assert!(!proof
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
+    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), challenge));
 }
 
 #[test]
 fn signature_proof_fails_with_wrong_parameters_for_verification() {
     let mut rng = rng();
-    let length = 3;
 
     // Generate message and form signature.
-    let msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let kp = KeyPair::new(length, &mut rng);
-    let bad_kp = KeyPair::new(length, &mut rng);
+    let msg = Message::<3>::random(&mut rng);
+    let kp = KeyPair::new(&mut rng);
+    let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+    let sig = kp.sign(&mut rng, &msg);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -192,36 +136,24 @@ fn signature_proof_fails_with_wrong_parameters_for_verification() {
         sig,
         &[None; 3],
         kp.public_key(),
-    )
-    .unwrap();
-    let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder)
-        .finish();
-    let proof = sig_proof_builder
-        .generate_proof_response(challenge)
-        .unwrap();
+    );
+    let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+    let proof = sig_proof_builder.generate_proof_response(challenge);
 
     // Proof must not verify against the wrong parameters.
-    assert!(!proof
-        .verify_knowledge_of_signature(bad_kp.public_key(), challenge)
-        .unwrap());
+    assert!(!proof.verify_knowledge_of_signature(bad_kp.public_key(), challenge));
 }
 
 #[test]
 fn signature_proof_fails_with_wrong_challenge() {
     let mut rng = rng();
-    let length = 3;
 
     // Generate message and form signature.
-    let msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let kp = KeyPair::new(length, &mut rng);
+    let msg = Message::<3>::random(&mut rng);
+    let kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+    let sig = kp.sign(&mut rng, &msg);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -230,22 +162,15 @@ fn signature_proof_fails_with_wrong_challenge() {
         sig,
         &[None; 3],
         kp.public_key(),
-    )
-    .unwrap();
-    let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder)
-        .finish();
+    );
+    let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let bad_challenge = ChallengeBuilder::new()
-        .with_commitment(sig_proof_builder.message_commitment)
+        .with(&sig_proof_builder.message_commitment())
         .finish();
-    let proof = sig_proof_builder
-        .generate_proof_response(challenge)
-        .unwrap();
+    let proof = sig_proof_builder.generate_proof_response(challenge);
 
     // Proof must not verify against the wrong challenge.
-    assert!(!proof
-        .verify_knowledge_of_signature(kp.public_key(), bad_challenge)
-        .unwrap());
+    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), bad_challenge));
 }
 
 #[test]
@@ -261,13 +186,13 @@ fn signature_proof_linear_relation() {
         .take(length - 1)
         .collect::<Vec<Scalar>>();
     msg_vec2.push(msg_vec1[0]);
-    let msg = Message::new(msg_vec1);
-    let msg2 = Message::new(msg_vec2);
+    let msg = Message::<3>::random(&mut rng);
+    let msg2 = Message::new([Scalar::random(&mut rng), Scalar::random(&mut rng), msg[0]]);
 
     // Sign the messages
-    let kp = KeyPair::new(length, &mut rng);
-    let sig1 = kp.try_sign(&mut rng, &msg).unwrap();
-    let sig2 = kp.try_sign(&mut rng, &msg2).unwrap();
+    let kp = KeyPair::new(&mut rng);
+    let sig1 = kp.sign(&mut rng, &msg);
+    let sig2 = kp.sign(&mut rng, &msg2);
 
     // Form proofs - commitment phase. The commitment scalars for the matching elements must match.
     let sig_proof_builder1 = SignatureProofBuilder::generate_proof_commitments(
@@ -276,8 +201,7 @@ fn signature_proof_linear_relation() {
         sig1,
         &[None; 3],
         kp.public_key(),
-    )
-    .unwrap();
+    );
     let sig_proof_builder2 = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
         msg2,
@@ -288,30 +212,21 @@ fn signature_proof_linear_relation() {
             Some(sig_proof_builder1.conjunction_commitment_scalars()[0]),
         ],
         kp.public_key(),
-    )
-    .unwrap();
+    );
 
     // Form challenge from both proof transcripts.
     let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder1)
-        .with_signature_proof(&sig_proof_builder2)
+        .with(&sig_proof_builder1)
+        .with(&sig_proof_builder2)
         .finish();
 
     // Complete proofs - response phase.
-    let proof1 = sig_proof_builder1
-        .generate_proof_response(challenge)
-        .unwrap();
-    let proof2 = sig_proof_builder2
-        .generate_proof_response(challenge)
-        .unwrap();
+    let proof1 = sig_proof_builder1.generate_proof_response(challenge);
+    let proof2 = sig_proof_builder2.generate_proof_response(challenge);
 
     // Proofs must verify.
-    assert!(proof1
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
-    assert!(proof2
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
+    assert!(proof1.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(proof2.verify_knowledge_of_signature(kp.public_key(), challenge));
 
     // Response scalars for matching elements must match.
     assert_eq!(
@@ -337,51 +252,40 @@ fn signature_proof_linear_relation() {
 #[test]
 fn signature_proof_public_value() {
     let mut rng = rng();
-    let length = 3;
+
     // Form message and signature.
-    let msg = Message::new(
-        iter::repeat_with(|| Scalar::random(&mut rng))
-            .take(length)
-            .collect(),
-    );
-    let kp = KeyPair::new(length, &mut rng);
-    let sig = kp.try_sign(&mut rng, &msg).unwrap();
+    let msg = Message::<3>::random(&mut rng);
+    let kp = KeyPair::new(&mut rng);
+    let sig = kp.sign(&mut rng, &msg);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
-        msg.clone(),
+        msg,
         sig,
         &[None; 3],
         kp.public_key(),
-    )
-    .unwrap();
+    );
     // Save commitment scalars for publicly revealed values (in this case, all of them).
     let commitment_scalars = sig_proof_builder.conjunction_commitment_scalars().to_vec();
-    let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder)
-        .finish();
-    let proof = sig_proof_builder
-        .generate_proof_response(challenge)
-        .unwrap();
+    let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+    let proof = sig_proof_builder.generate_proof_response(challenge);
 
     // Proof must verify.
-    assert!(proof
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
+    assert!(proof.verify_knowledge_of_signature(kp.public_key(), challenge));
 
     // Verify response scalars are correctly formed w.r.t public message and revealed commitment scalars.
     let response_scalars = proof.conjunction_response_scalars();
     assert_eq!(
-        msg[0] * challenge.0 + commitment_scalars[0],
+        msg[0] * challenge.to_scalar() + commitment_scalars[0],
         response_scalars[0]
     );
     assert_eq!(
-        msg[1] * challenge.0 + commitment_scalars[1],
+        msg[1] * challenge.to_scalar() + commitment_scalars[1],
         response_scalars[1]
     );
     assert_eq!(
-        msg[2] * challenge.0 + commitment_scalars[2],
+        msg[2] * challenge.to_scalar() + commitment_scalars[2],
         response_scalars[2]
     );
 }
@@ -391,15 +295,13 @@ fn signature_proof_linear_relation_public_addition() {
     let mut rng = rng();
     // Create messages of the form [a], [a + public_value].
     let public_value = Scalar::random(&mut rng);
-    let msg_vec1 = vec![Scalar::random(&mut rng)];
-    let msg_vec2 = vec![msg_vec1[0] + public_value];
-    let msg = Message::new(msg_vec1);
-    let msg2 = Message::new(msg_vec2);
+    let msg = Message::new([Scalar::random(&mut rng)]);
+    let msg2 = Message::new([msg[0] + public_value]);
 
     // Form signatures on messages.
-    let kp = KeyPair::new(1, &mut rng);
-    let sig1 = kp.try_sign(&mut rng, &msg).unwrap();
-    let sig2 = kp.try_sign(&mut rng, &msg2).unwrap();
+    let kp = KeyPair::new(&mut rng);
+    let sig1 = kp.sign(&mut rng, &msg);
+    let sig2 = kp.sign(&mut rng, &msg2);
 
     // Proof commitment phase: use matching commitment scalars for message values with linear relationship.
     let sig_proof_builder1 = SignatureProofBuilder::generate_proof_commitments(
@@ -408,42 +310,32 @@ fn signature_proof_linear_relation_public_addition() {
         sig1,
         &[None; 1],
         kp.public_key(),
-    )
-    .unwrap();
+    );
     let sig_proof_builder2 = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
         msg2,
         sig2,
         &[Some(sig_proof_builder1.conjunction_commitment_scalars()[0])],
         kp.public_key(),
-    )
-    .unwrap();
+    );
 
     // Construct challenge using both proofs.
     let challenge = ChallengeBuilder::new()
-        .with_signature_proof(&sig_proof_builder1)
-        .with_signature_proof(&sig_proof_builder2)
+        .with(&sig_proof_builder1)
+        .with(&sig_proof_builder2)
         .finish();
 
     // Form proofs - response phase.
-    let proof1 = sig_proof_builder1
-        .generate_proof_response(challenge)
-        .unwrap();
-    let proof2 = sig_proof_builder2
-        .generate_proof_response(challenge)
-        .unwrap();
+    let proof1 = sig_proof_builder1.generate_proof_response(challenge);
+    let proof2 = sig_proof_builder2.generate_proof_response(challenge);
 
     // Both signature proofs must verify.
-    assert!(proof1
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
-    assert!(proof2
-        .verify_knowledge_of_signature(kp.public_key(), challenge)
-        .unwrap());
+    assert!(proof1.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(proof2.verify_knowledge_of_signature(kp.public_key(), challenge));
 
     // The expected linear relationship must hold for the response scalars.
     assert_eq!(
-        proof1.conjunction_response_scalars()[0] + challenge.0 * public_value,
+        proof1.conjunction_response_scalars()[0] + challenge.to_scalar() * public_value,
         proof2.conjunction_response_scalars()[0]
     );
 }

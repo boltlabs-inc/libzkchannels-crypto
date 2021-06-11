@@ -14,11 +14,7 @@ use ff::Field;
 use serde::*;
 use sha3::{Digest, Sha3_256};
 use std::convert::TryFrom;
-use zkchannels_crypto::{
-    message::{BlindingFactor, Message},
-    pedersen_commitments::Commitment,
-    SerializeElement,
-};
+use zkchannels_crypto::{pedersen::Commitment, BlindingFactor, Message, SerializeElement};
 
 /// A revocation lock.
 #[derive(Debug, Serialize, Deserialize)]
@@ -92,15 +88,10 @@ impl RevocationLock {
         params: &customer::Config,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> RevocationLockCommitment {
-        RevocationLockCommitment(
-            params
-                .revocation_commitment_parameters
-                .commit(
-                    &Message::from(self.to_scalar()),
-                    revocation_lock_blinding_factor.0,
-                )
-                .expect("mismatched lengths"),
-        )
+        RevocationLockCommitment(params.revocation_commitment_parameters.commit(
+            &Message::from(self.to_scalar()),
+            revocation_lock_blinding_factor.0,
+        ))
     }
 
     /// Convert a revocation lock to its canonical `Scalar` representation.
@@ -123,14 +114,11 @@ impl RevocationLockCommitment {
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Verification {
         let verify_pair = revocation_lock.verify(revocation_secret);
-        let verify_commitment = parameters
-            .revocation_commitment_parameters
-            .decommit(
-                &Message::from(revocation_lock.to_scalar()),
-                revocation_lock_blinding_factor.0,
-                self.0,
-            )
-            .expect("mismatched lengths");
+        let verify_commitment = parameters.revocation_commitment_parameters.decommit(
+            &Message::from(revocation_lock.to_scalar()),
+            revocation_lock_blinding_factor.0,
+            self.0,
+        );
 
         if matches!(verify_pair, Verification::Verified) && verify_commitment {
             Verification::Verified

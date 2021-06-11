@@ -48,6 +48,9 @@ mod nonce;
 mod proofs;
 mod states;
 
+#[cfg(feature = "sqlite")]
+mod sqlite;
+
 #[allow(unused)]
 mod types {
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};

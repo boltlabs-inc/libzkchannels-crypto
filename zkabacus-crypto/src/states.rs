@@ -125,7 +125,7 @@ pub(crate) struct State {
 /// The closing state associated with a state.
 ///
 /// When signed by the merchant, this can be used by the customer to close the channel.
-/// It removes the nonce from the [`State`] to maintain privacy during closing, even in the case of
+/// It removes the nonce from the associated `State` to maintain privacy during closing, even in the case of
 /// merchant abort during payment.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CloseState {
@@ -135,7 +135,6 @@ pub struct CloseState {
     customer_balance: CustomerBalance,
 }
 
-#[allow(unused)]
 impl State {
     /// Generate a new `State` with the given balances and ID.
     pub fn new(
@@ -154,16 +153,19 @@ impl State {
     }
 
     /// Get the channel ID for this state.
+    #[allow(unused)]
     pub fn channel_id(&self) -> &ChannelId {
         &self.channel_id
     }
 
     /// Get the merchant's current [`MerchantBalance`] for this state.
+    #[allow(unused)]
     pub fn merchant_balance(&self) -> &MerchantBalance {
         &self.merchant_balance
     }
 
     /// Get the customer's current [`CustomerBalance`] for this state.
+    #[allow(unused)]
     pub fn customer_balance(&self) -> &CustomerBalance {
         &self.customer_balance
     }
@@ -339,7 +341,6 @@ pub struct CloseStateBlindedSignature(pub(crate) BlindedSignature);
 #[allow(missing_copy_implementations)]
 pub(crate) struct CloseStateBlindingFactor(pub(crate) BlindingFactor);
 
-#[allow(unused)]
 impl CloseStateBlindedSignature {
     /// Produce a [`CloseStateBlindedSignature`] by blindly signing the given [`CloseStateCommitment`].
     ///
@@ -361,7 +362,6 @@ impl CloseStateBlindedSignature {
     }
 }
 
-#[allow(unused)]
 impl CloseStateSignature {
     /// Verify the merchant signature against the given [`CloseState`].
     ///
@@ -393,7 +393,6 @@ pub struct BlindedPayToken(BlindedSignature);
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
 
-#[allow(unused)]
 impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
@@ -414,7 +413,6 @@ impl BlindedPayToken {
     }
 }
 
-#[allow(unused)]
 impl PayToken {
     /// Verify a `PayToken` against the given [`State`].
     ///

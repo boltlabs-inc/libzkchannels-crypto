@@ -265,8 +265,13 @@ impl Ready {
     }
 
     /// Extract data used to close the channel.
-    pub fn close(self) -> ClosingMessage {
-        todo!()
+    pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
+        ClosingMessage::new(
+            rng,
+            self.close_state_signature,
+            self.state.close_state(),
+            self.state.revocation_secret(),
+        )
     }
 }
 
@@ -352,8 +357,13 @@ impl Started {
     }
 
     /// Extract data used to close the channel on the previous balances.
-    pub fn close(self) -> ClosingMessage {
-        todo!()
+    pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
+        ClosingMessage::new(
+            rng,
+            self.old_close_state_signature,
+            self.old_state.close_state(),
+            self.old_state.revocation_secret(),
+        )
     }
 }
 
@@ -387,7 +397,12 @@ impl Locked {
     }
 
     /// Extract data used to close the channel.
-    pub fn close(self) -> ClosingMessage {
-        todo!()
+    pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
+        ClosingMessage::new(
+            rng,
+            self.close_state_signature,
+            self.state.close_state(),
+            self.state.revocation_secret(),
+        )
     }
 }

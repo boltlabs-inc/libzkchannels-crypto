@@ -141,7 +141,7 @@ impl Requested {
         channel_id: ChannelId,
         merchant_balance: MerchantBalance,
         customer_balance: CustomerBalance,
-    ) -> (Self, RequestMessage) {
+    ) -> (Self, EstablishProof) {
         // Construct initial state.
         let state = State::new(rng, channel_id, merchant_balance, customer_balance);
         let close_state = state.close_state();
@@ -158,8 +158,8 @@ impl Requested {
             &state,
             close_state_blinding_factor,
             pay_token_blinding_factor,
-            &state_commitment,
-            &close_state_commitment,
+            state_commitment,
+            close_state_commitment,
         );
 
         (
@@ -169,11 +169,7 @@ impl Requested {
                 close_state_blinding_factor,
                 pay_token_blinding_factor,
             },
-            RequestMessage {
-                close_state_commitment,
-                state_commitment,
-                proof,
-            },
+            proof,
         )
     }
 
@@ -236,12 +232,6 @@ pub struct StartMessage {
     pub nonce: Nonce,
     /// The zero-knowledge proof of the validity of the payment.
     pub pay_proof: PayProof,
-    /// The commitment to the (not yet revealed) revocation lock.
-    pub revocation_lock_commitment: RevocationLockCommitment,
-    /// The commitment to the close state.
-    pub close_state_commitment: CloseStateCommitment,
-    /// The commitment to the state.
-    pub state_commitment: StateCommitment,
 }
 
 impl Ready {
@@ -276,9 +266,9 @@ impl Ready {
             self.pay_token,
             &self.state,
             &new_state,
-            &revocation_lock_commitment,
-            &state_commitment,
-            &close_state_commitment,
+            revocation_lock_commitment,
+            state_commitment,
+            close_state_commitment,
             blinding_factors,
         );
 
@@ -296,9 +286,6 @@ impl Ready {
             StartMessage {
                 nonce: old_nonce,
                 pay_proof,
-                revocation_lock_commitment,
-                close_state_commitment,
-                state_commitment,
             },
         ))
     }

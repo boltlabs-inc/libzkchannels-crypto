@@ -4,7 +4,7 @@
 use crate::{
     customer,
     nonce::Nonce,
-    proofs::{EstablishProof, EstablishProofVerification, PayProof, PayProofVerification},
+    proofs::{EstablishProof, EstablishProofPublicValues, PayProof, PayProofPublicValues},
     revlock::*,
     states::*,
     types::*,
@@ -69,26 +69,24 @@ impl Config {
         channel_id: &ChannelId,
         customer_balance: CustomerBalance,
         merchant_balance: MerchantBalance,
-        state_commitment: &StateCommitment,
-        close_state_commitment: CloseStateCommitment,
         proof: EstablishProof,
-    ) -> Option<crate::ClosingSignature> {
+    ) -> Option<(crate::ClosingSignature, StateCommitment)> {
         // Collect items used to verify the proof.
-        let verification_objects = EstablishProofVerification {
-            state_commitment,
-            close_state_commitment,
+        let public_values = EstablishProofPublicValues {
             channel_id: *channel_id,
             merchant_balance,
             customer_balance,
         };
         // Verify that proof is consistent with the expected inputs.
-        match proof.verify(&self, &verification_objects) {
+        match proof.verify(&self, &public_values) {
             // If so, blindly sign the close state.
-            Verified => Some(CloseStateBlindedSignature::new(
-                rng,
-                &self,
-                verification_objects.close_state_commitment,
-            )),
+            Verified => {
+                let (state_commitment, close_state_commitment) = proof.extract_commitments();
+                Some((
+                    CloseStateBlindedSignature::new(rng, &self, close_state_commitment),
+                    state_commitment,
+                ))
+            }
             Failed => None,
         }
     }
@@ -102,12 +100,12 @@ impl Config {
     pub fn activate(
         &self,
         rng: &mut impl Rng,
-        state_commitment: &StateCommitment,
+        state_commitment: StateCommitment,
     ) -> crate::PayToken {
         // Blindly sign the pay token.
         // Note that this should _only_ be called after the merchant has received a valid
         // `EstablishProof` that is consistent with the `state_commitment`.
-        BlindedPayToken::new(rng, &self, state_commitment)
+        BlindedPayToken::new(rng, &self, &state_commitment)
     }
 
     /**
@@ -126,29 +124,27 @@ impl Config {
         amount: PaymentAmount,
         nonce: &Nonce,
         pay_proof: PayProof,
-        revocation_lock_commitment: RevocationLockCommitment,
-        state_commitment: StateCommitment,
-        close_state_commitment: CloseStateCommitment,
     ) -> Option<(Unrevoked<'a>, crate::ClosingSignature)> {
         // Collect items used to verify the proof.
-        let verification_objects = PayProofVerification {
-            revocation_lock_commitment: &revocation_lock_commitment,
-            state_commitment: &state_commitment,
-            close_state_commitment: &close_state_commitment,
+        let public_values = PayProofPublicValues {
             nonce: *nonce,
             amount,
         };
         // Verify that proof is consistent with the expected inputs.
-        match pay_proof.verify(&self, &verification_objects) {
+        match pay_proof.verify(&self, &public_values) {
             // If so, blindly sign the close state.
-            Verified => Some((
-                Unrevoked {
-                    config: &self,
-                    revocation_lock_commitment,
-                    state_commitment,
-                },
-                CloseStateBlindedSignature::new(rng, &self, close_state_commitment),
-            )),
+            Verified => {
+                let (revocation_lock_commitment, state_commitment, close_state_commitment) =
+                    pay_proof.extract_commitments();
+                Some((
+                    Unrevoked {
+                        config: &self,
+                        revocation_lock_commitment,
+                        state_commitment,
+                    },
+                    CloseStateBlindedSignature::new(rng, &self, close_state_commitment),
+                ))
+            }
             Failed => None,
         }
     }

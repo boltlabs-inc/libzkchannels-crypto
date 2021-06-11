@@ -32,11 +32,9 @@ This is a zero-knowledge proof that makes the following guarantees:
   relative to each other.
 - The close state is well-formed (e.g. with a close tag and corresponding to the state).
 */
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct EstablishProof {
-    state_proof: CommitmentProof<G1Projective>,
-    close_state_proof: CommitmentProof<G1Projective>,
-
+    // Commitment scalars for public values.
     #[serde(with = "SerializeElement")]
     channel_id_cs: Scalar,
     #[serde(with = "SerializeElement")]
@@ -45,10 +43,23 @@ pub struct EstablishProof {
     customer_balance_cs: Scalar,
     #[serde(with = "SerializeElement")]
     merchant_balance_cs: Scalar,
+
+    // Proof objects.
+    state_proof: CommitmentProof<G1Projective>,
+    close_state_proof: CommitmentProof<G1Projective>,
+
+    // Commitments for proof objects.
+    state_commitment: StateCommitment,
+    close_state_commitment: CloseStateCommitment,
 }
 
 #[allow(unused)]
 impl EstablishProof {
+    /// Retrieve the state commitment for the proof.
+    pub(crate) fn extract_commitments(self) -> (StateCommitment, CloseStateCommitment) {
+        (self.state_commitment, self.close_state_commitment)
+    }
+
     /**
     Form a new zero-knowledge [`EstablishProof`] object.
 
@@ -63,8 +74,8 @@ impl EstablishProof {
         state: &State,
         close_state_blinding_factor: CloseStateBlindingFactor,
         pay_token_blinding_factor: PayTokenBlindingFactor,
-        state_commitment: &StateCommitment,
-        close_state_commitment: &CloseStateCommitment,
+        state_commitment: StateCommitment,
+        close_state_commitment: CloseStateCommitment,
     ) -> Self {
         let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
         // Start commitment proof to the state.
@@ -126,6 +137,10 @@ impl EstablishProof {
                     challenge,
                 )
                 .expect("mismatched length"),
+
+            // Add commitments
+            state_commitment,
+            close_state_commitment,
         }
     }
 
@@ -135,17 +150,17 @@ impl EstablishProof {
     pub fn verify(
         &self,
         params: &merchant::Config,
-        verification_objects: &EstablishProofVerification,
+        public_values: &EstablishProofPublicValues,
     ) -> Verification {
         // Form a challenge.
         let challenge = ChallengeBuilder::new()
             .with_public_key(params.signing_keypair.public_key())
-            .with_scalar(verification_objects.channel_id.to_scalar())
+            .with_scalar(public_values.channel_id.to_scalar())
             .with_scalar(CLOSE_SCALAR)
-            .with_scalar(verification_objects.customer_balance.to_scalar())
-            .with_scalar(verification_objects.merchant_balance.to_scalar())
-            .with_blinded_message(verification_objects.state_commitment.0)
-            .with_blinded_message(verification_objects.close_state_commitment.0)
+            .with_scalar(public_values.customer_balance.to_scalar())
+            .with_scalar(public_values.merchant_balance.to_scalar())
+            .with_blinded_message(self.state_commitment.0)
+            .with_blinded_message(self.close_state_commitment.0)
             .with_commitment(self.state_proof.scalar_commitment)
             .with_commitment(self.close_state_proof.scalar_commitment)
             .finish();
@@ -160,7 +175,7 @@ impl EstablishProof {
             .state_proof
             .verify_knowledge_of_opening_of_commitment(
                 &pedersen_parameters,
-                verification_objects.state_commitment.0.as_commitment(),
+                self.state_commitment.0.as_commitment(),
                 challenge,
             )
             .expect("length mismatch");
@@ -170,10 +185,7 @@ impl EstablishProof {
             .close_state_proof
             .verify_knowledge_of_opening_of_commitment(
                 &pedersen_parameters,
-                verification_objects
-                    .close_state_commitment
-                    .0
-                    .as_commitment(),
+                self.close_state_commitment.0.as_commitment(),
                 challenge,
             )
             .expect("length mismatch");
@@ -182,9 +194,8 @@ impl EstablishProof {
         let close_state_proof_rs = self.close_state_proof.conjunction_response_scalars();
 
         // check channel identifiers match expected.
-        let expected_channel_id = challenge.to_scalar()
-            * verification_objects.channel_id.to_scalar()
-            + self.channel_id_cs;
+        let expected_channel_id =
+            challenge.to_scalar() * public_values.channel_id.to_scalar() + self.channel_id_cs;
         let channel_ids_match = state_proof_rs[0] == expected_channel_id
             && close_state_proof_rs[0] == expected_channel_id;
 
@@ -197,14 +208,14 @@ impl EstablishProof {
 
         // check customer balances match expected
         let expected_customer_balance = challenge.to_scalar()
-            * verification_objects.customer_balance.to_scalar()
+            * public_values.customer_balance.to_scalar()
             + self.customer_balance_cs;
         let customer_balances_match = state_proof_rs[3] == expected_customer_balance
             && close_state_proof_rs[3] == expected_customer_balance;
 
         // check merchant balances match expected
         let expected_merchant_balance = challenge.to_scalar()
-            * verification_objects.merchant_balance.to_scalar()
+            * public_values.merchant_balance.to_scalar()
             + self.merchant_balance_cs;
         let merchant_balances_match = state_proof_rs[4] == expected_merchant_balance
             && close_state_proof_rs[4] == expected_merchant_balance;
@@ -222,12 +233,8 @@ impl EstablishProof {
 }
 
 /// Collects the information a merchant needs to verify a [`EstablishProof`].
-#[derive(Debug)]
-pub struct EstablishProofVerification<'a> {
-    /// Commitment to a [`State`].
-    pub state_commitment: &'a StateCommitment,
-    /// Commitment to a `CloseState`.
-    pub close_state_commitment: CloseStateCommitment,
+#[derive(Debug, Clone, Copy)]
+pub struct EstablishProofPublicValues {
     /// Expected channel ID.
     pub channel_id: ChannelId,
     /// Expected merchant balance.
@@ -253,16 +260,24 @@ This is a zero-knowledge proof that makes the following guarantees:
 */
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PayProof {
+    // Commitment scalars for public items.
     #[serde(with = "SerializeElement")]
     nonce_cs: Scalar,
     #[serde(with = "SerializeElement")]
     close_tag_cs: Scalar,
+
+    // Proof objects.
     pay_token_proof: SignatureProof,
     revocation_lock_proof: CommitmentProof<G1Projective>,
     state_proof: CommitmentProof<G1Projective>,
     close_state_proof: CommitmentProof<G1Projective>,
     customer_balance_proof: RangeProof,
     merchant_balance_proof: RangeProof,
+
+    // Commitments for the commitment proofs.
+    revocation_lock_commitment: RevocationLockCommitment,
+    state_commitment: StateCommitment,
+    close_state_commitment: CloseStateCommitment,
 }
 
 /// Blinding factors for commitments associated with a particular payment.
@@ -278,6 +293,35 @@ pub(crate) struct BlindingFactors {
 
 #[allow(unused)]
 impl PayProof {
+    /// Get the revocation lock commitment out of the proof.
+    pub(crate) fn revocation_lock_commitment(&self) -> &RevocationLockCommitment {
+        &self.revocation_lock_commitment
+    }
+
+    /// Get the state commitment out of the proof.
+    pub(crate) fn state_commitment(&self) -> &StateCommitment {
+        &self.state_commitment
+    }
+
+    /// Get the close state commitment out of the proof.
+    pub(crate) fn close_state_commitment(&self) -> &CloseStateCommitment {
+        &self.close_state_commitment
+    }
+
+    pub(crate) fn extract_commitments(
+        self,
+    ) -> (
+        RevocationLockCommitment,
+        StateCommitment,
+        CloseStateCommitment,
+    ) {
+        (
+            self.revocation_lock_commitment,
+            self.state_commitment,
+            self.close_state_commitment,
+        )
+    }
+
     /**
     Form a new zero-knowledge [`PayProof`] object.
 
@@ -302,9 +346,9 @@ impl PayProof {
         pay_token: PayToken,
         old_state: &State,
         state: &State,
-        revocation_lock_commitment: &RevocationLockCommitment,
-        state_commitment: &StateCommitment,
-        close_state_commitment: &CloseStateCommitment,
+        revocation_lock_commitment: RevocationLockCommitment,
+        state_commitment: StateCommitment,
+        close_state_commitment: CloseStateCommitment,
         blinding_factors: BlindingFactors,
     ) -> Self {
         let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
@@ -447,6 +491,11 @@ impl PayProof {
             merchant_balance_proof: merchant_range_proof_builder
                 .generate_proof_response(challenge)
                 .unwrap(),
+
+            // Add commitments.
+            revocation_lock_commitment,
+            state_commitment,
+            close_state_commitment,
         }
     }
 
@@ -458,15 +507,9 @@ impl PayProof {
     pub fn verify(
         &self,
         params: &merchant::Config,
-        verification_objects: &PayProofVerification,
+        public_values: &PayProofPublicValues,
     ) -> Verification {
-        let PayProofVerification {
-            revocation_lock_commitment,
-            state_commitment,
-            close_state_commitment,
-            nonce,
-            amount,
-        } = verification_objects;
+        let PayProofPublicValues { nonce, amount } = public_values;
 
         // Form the challenge.
         let challenge = ChallengeBuilder::new()
@@ -476,9 +519,9 @@ impl PayProof {
             .with_scalar(nonce.to_scalar())
             .with_scalar(CLOSE_SCALAR)
             // integrate commitments from commitment proofs
-            .with_commitment(revocation_lock_commitment.0)
-            .with_blinded_message(state_commitment.0)
-            .with_blinded_message(close_state_commitment.0)
+            .with_commitment(self.revocation_lock_commitment.0)
+            .with_blinded_message(self.state_commitment.0)
+            .with_blinded_message(self.close_state_commitment.0)
             // integrate commitment scalars from commitment proofs
             .with_commitment(self.revocation_lock_proof.scalar_commitment)
             .with_commitment(self.state_proof.scalar_commitment)
@@ -505,7 +548,7 @@ impl PayProof {
             .revocation_lock_proof
             .verify_knowledge_of_opening_of_commitment(
                 &params.revocation_commitment_parameters,
-                revocation_lock_commitment.0,
+                self.revocation_lock_commitment.0,
                 challenge,
             )
             .expect("length mismatch");
@@ -514,7 +557,7 @@ impl PayProof {
             .state_proof
             .verify_knowledge_of_opening_of_commitment(
                 &pedersen_parameters,
-                verification_objects.state_commitment.0.as_commitment(),
+                self.state_commitment.0.as_commitment(),
                 challenge,
             )
             .expect("length mismatch");
@@ -523,10 +566,7 @@ impl PayProof {
             .close_state_proof
             .verify_knowledge_of_opening_of_commitment(
                 &pedersen_parameters,
-                verification_objects
-                    .close_state_commitment
-                    .0
-                    .as_commitment(),
+                self.close_state_commitment.0.as_commitment(),
                 challenge,
             )
             .expect("length mismatch");
@@ -606,14 +646,8 @@ proof of knowledge of the opening of a _commitment_.
 pub struct PayTokenCommitment(Commitment<G2Projective>);
 
 /// Collects the information a merchant needs to verify a [`PayProof`].
-#[derive(Debug)]
-pub struct PayProofVerification<'a> {
-    /// Commitment to the revocation lock in the previous [`State`].
-    pub revocation_lock_commitment: &'a RevocationLockCommitment,
-    /// Commitment to the new channel [`State`].
-    pub state_commitment: &'a StateCommitment,
-    /// Commitment to the new [`CloseState`].
-    pub close_state_commitment: &'a CloseStateCommitment,
+#[derive(Debug, Clone, Copy)]
+pub struct PayProofPublicValues {
     /// Expected nonce revealed at the beginning of Pay.
     pub nonce: Nonce,
     /// Expected payment amount.
@@ -659,21 +693,19 @@ mod tests {
             &state,
             cs_bf,
             pt_bf,
-            &state_commitment,
-            &close_state_commitment,
+            state_commitment,
+            close_state_commitment,
         );
 
         // Proof must verify against the provided values.
-        let vos = EstablishProofVerification {
-            state_commitment: &state_commitment,
-            close_state_commitment,
+        let public_values = EstablishProofPublicValues {
             channel_id: *state.channel_id(),
             merchant_balance: *state.merchant_balance(),
             customer_balance: *state.customer_balance(),
         };
 
         assert!(matches!(
-            proof.verify(&merchant_params, &vos),
+            proof.verify(&merchant_params, &public_values),
             Verification::Verified
         ));
     }
@@ -724,23 +756,17 @@ mod tests {
             pay_token,
             &old_state,
             &new_state,
-            &revocation_lock_commitment,
-            &state_commitment,
-            &close_state_commitment,
+            revocation_lock_commitment,
+            state_commitment,
+            close_state_commitment,
             blinding_factors,
         );
 
         // Verify proof against expected objects.
-        let vos = PayProofVerification {
-            revocation_lock_commitment: &revocation_lock_commitment,
-            state_commitment: &state_commitment,
-            close_state_commitment: &close_state_commitment,
-            nonce,
-            amount,
-        };
+        let public_values = PayProofPublicValues { nonce, amount };
 
         assert!(matches!(
-            proof.verify(&merchant_params, &vos),
+            proof.verify(&merchant_params, &public_values),
             Verification::Verified
         ));
     }

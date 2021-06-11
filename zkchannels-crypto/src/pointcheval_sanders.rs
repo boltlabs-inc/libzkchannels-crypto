@@ -60,6 +60,11 @@ impl<const N: usize> SecretKey<N> {
     /// random and the given generator `g1` from G1. This is called internally, and we require `g1`
     /// is chosen uniformly at random and is not the identity element.
     fn new(rng: &mut impl Rng, g1: &G1Projective) -> Self {
+        assert!(
+            !bool::from(g1.is_identity()),
+            "g1 must not be the identity element"
+        );
+
         let mut get_nonzero_scalar = || loop {
             let r = Scalar::random(&mut *rng);
             if !r.is_zero() {
@@ -104,6 +109,11 @@ impl<const N: usize> PublicKey<N> {
     /// This is called internally, and we require `g1` is chosen uniformly at random and is not the
     /// identity.
     fn from_secret_key(rng: &mut impl Rng, sk: &SecretKey<N>, g1: &G1Projective) -> Self {
+        assert!(
+            !bool::from(g1.is_identity()),
+            "g1 must not be the identity element"
+        );
+
         // select g2 randomly from G2*.
         let g2: G2Projective = random_non_identity(&mut *rng);
 

@@ -128,7 +128,7 @@ pub(crate) struct State {
 /// It removes the nonce from the [`State`] to maintain privacy during closing, even in the case of
 /// merchant abort during payment.
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct CloseState {
+pub struct CloseState {
     channel_id: ChannelId,
     revocation_lock: RevocationLock,
     merchant_balance: MerchantBalance,
@@ -269,13 +269,12 @@ impl State {
     }
 }
 
-#[allow(unused)]
 impl CloseState {
     /// Form a commitment (and corresponding blinding factor) to the [`CloseState`] and a constant,
     /// fixed close tag.
     ///
     /// This is typically called by the customer.
-    pub fn commit<'a>(
+    pub(crate) fn commit<'a>(
         &'a self,
         rng: &mut impl Rng,
         param: &customer::Config,
@@ -302,6 +301,11 @@ impl CloseState {
             self.merchant_balance.to_scalar(),
         ])
     }
+
+    /// Get the revocation lock for the CloseState.
+    pub fn revocation_lock(&self) -> &RevocationLock {
+        &self.revocation_lock
+    }
 }
 
 /// Commitment to a State: (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
@@ -323,7 +327,7 @@ pub struct CloseStateCommitment(pub(crate) BlindedMessage);
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct CloseStateSignature(pub(crate) Signature);
+pub struct CloseStateSignature(pub(crate) Signature);
 
 /// Blinded signature on a close state and a constant, fixed close tag.
 #[derive(Debug, Serialize, Deserialize)]

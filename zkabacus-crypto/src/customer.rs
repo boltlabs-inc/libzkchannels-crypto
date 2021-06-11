@@ -297,10 +297,28 @@ pub struct LockMessage {
 /// The information necessary to perform a close for a state.
 /// This is sent as part of zkAbacus.Close.
 #[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ClosingMessage {
     close_signature: CloseStateSignature,
     close_state: CloseState,
     revocation_secret: RevocationSecret,
+}
+
+impl ClosingMessage {
+    /// Create a new `ClosingMessage`. This randomizes the signature.
+    pub fn new(
+        rng: &mut impl Rng,
+        mut close_signature: CloseStateSignature,
+        close_state: CloseState,
+        revocation_secret: RevocationSecret,
+    ) -> Self {
+        close_signature.randomize(&mut *rng);
+        Self {
+            close_signature,
+            close_state,
+            revocation_secret,
+        }
+    }
 }
 
 impl Started {

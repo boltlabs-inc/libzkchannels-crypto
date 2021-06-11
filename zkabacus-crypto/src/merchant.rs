@@ -9,7 +9,7 @@ use crate::{
     states::*,
     types::*,
     PaymentAmount, Rng,
-    Verification::{Failed, Verified},
+    Verification::{self, Failed, Verified},
 };
 use zkchannels_crypto::{
     pedersen::PedersenParameters, pointcheval_sanders::KeyPair, proofs::RangeProofParameters,
@@ -150,6 +150,22 @@ impl Config {
             }
             Failed => None,
         }
+    }
+
+    /// Validate closing information.
+    pub fn validate_close(
+        &self,
+        close_signature: CloseStateSignature,
+        close_state: CloseState,
+        revocation_secret: RevocationSecret,
+    ) -> Verification {
+        // Verify the revocation secret matches the lock in the message
+        let revocation_lock_verifies = close_state.revocation_lock().verify(&revocation_secret);
+
+        // Verify the signature is on the message
+        let signature_verifies = close_signature.verify(&self.to_customer_config(), close_state);
+
+        revocation_lock_verifies & signature_verifies
     }
 }
 /**

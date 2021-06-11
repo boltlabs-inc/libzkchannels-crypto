@@ -37,6 +37,8 @@ pub mod customer;
 pub mod merchant;
 pub mod revlock;
 
+use std::ops::BitAnd;
+
 pub use nonce::Nonce;
 pub use proofs::Context;
 pub use proofs::EstablishProof;
@@ -49,7 +51,8 @@ pub use states::BlindedPayToken as PayToken;
 pub use states::CloseStateBlindedSignature as ClosingSignature;
 
 pub use states::{
-    ChannelId, CloseStateCommitment, CustomerBalance, MerchantBalance, StateCommitment,
+    ChannelId, CloseState, CloseStateCommitment, CloseStateSignature, CustomerBalance,
+    MerchantBalance, StateCommitment,
 };
 
 mod nonce;
@@ -98,6 +101,17 @@ impl From<bool> for Verification {
         match b {
             true => Verification::Verified,
             false => Verification::Failed,
+        }
+    }
+}
+
+impl BitAnd for Verification {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Verification::Verified, Verification::Verified) => Verification::Verified,
+            (_, _) => Verification::Failed,
         }
     }
 }

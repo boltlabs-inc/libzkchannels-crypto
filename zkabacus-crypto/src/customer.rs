@@ -265,6 +265,7 @@ impl Ready {
     }
 
     /// Extract data used to close the channel.
+    /// This is zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(
             rng,
@@ -357,6 +358,7 @@ impl Started {
     }
 
     /// Extract data used to close the channel on the previous balances.
+    /// This is zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(
             rng,
@@ -397,6 +399,7 @@ impl Locked {
     }
 
     /// Extract data used to close the channel.
+    /// This is zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(
             rng,

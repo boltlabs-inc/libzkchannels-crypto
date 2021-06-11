@@ -152,7 +152,7 @@ impl Config {
         }
     }
 
-    /// Validate closing information.
+    /// Validate closing information. This is zkAbacus.Close.
     pub fn validate_close(
         &self,
         close_signature: CloseStateSignature,

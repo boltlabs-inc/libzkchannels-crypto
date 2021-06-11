@@ -245,32 +245,18 @@ impl Ready {
         // Generate correctly-updated state.
         let new_state = self.state.apply_payment(rng, amount)?;
 
-        // Commit to new state and old revocation lock.
-        let (revocation_lock_commitment, revocation_lock_bf) =
-            self.state.commit_to_revocation(rng, &self.config);
-        let (state_commitment, state_bf) = self.state.commit(rng, &self.config);
-        let (close_state_commitment, close_state_bf) =
-            self.state.close_state().commit(rng, &self.config);
-
         // Save the blinding factors together.
+        /*
         let blinding_factors = BlindingFactors {
             for_revocation_lock: revocation_lock_bf,
             for_pay_token: state_bf,
             for_close_state: close_state_bf,
         };
+        */
 
         // Form proof that the payment correctly updates a valid state.
-        let pay_proof = PayProof::new(
-            rng,
-            &self.config,
-            self.pay_token,
-            &self.state,
-            &new_state,
-            revocation_lock_commitment,
-            state_commitment,
-            close_state_commitment,
-            blinding_factors,
-        );
+        let (pay_proof, blinding_factors) =
+            PayProof::new(rng, &self.config, self.pay_token, &self.state, &new_state);
 
         // Save nonce.
         let old_nonce = *self.state.nonce();

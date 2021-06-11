@@ -325,11 +325,13 @@ impl PayProof {
     /**
     Form a new zero-knowledge [`PayProof`] object.
 
-    It takes the previous [`State`] and corresponding [`PayToken`], and the new [`State`]. It also
-    requires the blinding factors corresponding to commitments made on the previous [`State`]'s
-    revocation lock, the [`PayToken`], and the [`CloseState`] derived from the given [`State`].
+    It takes the previous [`State`] and corresponding [`PayToken`], and the new [`State`].
 
-    Internally, it also prepares the signature proof on the given [`PayToken`]:
+    Internally, it forms commitments to items used in the proof: the previous [`State`]'s
+    revocation lock, the [`PayToken`], and the [`CloseState`] derived from the given [`State`].
+    It returns the blinding factors corresponding to these commitments.
+
+    It also prepares the signature proof on the given [`PayToken`]:
 
     - blinds and randomizes the [`PayToken`] to produce a [`PayTokenCommitment`] and
       corresponding [`PayTokenBlindingFactor`], and
@@ -346,12 +348,20 @@ impl PayProof {
         pay_token: PayToken,
         old_state: &State,
         state: &State,
-        revocation_lock_commitment: RevocationLockCommitment,
-        state_commitment: StateCommitment,
-        close_state_commitment: CloseStateCommitment,
-        blinding_factors: BlindingFactors,
-    ) -> Self {
+    ) -> (Self, BlindingFactors) {
         let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
+
+        // Form commits to new state, new close state, and old revocation lock.
+        let (revocation_lock_commitment, revocation_lock_bf) =
+            old_state.commit_to_revocation(rng, params);
+        let (state_commitment, state_bf) = state.commit(rng, params);
+        let (close_state_commitment, close_state_bf) = state.close_state().commit(rng, params);
+
+        let blinding_factors = BlindingFactors {
+            for_revocation_lock: revocation_lock_bf,
+            for_pay_token: state_bf,
+            for_close_state: close_state_bf,
+        };
 
         // Start range proof on customer balance.
         let customer_range_proof_builder = RangeProofBuilder::generate_proof_commitments(
@@ -452,51 +462,54 @@ impl PayProof {
             // TODO: incorporate context here.
             .finish();
 
-        Self {
-            // Add commitment scalars for publicly revealed values: the old nonce and the close tag.
-            nonce_cs: pay_token_proof_builder.conjunction_commitment_scalars()[1],
-            close_tag_cs: close_state_proof_builder.conjunction_commitment_scalars()[1],
-            // Complete the pay token signature proof.
-            pay_token_proof: pay_token_proof_builder
-                .generate_proof_response(challenge)
-                .unwrap(),
-            // Complete the revocation lock proof.
-            revocation_lock_proof: revocation_lock_proof_builder
-                .generate_proof_response(
-                    &Message::from(old_state.revocation_lock().to_scalar()),
-                    blinding_factors.for_revocation_lock.0,
-                    challenge,
-                )
-                .unwrap(),
-            // Complete the state proof.
-            state_proof: state_proof_builder
-                .generate_proof_response(
-                    &state.to_message(),
-                    blinding_factors.for_pay_token.0,
-                    challenge,
-                )
-                .unwrap(),
-            // Complete the close state proof.
-            close_state_proof: close_state_proof_builder
-                .generate_proof_response(
-                    &state.close_state().to_message(),
-                    blinding_factors.for_close_state.0,
-                    challenge,
-                )
-                .unwrap(),
-            // Complete the range proofs.
-            customer_balance_proof: customer_range_proof_builder
-                .generate_proof_response(challenge)
-                .unwrap(),
-            merchant_balance_proof: merchant_range_proof_builder
-                .generate_proof_response(challenge)
-                .unwrap(),
+        (
+            Self {
+                // Add commitment scalars for publicly revealed values: the old nonce and the close tag.
+                nonce_cs: pay_token_proof_builder.conjunction_commitment_scalars()[1],
+                close_tag_cs: close_state_proof_builder.conjunction_commitment_scalars()[1],
+                // Complete the pay token signature proof.
+                pay_token_proof: pay_token_proof_builder
+                    .generate_proof_response(challenge)
+                    .unwrap(),
+                // Complete the revocation lock proof.
+                revocation_lock_proof: revocation_lock_proof_builder
+                    .generate_proof_response(
+                        &Message::from(old_state.revocation_lock().to_scalar()),
+                        blinding_factors.for_revocation_lock.0,
+                        challenge,
+                    )
+                    .unwrap(),
+                // Complete the state proof.
+                state_proof: state_proof_builder
+                    .generate_proof_response(
+                        &state.to_message(),
+                        blinding_factors.for_pay_token.0,
+                        challenge,
+                    )
+                    .unwrap(),
+                // Complete the close state proof.
+                close_state_proof: close_state_proof_builder
+                    .generate_proof_response(
+                        &state.close_state().to_message(),
+                        blinding_factors.for_close_state.0,
+                        challenge,
+                    )
+                    .unwrap(),
+                // Complete the range proofs.
+                customer_balance_proof: customer_range_proof_builder
+                    .generate_proof_response(challenge)
+                    .unwrap(),
+                merchant_balance_proof: merchant_range_proof_builder
+                    .generate_proof_response(challenge)
+                    .unwrap(),
 
-            // Add commitments.
-            revocation_lock_commitment,
-            state_commitment,
-            close_state_commitment,
-        }
+                // Add commitments.
+                revocation_lock_commitment,
+                state_commitment,
+                close_state_commitment,
+            },
+            blinding_factors,
+        )
     }
 
     /**
@@ -725,42 +738,21 @@ mod tests {
             CustomerBalance::try_new(100).unwrap(),
         );
 
-        // Update state and retrieve corresponding close state.
+        // Update state.
         let amount = PaymentAmount::pay_merchant(10).unwrap();
         let new_state = old_state.apply_payment(&mut rng, amount).unwrap();
-        let close_state = new_state.close_state();
 
         // Get a pay token AKA signature on the old state.
         let (old_state_com, old_pt_bf) = old_state.commit(&mut rng, &params);
         let pay_token =
             BlindedPayToken::new(&mut rng, &merchant_params, &old_state_com).unblind(old_pt_bf);
 
-        // Form commitments to items.
-        let (revocation_lock_commitment, rl_bf) = old_state.commit_to_revocation(&mut rng, &params);
-        let (state_commitment, pt_bf) = new_state.commit(&mut rng, &params);
-        let (close_state_commitment, cs_bf) = close_state.commit(&mut rng, &params);
-
-        let blinding_factors = BlindingFactors {
-            for_revocation_lock: rl_bf,
-            for_pay_token: pt_bf,
-            for_close_state: cs_bf,
-        };
-
         // Save a copy of the nonce...
         let nonce = *old_state.nonce();
 
         // Form proof.
-        let proof = PayProof::new(
-            &mut rng,
-            &params,
-            pay_token,
-            &old_state,
-            &new_state,
-            revocation_lock_commitment,
-            state_commitment,
-            close_state_commitment,
-            blinding_factors,
-        );
+        let (proof, _blinding_factors) =
+            PayProof::new(&mut rng, &params, pay_token, &old_state, &new_state);
 
         // Verify proof against expected objects.
         let public_values = PayProofPublicValues { nonce, amount };

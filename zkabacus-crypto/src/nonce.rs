@@ -24,7 +24,7 @@ impl Nonce {
     }
 }
 
-#[cfg(feature = "sqlx")]
+#[cfg(feature = "sqlite")]
 use sqlx::{
     database::HasArguments,
     encode::{Encode, IsNull},
@@ -32,7 +32,7 @@ use sqlx::{
     Type,
 };
 
-#[cfg(feature = "sqlx")]
+#[cfg(feature = "sqlite")]
 impl Encode<'_, Sqlite> for Nonce {
     fn encode_by_ref(&self, buf: &mut <Sqlite as HasArguments<'_>>::ArgumentBuffer) -> IsNull {
         let bytes = self.0.to_bytes().to_vec();
@@ -45,7 +45,7 @@ impl Encode<'_, Sqlite> for Nonce {
     }
 }
 
-#[cfg(feature = "sqlx")]
+#[cfg(feature = "sqlite")]
 impl Type<Sqlite> for Nonce {
     fn type_info() -> SqliteTypeInfo {
         <Vec<u8> as Type<Sqlite>>::type_info()

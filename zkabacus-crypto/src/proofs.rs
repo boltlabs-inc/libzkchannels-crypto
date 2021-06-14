@@ -72,12 +72,14 @@ impl EstablishProof {
         rng: &mut impl Rng,
         params: &customer::Config,
         state: &State,
-        close_state_blinding_factor: CloseStateBlindingFactor,
-        pay_token_blinding_factor: PayTokenBlindingFactor,
-        state_commitment: StateCommitment,
-        close_state_commitment: CloseStateCommitment,
-    ) -> Self {
+    ) -> (Self, CloseStateBlindingFactor, PayTokenBlindingFactor) {
         let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
+
+        // Commit to state and corresponding close state.
+        let (state_commitment, pay_token_blinding_factor) = state.commit(rng, &params);
+        let (close_state_commitment, close_state_blinding_factor) =
+            state.close_state().commit(rng, &params);
+
         // Start commitment proof to the state.
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
@@ -114,34 +116,38 @@ impl EstablishProof {
         // (Recall: the commitment scalars for the channel id and balances will match the
         // state proof by construction)
         let commitment_scalars = close_state_proof_builder.conjunction_commitment_scalars();
-        Self {
-            channel_id_cs: commitment_scalars[0],
-            close_tag_cs: commitment_scalars[1],
-            customer_balance_cs: commitment_scalars[3],
-            merchant_balance_cs: commitment_scalars[4],
+        (
+            Self {
+                channel_id_cs: commitment_scalars[0],
+                close_tag_cs: commitment_scalars[1],
+                customer_balance_cs: commitment_scalars[3],
+                merchant_balance_cs: commitment_scalars[4],
 
-            // Complete commitment proof on the state.
-            state_proof: state_proof_builder
-                .generate_proof_response(
-                    &state.to_message(),
-                    pay_token_blinding_factor.0,
-                    challenge,
-                )
-                .expect("mismatched length"),
+                // Complete commitment proof on the state.
+                state_proof: state_proof_builder
+                    .generate_proof_response(
+                        &state.to_message(),
+                        pay_token_blinding_factor.0,
+                        challenge,
+                    )
+                    .expect("mismatched length"),
 
-            // Complete commitment proof on the close state.
-            close_state_proof: close_state_proof_builder
-                .generate_proof_response(
-                    &state.close_state().to_message(),
-                    close_state_blinding_factor.0,
-                    challenge,
-                )
-                .expect("mismatched length"),
+                // Complete commitment proof on the close state.
+                close_state_proof: close_state_proof_builder
+                    .generate_proof_response(
+                        &state.close_state().to_message(),
+                        close_state_blinding_factor.0,
+                        challenge,
+                    )
+                    .expect("mismatched length"),
 
-            // Add commitments
-            state_commitment,
-            close_state_commitment,
-        }
+                // Add commitments
+                state_commitment,
+                close_state_commitment,
+            },
+            close_state_blinding_factor,
+            pay_token_blinding_factor,
+        )
     }
 
     /// Verify the [`EstablishProof`] against the provided verification objects.
@@ -695,20 +701,9 @@ mod tests {
             MerchantBalance::try_new(0).unwrap(),
             CustomerBalance::try_new(100).unwrap(),
         );
-        let close_state = state.close_state();
 
-        // Form commitments and proof
-        let (state_commitment, pt_bf) = state.commit(&mut rng, &params);
-        let (close_state_commitment, cs_bf) = close_state.commit(&mut rng, &params);
-        let proof = EstablishProof::new(
-            &mut rng,
-            &params,
-            &state,
-            cs_bf,
-            pt_bf,
-            state_commitment,
-            close_state_commitment,
-        );
+        // Form proof, retrieve blinding factors
+        let (proof, _, _) = EstablishProof::new(&mut rng, &params, &state);
 
         // Proof must verify against the provided values.
         let public_values = EstablishProofPublicValues {

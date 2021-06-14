@@ -144,23 +144,10 @@ impl Requested {
     ) -> (Self, EstablishProof) {
         // Construct initial state.
         let state = State::new(rng, channel_id, merchant_balance, customer_balance);
-        let close_state = state.close_state();
-
-        // Commit to state and corresponding close state.
-        let (state_commitment, pay_token_blinding_factor) = state.commit(rng, &config);
-        let (close_state_commitment, close_state_blinding_factor) =
-            close_state.commit(rng, &config);
 
         // Form proof that the state / close state are correct.
-        let proof = EstablishProof::new(
-            rng,
-            &config,
-            &state,
-            close_state_blinding_factor,
-            pay_token_blinding_factor,
-            state_commitment,
-            close_state_commitment,
-        );
+        let (proof, close_state_blinding_factor, pay_token_blinding_factor) =
+            EstablishProof::new(rng, &config, &state);
 
         (
             Self {

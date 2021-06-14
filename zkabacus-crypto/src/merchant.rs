@@ -4,7 +4,7 @@
 use crate::{
     customer,
     nonce::Nonce,
-    proofs::{EstablishProof, EstablishProofPublicValues, PayProof, PayProofPublicValues},
+    proofs::{Context, EstablishProof, EstablishProofPublicValues, PayProof, PayProofPublicValues},
     revlock::*,
     states::*,
     types::*,
@@ -70,6 +70,7 @@ impl Config {
         customer_balance: CustomerBalance,
         merchant_balance: MerchantBalance,
         proof: EstablishProof,
+        context: &Context,
     ) -> Option<(crate::ClosingSignature, StateCommitment)> {
         // Collect items used to verify the proof.
         let public_values = EstablishProofPublicValues {
@@ -78,7 +79,7 @@ impl Config {
             customer_balance,
         };
         // Verify that proof is consistent with the expected inputs.
-        match proof.verify(&self, &public_values) {
+        match proof.verify(&self, &public_values, context) {
             // If so, blindly sign the close state.
             Verified => {
                 let (state_commitment, close_state_commitment) = proof.extract_commitments();
@@ -124,6 +125,7 @@ impl Config {
         amount: PaymentAmount,
         nonce: &Nonce,
         pay_proof: PayProof,
+        context: &Context,
     ) -> Option<(Unrevoked<'a>, crate::ClosingSignature)> {
         // Collect items used to verify the proof.
         let public_values = PayProofPublicValues {
@@ -131,7 +133,7 @@ impl Config {
             amount,
         };
         // Verify that proof is consistent with the expected inputs.
-        match pay_proof.verify(&self, &public_values) {
+        match pay_proof.verify(&self, &public_values, context) {
             // If so, blindly sign the close state.
             Verified => {
                 let (revocation_lock_commitment, state_commitment, close_state_commitment) =

@@ -46,7 +46,7 @@ At any of these points, the customer can call the associated `close()` function 
 
 use crate::{
     nonce::Nonce,
-    proofs::{BlindingFactors, EstablishProof, PayProof},
+    proofs::{BlindingFactors, Context, EstablishProof, PayProof},
     revlock::*,
     states::*,
     types::*,
@@ -141,13 +141,14 @@ impl Requested {
         channel_id: ChannelId,
         merchant_balance: MerchantBalance,
         customer_balance: CustomerBalance,
+        context: &Context,
     ) -> (Self, EstablishProof) {
         // Construct initial state.
         let state = State::new(rng, channel_id, merchant_balance, customer_balance);
 
         // Form proof that the state / close state are correct.
         let (proof, close_state_blinding_factor, pay_token_blinding_factor) =
-            EstablishProof::new(rng, &config, &state);
+            EstablishProof::new(rng, &config, &state, context);
 
         (
             Self {
@@ -228,6 +229,7 @@ impl Ready {
         self,
         rng: &mut impl Rng,
         amount: PaymentAmount,
+        context: &Context,
     ) -> Result<(Started, StartMessage), Error> {
         // Generate correctly-updated state.
         let new_state = self.state.apply_payment(rng, amount)?;
@@ -242,8 +244,14 @@ impl Ready {
         */
 
         // Form proof that the payment correctly updates a valid state.
-        let (pay_proof, blinding_factors) =
-            PayProof::new(rng, &self.config, self.pay_token, &self.state, &new_state);
+        let (pay_proof, blinding_factors) = PayProof::new(
+            rng,
+            &self.config,
+            self.pay_token,
+            &self.state,
+            &new_state,
+            context,
+        );
 
         // Save nonce.
         let old_nonce = *self.state.nonce();

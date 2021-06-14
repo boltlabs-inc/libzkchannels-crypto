@@ -95,8 +95,11 @@ impl<G: Group<Scalar = Scalar>> CommitmentProofBuilder<G> {
     Run the commitment phase of a Schnorr-style commitment proof.
 
     The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
-    scalars in the case that they need to satisfy some sort of constraint, for example when
-    implementing equality or linear combination constraints on top of the proof.
+    scalars for the message tuple. This allows them to express constraints among messages in one or more
+    proof objects.
+    For example, equality of two message elements is enforced by using the same commitment scalar for those
+    elements. A linear equation (message tuples `a`, `b`, `c` where `c = a + b`) is enforced by setting the
+    commitment scalar for `c` to the sum of the commitment scalars for `a` and `b`.
 
     Return a `MessageLengthMismatch` error if the `conjunction_commitment_scalars` are malformed
     with respect to the `PedersenParameters`.

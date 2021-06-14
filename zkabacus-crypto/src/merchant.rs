@@ -129,7 +129,7 @@ impl Config {
     ) -> Option<(Unrevoked<'a>, crate::ClosingSignature)> {
         // Collect items used to verify the proof.
         let public_values = PayProofPublicValues {
-            nonce: *nonce,
+            old_nonce: *nonce,
             amount,
         };
         // Verify that proof is consistent with the expected inputs.

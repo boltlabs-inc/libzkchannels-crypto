@@ -87,14 +87,14 @@ impl EstablishProof {
         state: &State,
         context: &Context,
     ) -> (Self, CloseStateBlindingFactor, PayTokenBlindingFactor) {
-        let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
-
         // Commit to state and corresponding close state.
         let (state_commitment, pay_token_blinding_factor) = state.commit(rng, &params);
         let (close_state_commitment, close_state_blinding_factor) =
             state.close_state().commit(rng, &params);
 
-        // Start commitment proof to the state.
+        let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
+
+        // Start commitment proof to the new state.
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &[None; 5],
@@ -106,8 +106,10 @@ impl EstablishProof {
         // Recall: this only includes those for the 5-part message, *not* the commitment blinding factor.
         let cs = state_proof_builder.conjunction_commitment_scalars();
 
-        // Start commitment proof to the close state. Place an equality constraint on the channel id,
-        // the revocation lock, and the balances.
+        // Start commitment proof to the new close state. Add constraints:
+        // - equality: channel id must match the one in the new state;
+        // - equality: revocation lock must match the one in the new state;
+        // - equality: balances must match the one in the new state;
         // Recall: the proof builder *always* chooses a random commitment scalar for the
         // blinding factor.
         let close_state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
@@ -219,7 +221,7 @@ impl EstablishProof {
             )
             .expect("length mismatch");
 
-        // Retrieve response scalars for the message tuples in the state and close state.
+        // Retrieve response scalars for the message tuples in the new state and new close state.
         let state_response_scalars = self.state_proof.conjunction_response_scalars();
         let close_state_response_scalars = self.close_state_proof.conjunction_response_scalars();
 
@@ -293,20 +295,20 @@ This is a zero-knowledge proof that makes the following guarantees:
 pub struct PayProof {
     // Commitment scalars for public items.
     #[serde(with = "SerializeElement")]
-    nonce_commitment_scalar: Scalar,
+    old_nonce_commitment_scalar: Scalar,
     #[serde(with = "SerializeElement")]
     close_tag_commitment_scalar: Scalar,
 
     // Proof objects.
-    pay_token_proof: SignatureProof,
-    revocation_lock_proof: CommitmentProof<G1Projective>,
+    old_pay_token_proof: SignatureProof,
+    old_revocation_lock_proof: CommitmentProof<G1Projective>,
     state_proof: CommitmentProof<G1Projective>,
     close_state_proof: CommitmentProof<G1Projective>,
     customer_balance_proof: RangeProof,
     merchant_balance_proof: RangeProof,
 
     // Commitments for the commitment proofs.
-    revocation_lock_commitment: RevocationLockCommitment,
+    old_revocation_lock_commitment: RevocationLockCommitment,
     state_commitment: StateCommitment,
     close_state_commitment: CloseStateCommitment,
 }
@@ -315,7 +317,7 @@ pub struct PayProof {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct BlindingFactors {
     /// The blinding factor for a [`RevocationLockCommitment`] (associated with the previous [`State`])
-    pub for_revocation_lock: RevocationLockBlindingFactor,
+    pub for_old_revocation_lock: RevocationLockBlindingFactor,
     /// The blinding factor for a [`StateCommitment`] (associated with the current [`State`]).
     pub for_pay_token: PayTokenBlindingFactor,
     /// The blinding factor for a [`CloseStateCommitment`] (associated with the current [`CloseState`]).
@@ -325,8 +327,8 @@ pub(crate) struct BlindingFactors {
 #[allow(unused)]
 impl PayProof {
     /// Get the revocation lock commitment out of the proof.
-    pub(crate) fn revocation_lock_commitment(&self) -> &RevocationLockCommitment {
-        &self.revocation_lock_commitment
+    pub(crate) fn old_revocation_lock_commitment(&self) -> &RevocationLockCommitment {
+        &self.old_revocation_lock_commitment
     }
 
     /// Get the state commitment out of the proof.
@@ -347,7 +349,7 @@ impl PayProof {
         CloseStateCommitment,
     ) {
         (
-            self.revocation_lock_commitment,
+            self.old_revocation_lock_commitment,
             self.state_commitment,
             self.close_state_commitment,
         )
@@ -384,18 +386,18 @@ impl PayProof {
         let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
 
         // Form commits to new state, new close state, and old revocation lock.
-        let (revocation_lock_commitment, revocation_lock_bf) =
+        let (old_revocation_lock_commitment, revocation_lock_bf) =
             old_state.commit_to_revocation(rng, params);
         let (state_commitment, state_bf) = state.commit(rng, params);
         let (close_state_commitment, close_state_bf) = state.close_state().commit(rng, params);
 
         let blinding_factors = BlindingFactors {
-            for_revocation_lock: revocation_lock_bf,
+            for_old_revocation_lock: revocation_lock_bf,
             for_pay_token: state_bf,
             for_close_state: close_state_bf,
         };
 
-        // Start range proof on customer balance.
+        // Start range proof on customer balance in the new state.
         let customer_range_proof_builder = RangeProofBuilder::generate_proof_commitments(
             state.customer_balance().into_inner() as i64,
             &params.range_proof_parameters,
@@ -403,7 +405,7 @@ impl PayProof {
         )
         .unwrap();
 
-        // Start range proof on merchant balance.
+        // Start range proof on merchant balance in the new state.
         let merchant_range_proof_builder = RangeProofBuilder::generate_proof_commitments(
             state.merchant_balance().into_inner() as i64,
             &params.range_proof_parameters,
@@ -415,18 +417,21 @@ impl PayProof {
         let merchant_balance_commitment_scalar = merchant_range_proof_builder.commitment_scalar;
 
         // Start commitment proof to old revocation lock.
-        let revocation_lock_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        let old_revocation_lock_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &[None],
             &params.revocation_commitment_parameters,
         )
         .expect("mismatched lengths");
-        let old_revlock_commitment_scalar =
-            revocation_lock_proof_builder.conjunction_commitment_scalars()[0];
 
-        // Start signature proof on pay token, with equality constraints on the old revocation lock
-        // and the balances from the range proofs.
-        let pay_token_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+        // Retrieve commitment scalar for the old rev lock, to use in future constraints.
+        let old_revlock_commitment_scalar =
+            old_revocation_lock_proof_builder.conjunction_commitment_scalars()[0];
+
+        // Start signature proof on old pay token. Add constraints:
+        // - equality: revocation lock must match the one in the commitment to the old revocation lock;
+        // - addition with public value: balances must be correlated with the values from the range proofs.
+        let old_pay_token_proof_builder = SignatureProofBuilder::generate_proof_commitments(
             rng,
             old_state.to_message(),
             pay_token.0,
@@ -440,11 +445,14 @@ impl PayProof {
             &params.merchant_public_key,
         )
         .expect("mismatched lengths");
-        let channel_id_commitment_scalar =
-            pay_token_proof_builder.conjunction_commitment_scalars()[0];
 
-        // Start commitment proof on new state with an equality constraint on the channel id and
-        // a linear relation on the balances from the range proofs.
+        // Retrieve commitment scalar corresponding to channel id, to use in future constraints.
+        let channel_id_commitment_scalar =
+            old_pay_token_proof_builder.conjunction_commitment_scalars()[0];
+
+        // Start commitment proof on new state. Add constraints:
+        // - equality: channel id must match the one in the pay token;
+        // - equality: balances must match the values from the range proofs.
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &[
@@ -462,8 +470,10 @@ impl PayProof {
         // Recall: this only includes those for the 5-part message, *not* the commitment blinding factor.
         let cs = state_proof_builder.conjunction_commitment_scalars();
 
-        // Start commitment proof on the new close state with equality constraints on the channel
-        // id, the revocation lock (from the state), and the balances (from the state).
+        // Start commitment proof on the new close state. Add constraints:
+        // - equality: channel id must match the one in the state (this also implies equality with the pay token channel id);
+        // - equality: revocation lock must match the one in the state;
+        // - equality: balances must match the ones in the state (this also implies the addition constraint)
         let close_state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &[Some(cs[0]), None, Some(cs[2]), Some(cs[3]), Some(cs[4])],
@@ -479,15 +489,15 @@ impl PayProof {
             .with_scalar(old_state.nonce().to_scalar())
             .with_scalar(CLOSE_SCALAR)
             // integrate commitments from commitment proofs
-            .with_commitment(revocation_lock_commitment.0)
+            .with_commitment(old_revocation_lock_commitment.0)
             .with_blinded_message(state_commitment.0)
             .with_blinded_message(close_state_commitment.0)
             // integrate commitment scalars from commitment proofs
-            .with_commitment(revocation_lock_proof_builder.scalar_commitment)
+            .with_commitment(old_revocation_lock_proof_builder.scalar_commitment)
             .with_commitment(state_proof_builder.scalar_commitment)
             .with_commitment(close_state_proof_builder.scalar_commitment)
             // integrate signature and range proofs
-            .with_signature_proof_builder(&pay_token_proof_builder)
+            .with_signature_proof_builder(&old_pay_token_proof_builder)
             .with_range_proof_builder(&customer_range_proof_builder)
             .with_range_proof_builder(&merchant_range_proof_builder)
             // integrate context
@@ -497,19 +507,19 @@ impl PayProof {
         (
             Self {
                 // Add commitment scalars for publicly revealed values: the old nonce and the close tag.
-                nonce_commitment_scalar: pay_token_proof_builder.conjunction_commitment_scalars()
-                    [1],
+                old_nonce_commitment_scalar: old_pay_token_proof_builder
+                    .conjunction_commitment_scalars()[1],
                 close_tag_commitment_scalar: close_state_proof_builder
                     .conjunction_commitment_scalars()[1],
                 // Complete the pay token signature proof.
-                pay_token_proof: pay_token_proof_builder
+                old_pay_token_proof: old_pay_token_proof_builder
                     .generate_proof_response(challenge)
                     .unwrap(),
                 // Complete the revocation lock proof.
-                revocation_lock_proof: revocation_lock_proof_builder
+                old_revocation_lock_proof: old_revocation_lock_proof_builder
                     .generate_proof_response(
                         &Message::from(old_state.revocation_lock().to_scalar()),
-                        blinding_factors.for_revocation_lock.0,
+                        blinding_factors.for_old_revocation_lock.0,
                         challenge,
                     )
                     .unwrap(),
@@ -538,7 +548,7 @@ impl PayProof {
                     .unwrap(),
 
                 // Add commitments.
-                revocation_lock_commitment,
+                old_revocation_lock_commitment,
                 state_commitment,
                 close_state_commitment,
             },
@@ -557,25 +567,25 @@ impl PayProof {
         public_values: &PayProofPublicValues,
         context: &Context,
     ) -> Verification {
-        let PayProofPublicValues { nonce, amount } = public_values;
+        let PayProofPublicValues { old_nonce, amount } = public_values;
 
         // Form the challenge.
         let challenge = ChallengeBuilder::new()
             // integrate keys and constants
             .with_public_key(&params.signing_keypair.public_key())
             .with_public_key(params.range_proof_parameters.public_key())
-            .with_scalar(nonce.to_scalar())
+            .with_scalar(old_nonce.to_scalar())
             .with_scalar(CLOSE_SCALAR)
             // integrate commitments from commitment proofs
-            .with_commitment(self.revocation_lock_commitment.0)
+            .with_commitment(self.old_revocation_lock_commitment.0)
             .with_blinded_message(self.state_commitment.0)
             .with_blinded_message(self.close_state_commitment.0)
             // integrate commitment scalars from commitment proofs
-            .with_commitment(self.revocation_lock_proof.scalar_commitment)
+            .with_commitment(self.old_revocation_lock_proof.scalar_commitment)
             .with_commitment(self.state_proof.scalar_commitment)
             .with_commitment(self.close_state_proof.scalar_commitment)
             // integrate signature and range proofs
-            .with_signature_proof(&self.pay_token_proof)
+            .with_signature_proof(&self.old_pay_token_proof)
             .with_range_proof(&self.customer_balance_proof)
             .with_range_proof(&self.merchant_balance_proof)
             // integrate context
@@ -588,16 +598,16 @@ impl PayProof {
             .to_g1_pedersen_parameters();
 
         // Check that the individual signature and commitment proofs verify.
-        let pay_token_proof_verifies = self
-            .pay_token_proof
+        let old_pay_token_proof_verifies = self
+            .old_pay_token_proof
             .verify_knowledge_of_signature(params.signing_keypair.public_key(), challenge)
             .expect("length mismatch");
 
-        let revlock_proof_verifies = self
-            .revocation_lock_proof
+        let old_revlock_proof_verifies = self
+            .old_revocation_lock_proof
             .verify_knowledge_of_opening_of_commitment(
                 &params.revocation_commitment_parameters,
-                self.revocation_lock_commitment.0,
+                self.old_revocation_lock_commitment.0,
                 challenge,
             )
             .expect("length mismatch");
@@ -620,9 +630,12 @@ impl PayProof {
             )
             .expect("length mismatch");
 
+        // Retrieve response scalars for the message tuples in the state, close state, and old pay
+        // token (old state). These are used to check constraints.
         let state_response_scalars = self.state_proof.conjunction_response_scalars();
         let close_state_response_scalars = self.close_state_proof.conjunction_response_scalars();
-        let pay_token_response_scalars = self.pay_token_proof.conjunction_response_scalars();
+        let old_pay_token_response_scalars =
+            self.old_pay_token_proof.conjunction_response_scalars();
 
         // Check that range proofs verify against the updated balances in the state.
         let customer_balance_proof_verifies = self
@@ -644,23 +657,25 @@ impl PayProof {
 
         // check channel identifiers match.
         let channel_ids_match = state_response_scalars[0] == close_state_response_scalars[0]
-            && close_state_response_scalars[0] == pay_token_response_scalars[0];
+            && close_state_response_scalars[0] == old_pay_token_response_scalars[0];
 
         // check close state contains close tag.
-        let expected_close_tag =
+        let close_tag_matches_expected =
             challenge.to_scalar() * CLOSE_SCALAR + self.close_tag_commitment_scalar;
-        let close_tag_matches = close_state_response_scalars[1] == expected_close_tag;
+        let close_tag_matches = close_state_response_scalars[1] == close_tag_matches_expected;
 
         // check old revocation locks match each other
-        let old_revlocks_match = self.revocation_lock_proof.conjunction_response_scalars()[0]
-            == pay_token_response_scalars[2];
+        let old_revlocks_match = self
+            .old_revocation_lock_proof
+            .conjunction_response_scalars()[0]
+            == old_pay_token_response_scalars[2];
 
         // check new revocation locks match each other
         let new_revlocks_match = state_response_scalars[2] == close_state_response_scalars[2];
 
         // check pay token nonce matches the passed in nonce
-        let pay_token_nonce_matches_expected = pay_token_response_scalars[1]
-            == challenge.to_scalar() * nonce.to_scalar() + self.nonce_commitment_scalar;
+        let pay_token_nonce_matches_expected = old_pay_token_response_scalars[1]
+            == challenge.to_scalar() * old_nonce.to_scalar() + self.old_nonce_commitment_scalar;
 
         // check new balances match between state and close state
         let new_customer_balances_match =
@@ -670,13 +685,13 @@ impl PayProof {
 
         // check that customer and merchant balances were properly updated
         let customer_balance_properly_updated = state_response_scalars[3]
-            == pay_token_response_scalars[3] - challenge.to_scalar() * amount.to_scalar();
+            == old_pay_token_response_scalars[3] - challenge.to_scalar() * amount.to_scalar();
         let merchant_balance_properly_updated = state_response_scalars[4]
-            == pay_token_response_scalars[4] + challenge.to_scalar() * amount.to_scalar();
+            == old_pay_token_response_scalars[4] + challenge.to_scalar() * amount.to_scalar();
 
         Verification::from(
-            pay_token_proof_verifies
-                && revlock_proof_verifies
+            old_pay_token_proof_verifies
+                && old_revlock_proof_verifies
                 && state_proof_verifies
                 && close_state_proof_verifies
                 && customer_balance_proof_verifies
@@ -709,7 +724,7 @@ pub struct PayTokenCommitment(Commitment<G2Projective>);
 #[derive(Debug, Clone, Copy)]
 pub struct PayProofPublicValues {
     /// Expected nonce revealed at the beginning of Pay.
-    pub nonce: Nonce,
+    pub old_nonce: Nonce,
     /// Expected payment amount.
     pub amount: PaymentAmount,
 }
@@ -796,7 +811,10 @@ mod tests {
         );
 
         // Verify proof against expected objects.
-        let public_values = PayProofPublicValues { nonce, amount };
+        let public_values = PayProofPublicValues {
+            old_nonce: nonce,
+            amount,
+        };
 
         assert!(matches!(
             proof.verify(&merchant_params, &public_values, &context),

@@ -329,7 +329,7 @@ impl Started {
                 LockMessage {
                     revocation_lock: self.old_state.revocation_lock(),
                     revocation_secret: self.old_state.revocation_secret(),
-                    revocation_lock_blinding_factor: self.blinding_factors.for_revocation_lock,
+                    revocation_lock_blinding_factor: self.blinding_factors.for_old_revocation_lock,
                 },
             )),
             Failed => Err(self),

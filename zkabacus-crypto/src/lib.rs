@@ -30,6 +30,9 @@ Ch 3.3: Off-network channel protocol zkAbacus.
 #[macro_use]
 mod sqlite;
 
+#[doc(hidden)]
+pub mod internal;
+
 pub mod customer;
 pub mod merchant;
 pub mod revlock;

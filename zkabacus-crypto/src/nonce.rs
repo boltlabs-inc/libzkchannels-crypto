@@ -11,10 +11,8 @@ pub struct Nonce(#[serde(with = "SerializeElement")] Scalar);
 
 #[allow(unused)]
 impl Nonce {
-    /// Generate a new cryptographically random nonce with the given random number generator. This
-    /// is not part of the public API and may change between major releases.
-    #[doc(hidden)]
-    pub fn new(rng: &mut impl Rng) -> Self {
+    /// Generate a new cryptographically random nonce with the given random number generator.
+    pub(crate) fn new(rng: &mut impl Rng) -> Self {
         Self(Scalar::random(rng))
     }
 

@@ -205,14 +205,13 @@ impl State {
     pub fn close_state(&self) -> CloseState {
         let State {
             channel_id,
-            revocation_secret,
             merchant_balance,
             customer_balance,
             ..
         } = self;
         CloseState {
             channel_id: *channel_id,
-            revocation_lock: revocation_secret.revocation_lock(),
+            revocation_lock: self.revocation_lock(),
             merchant_balance: *merchant_balance,
             customer_balance: *customer_balance,
         }

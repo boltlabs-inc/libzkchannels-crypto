@@ -152,20 +152,18 @@ impl Config {
         }
     }
 
-    /// Validate closing information. This is zkAbacus.Close.
+    /// Validate closing information: make sure the [`CloseStateSignature`] is on the given
+    /// [`CloseState`]. This is zkAbacus.Close.
+    ///
+    /// Note: The merchant should also check that the revocation lock in the `CloseState`
+    /// has not been seen before.
     pub fn validate_close(
         &self,
         close_signature: CloseStateSignature,
         close_state: CloseState,
-        revocation_secret: RevocationSecret,
     ) -> Verification {
-        // Verify the revocation secret matches the lock in the message
-        let revocation_lock_verifies = close_state.revocation_lock().verify(&revocation_secret);
-
         // Verify the signature is on the message
-        let signature_verifies = close_signature.verify(&self.to_customer_config(), close_state);
-
-        revocation_lock_verifies & signature_verifies
+        close_signature.verify(&self.to_customer_config(), close_state)
     }
 }
 /**

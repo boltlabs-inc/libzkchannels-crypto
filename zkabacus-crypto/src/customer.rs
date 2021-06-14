@@ -267,12 +267,7 @@ impl Ready {
     /// Extract data used to close the channel.
     /// This is zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
-        ClosingMessage::new(
-            rng,
-            self.close_state_signature,
-            self.state.close_state(),
-            self.state.revocation_secret(),
-        )
+        ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
     }
 }
 
@@ -307,7 +302,6 @@ pub struct LockMessage {
 pub struct ClosingMessage {
     close_signature: CloseStateSignature,
     close_state: CloseState,
-    revocation_secret: RevocationSecret,
 }
 
 impl ClosingMessage {
@@ -316,13 +310,11 @@ impl ClosingMessage {
         rng: &mut impl Rng,
         mut close_signature: CloseStateSignature,
         close_state: CloseState,
-        revocation_secret: RevocationSecret,
     ) -> Self {
         close_signature.randomize(&mut *rng);
         Self {
             close_signature,
             close_state,
-            revocation_secret,
         }
     }
 }
@@ -364,7 +356,6 @@ impl Started {
             rng,
             self.old_close_state_signature,
             self.old_state.close_state(),
-            self.old_state.revocation_secret(),
         )
     }
 }
@@ -401,11 +392,6 @@ impl Locked {
     /// Extract data used to close the channel.
     /// This is zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
-        ClosingMessage::new(
-            rng,
-            self.close_state_signature,
-            self.state.close_state(),
-            self.state.revocation_secret(),
-        )
+        ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
     }
 }

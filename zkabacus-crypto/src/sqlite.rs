@@ -1,7 +1,3 @@
-use crate::revlock::{RevocationLock, RevocationSecret};
-use crate::Nonce;
-use std::convert::TryInto;
-
 macro_rules! impl_sqlx_for_scalar_newtype {
     ($type:ty, $constructor:ident) => {
         impl ::sqlx::Type<::sqlx::Sqlite> for $type {
@@ -39,8 +35,9 @@ macro_rules! impl_sqlx_for_scalar_newtype {
                 }
 
                 let blob =
-                    <&[::std::primitive::u8] as ::sqlx::Decode<::sqlx::Sqlite>>::decode(value)?
-                        .try_into()?;
+                    ::std::convert::TryInto::try_into(
+                        <&[::std::primitive::u8] as ::sqlx::Decode<::sqlx::Sqlite>>::decode(value)?
+                    )?;
                 let maybe_scalar: ::std::option::Option<$crate::types::Scalar> =
                     $crate::types::Scalar::from_bytes(blob).into();
 
@@ -56,7 +53,3 @@ macro_rules! impl_sqlx_for_scalar_newtype {
         }
     };
 }
-
-impl_sqlx_for_scalar_newtype!(Nonce, Nonce);
-impl_sqlx_for_scalar_newtype!(RevocationLock, RevocationLock);
-impl_sqlx_for_scalar_newtype!(RevocationSecret, RevocationSecret);

@@ -7,7 +7,7 @@ use zkchannels_crypto::SerializeElement;
 #[allow(unused)]
 /// A random nonce.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct Nonce(#[serde(with = "SerializeElement")] pub(crate) Scalar);
+pub struct Nonce(#[serde(with = "SerializeElement")] Scalar);
 
 #[allow(unused)]
 impl Nonce {
@@ -23,3 +23,6 @@ impl Nonce {
         self.0
     }
 }
+
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_scalar_newtype!(Nonce, Nonce);

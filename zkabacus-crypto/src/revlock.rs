@@ -19,12 +19,17 @@ use zkchannels_crypto::{pedersen::Commitment, BlindingFactor, Message, Serialize
 /// A revocation lock.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLock(#[serde(with = "SerializeElement")] pub(crate) Scalar);
+pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 
 /// A revocation secret.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationSecret(#[serde(with = "SerializeElement")] pub(crate) Scalar);
+pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
+
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_scalar_newtype!(RevocationLock, RevocationLock);
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_scalar_newtype!(RevocationSecret, RevocationSecret);
 
 /// A commitment to a [`RevocationLock`].
 ///
@@ -76,7 +81,7 @@ impl RevocationSecret {
     }
 
     /// Convert a revocation secret to its canonical `Scalar` representation.
-    pub(crate) fn to_scalar(&self) -> Scalar {
+    fn to_scalar(&self) -> Scalar {
         self.0
     }
 }

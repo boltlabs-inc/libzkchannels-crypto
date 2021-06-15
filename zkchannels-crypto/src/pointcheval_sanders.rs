@@ -349,6 +349,21 @@ impl<const N: usize> PublicKey<N> {
     pub fn blind_message(&self, msg: &Message<N>, bf: BlindingFactor) -> BlindedMessage {
         BlindedMessage(self.to_g1_pedersen_parameters().commit(msg, bf))
     }
+
+    /// Convert the public key to a byte representation.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(self.g1.to_bytes().as_ref());
+        for y1 in &self.y1s {
+            buf.extend_from_slice(y1.to_bytes().as_ref());
+        }
+        buf.extend_from_slice(self.g2.to_bytes().as_ref());
+        buf.extend_from_slice(self.x2.to_bytes().as_ref());
+        for y2 in &self.y2s {
+            buf.extend_from_slice(y2.to_bytes().as_ref());
+        }
+        buf
+    }
 }
 
 impl<const N: usize> ChallengeInput for PublicKey<N> {

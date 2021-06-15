@@ -28,11 +28,7 @@ use crate::{
 };
 use ff::Field;
 use serde::*;
-use zkchannels_crypto::{
-    message::{BlindingFactor, Message},
-    ps_blind_signatures::*,
-    ps_signatures::{Signature, Verifier},
-};
+use zkchannels_crypto::{pointcheval_sanders::*, BlindingFactor, Message};
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]
@@ -253,8 +249,7 @@ impl State {
         let blinding_factor = BlindingFactor::new(rng);
         let commitment = param
             .merchant_public_key
-            .blind_message(&msg, blinding_factor)
-            .expect("mismatched message length.");
+            .blind_message(&msg, blinding_factor);
 
         (
             StateCommitment(commitment),
@@ -263,8 +258,8 @@ impl State {
     }
 
     /// Get the message representation of a State.
-    pub(crate) fn to_message(&self) -> Message {
-        Message::from(vec![
+    pub(crate) fn to_message(&self) -> Message<5> {
+        Message::new([
             self.channel_id.to_scalar(),
             self.nonce.to_scalar(),
             self.revocation_secret.revocation_lock().to_scalar(),
@@ -289,8 +284,7 @@ impl CloseState<'_> {
         let blinding_factor = BlindingFactor::new(rng);
         let commitment = param
             .merchant_public_key
-            .blind_message(&msg, blinding_factor)
-            .expect("mismatched lengths");
+            .blind_message(&msg, blinding_factor);
 
         (
             CloseStateCommitment(commitment),
@@ -299,8 +293,8 @@ impl CloseState<'_> {
     }
 
     /// Get the message representation of a CloseState.
-    pub(crate) fn to_message(&self) -> Message {
-        Message::from(vec![
+    pub(crate) fn to_message(&self) -> Message<5> {
+        Message::new([
             self.channel_id.to_scalar(),
             CLOSE_SCALAR,
             self.revocation_lock.to_scalar(),

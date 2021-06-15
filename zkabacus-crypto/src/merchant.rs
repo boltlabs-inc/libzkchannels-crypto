@@ -12,7 +12,7 @@ use crate::{
     Verification::{Failed, Verified},
 };
 use zkchannels_crypto::{
-    pedersen_commitments::PedersenParameters, ps_keys::KeyPair, range_proof::RangeProofParameters,
+    pedersen::PedersenParameters, pointcheval_sanders::KeyPair, proofs::RangeProofParameters,
 };
 
 /// A merchant that is ready to establish channels and process payments.
@@ -24,9 +24,10 @@ use zkchannels_crypto::{
 #[allow(missing_copy_implementations)]
 pub struct Config {
     /// KeyPair for signing, blind signing, and proofs.
-    pub(crate) signing_keypair: KeyPair,
+    pub(crate) signing_keypair: KeyPair<5>,
     /// Pedersen parameters for committing to revocation locks.
-    pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective>,
+    pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
+    /// Parameters for generating and verifying range proofs.
     pub(crate) range_proof_parameters: RangeProofParameters,
 }
 
@@ -35,8 +36,8 @@ impl Config {
     /// This executes zkAbacus.Init.
     pub fn new(rng: &mut impl Rng) -> Self {
         Self {
-            signing_keypair: KeyPair::new(5, rng),
-            revocation_commitment_parameters: PedersenParameters::new(1, rng),
+            signing_keypair: KeyPair::new(rng),
+            revocation_commitment_parameters: PedersenParameters::new(rng),
             range_proof_parameters: RangeProofParameters::new(rng),
         }
     }

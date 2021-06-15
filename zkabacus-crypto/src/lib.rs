@@ -30,6 +30,7 @@ pub mod merchant;
 pub mod revlock;
 
 pub use nonce::Nonce;
+pub use proofs::Context;
 pub use proofs::EstablishProof;
 pub use proofs::PayProof;
 

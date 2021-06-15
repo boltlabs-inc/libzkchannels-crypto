@@ -7,6 +7,7 @@ channel and have modified it appropriately. The merchant verifies the proofs, co
 the customer is behaving correctly without learning any additional information about the channel state.
 */
 use serde::*;
+use sha3::{Digest, Sha3_256};
 
 use crate::{
     customer, merchant, revlock::*, states::*, types::*, Nonce, PaymentAmount, Rng, Verification,
@@ -25,13 +26,22 @@ use zkchannels_crypto::{
 /// Context provides additional information about the setting in which the proof is used, such
 /// as a session transcript.
 #[derive(Debug, Clone, Copy)]
-pub struct Context {}
+pub struct Context([u8; 32]);
 
 impl Context {
+    /// Generate a new `Context` from the given bytes.
+    pub fn new(bytes: &[u8]) -> Self {
+        // Hash the input bytes.
+        let mut hasher = Sha3_256::new();
+        hasher.update(bytes);
+        let mut context_digest = [0; 32];
+        context_digest.copy_from_slice(hasher.finalize().as_ref());
+        Self(context_digest)
+    }
+
     /// Convert context to a byte string.
-    /// FIXME(Marcella): Implement this correctly once Context is defined.
     pub fn to_bytes(&self) -> [u8; 32] {
-        [0; 32]
+        self.0
     }
 }
 
@@ -759,7 +769,7 @@ mod tests {
             CustomerBalance::try_new(100).unwrap(),
         );
 
-        let context = Context {};
+        let context = Context::new(b"establish proof verify test");
 
         // Form proof, retrieve blinding factors
         let (proof, _, _) = EstablishProof::new(&mut rng, &params, &state, &context);
@@ -804,7 +814,7 @@ mod tests {
         // Save a copy of the nonce...
         let nonce = *old_state.nonce();
 
-        let context = Context {};
+        let context = Context::new(b"pay proof verify test");
 
         // Form proof.
         let (proof, _blinding_factors) = PayProof::new(

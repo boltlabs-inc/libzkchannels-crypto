@@ -567,14 +567,12 @@ impl PayProof {
         public_values: &PayProofPublicValues,
         context: &Context,
     ) -> Verification {
-        let PayProofPublicValues { old_nonce, amount } = public_values;
-
         // Form the challenge.
         let challenge = ChallengeBuilder::new()
             // integrate keys and constants
             .with_public_key(&params.signing_keypair.public_key())
             .with_public_key(params.range_proof_parameters.public_key())
-            .with_scalar(old_nonce.to_scalar())
+            .with_scalar(public_values.old_nonce.to_scalar())
             .with_scalar(CLOSE_SCALAR)
             // integrate commitments from commitment proofs
             .with_commitment(self.old_revocation_lock_commitment.0)
@@ -675,7 +673,8 @@ impl PayProof {
 
         // check pay token nonce matches the passed in nonce
         let pay_token_nonce_matches_expected = old_pay_token_response_scalars[1]
-            == challenge.to_scalar() * old_nonce.to_scalar() + self.old_nonce_commitment_scalar;
+            == challenge.to_scalar() * public_values.old_nonce.to_scalar()
+                + self.old_nonce_commitment_scalar;
 
         // check new balances match between state and close state
         let new_customer_balances_match =
@@ -685,9 +684,11 @@ impl PayProof {
 
         // check that customer and merchant balances were properly updated
         let customer_balance_properly_updated = state_response_scalars[3]
-            == old_pay_token_response_scalars[3] - challenge.to_scalar() * amount.to_scalar();
+            == old_pay_token_response_scalars[3]
+                - challenge.to_scalar() * public_values.amount.to_scalar();
         let merchant_balance_properly_updated = state_response_scalars[4]
-            == old_pay_token_response_scalars[4] + challenge.to_scalar() * amount.to_scalar();
+            == old_pay_token_response_scalars[4]
+                + challenge.to_scalar() * public_values.amount.to_scalar();
 
         Verification::from(
             old_pay_token_proof_verifies
@@ -798,7 +799,7 @@ mod tests {
         // Get a pay token AKA signature on the old state.
         let (old_state_com, old_pt_bf) = old_state.commit(&mut rng, &params);
         let pay_token =
-            BlindedPayToken::new(&mut rng, &merchant_params, &old_state_com).unblind(old_pt_bf);
+            BlindedPayToken::sign(&mut rng, &merchant_params, &old_state_com).unblind(old_pt_bf);
 
         // Save a copy of the nonce...
         let nonce = *old_state.nonce();

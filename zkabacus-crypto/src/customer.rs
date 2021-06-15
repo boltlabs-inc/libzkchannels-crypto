@@ -234,15 +234,6 @@ impl Ready {
         // Generate correctly-updated state.
         let new_state = self.state.apply_payment(rng, amount)?;
 
-        // Save the blinding factors together.
-        /*
-        let blinding_factors = BlindingFactors {
-            for_revocation_lock: revocation_lock_bf,
-            for_pay_token: state_bf,
-            for_close_state: close_state_bf,
-        };
-        */
-
         // Form proof that the payment correctly updates a valid state.
         let (pay_proof, blinding_factors) = PayProof::new(
             rng,

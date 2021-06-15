@@ -346,7 +346,7 @@ impl CloseStateBlindedSignature {
     /// Produce a [`CloseStateBlindedSignature`] by blindly signing the given [`CloseStateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub(crate) fn new(
+    pub(crate) fn sign(
         rng: &mut impl Rng,
         param: &merchant::Config,
         com: CloseStateCommitment,
@@ -404,7 +404,11 @@ impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub(crate) fn new(rng: &mut impl Rng, param: &merchant::Config, com: &StateCommitment) -> Self {
+    pub(crate) fn sign(
+        rng: &mut impl Rng,
+        param: &merchant::Config,
+        com: &StateCommitment,
+    ) -> Self {
         BlindedPayToken(param.signing_keypair.blind_sign(rng, &com.0))
     }
 

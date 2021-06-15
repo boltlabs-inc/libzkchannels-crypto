@@ -84,7 +84,7 @@ impl Config {
             Verified => {
                 let (state_commitment, close_state_commitment) = proof.extract_commitments();
                 Some((
-                    CloseStateBlindedSignature::new(rng, &self, close_state_commitment),
+                    CloseStateBlindedSignature::sign(rng, &self, close_state_commitment),
                     state_commitment,
                 ))
             }
@@ -106,7 +106,7 @@ impl Config {
         // Blindly sign the pay token.
         // Note that this should _only_ be called after the merchant has received a valid
         // `EstablishProof` that is consistent with the `state_commitment`.
-        BlindedPayToken::new(rng, &self, &state_commitment)
+        BlindedPayToken::sign(rng, &self, &state_commitment)
     }
 
     /**
@@ -144,7 +144,7 @@ impl Config {
                         revocation_lock_commitment,
                         state_commitment,
                     },
-                    CloseStateBlindedSignature::new(rng, &self, close_state_commitment),
+                    CloseStateBlindedSignature::sign(rng, &self, close_state_commitment),
                 ))
             }
             Failed => None,
@@ -192,7 +192,7 @@ impl<'a> Unrevoked<'a> {
             // If so, blindly sign the pay token.
             // Note that the merchant should _only_ call this function after receiving
             // a valid [`PayProof`] that is consistent with the given `state_commitment`.
-            Verified => Ok(BlindedPayToken::new(
+            Verified => Ok(BlindedPayToken::sign(
                 rng,
                 self.config,
                 &self.state_commitment,

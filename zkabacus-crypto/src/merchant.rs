@@ -33,7 +33,7 @@ pub struct Config {
 
 impl Config {
     /// Instantiate a new merchant with all parameters.
-    /// This executes zkAbacus.Init.
+    /// This is called as part of zkAbacus.Init.
     pub fn new(rng: &mut impl Rng) -> Self {
         Self {
             signing_keypair: KeyPair::new(rng),
@@ -53,13 +53,13 @@ impl Config {
 
     /**
     Respond to a customer request to initialize a new channel.
-    This executes zkAbacus.Initialize.
+    This is called as part of zkAbacus.Initialize.
 
     Fails in the case where the given [`EstablishProof`] does not verify with respect to the
     public variables (channel ID, balances, and provided commitments).
 
-    The given `channel_id` *must* be fresh; this should only be called if the [`ChannelId`] has
-    never been seen before.
+    **Usage**: The given `channel_id` *must* be fresh; this should only be called if the [`ChannelId`]
+    has never been seen before.
 
     Note: there are two "flavors" of inputs here. Channel ID + balances are public inputs, should
     be agreed on outside of zkAbacus. The commitments + proof are received from the customer.
@@ -94,10 +94,11 @@ impl Config {
     }
 
     /**
-    Activate a channel with the given ID. This is part of zkAbacus.Activate.
+    Activate a channel with the given ID. This is called as part of zkAbacus.Activate.
 
-    This should only be called _after_ the merchant has executed [`initialize()`](Config::initialize()) for the given
-    [`ChannelId`].
+    **Usage**: The [`StateCommitment`] *must* be associated with a valid [`EstablishProof`]. This
+    should only be called _after_ the merchant has successfully run [`initialize()`](Config::initialize())
+    with the given `state_commitment`.
     */
     pub fn activate(
         &self,
@@ -113,9 +114,10 @@ impl Config {
     /**
     On receiving a payment request, issue a [`ClosingSignature`](crate::ClosingSignature) on the
     updated state, if the provided evidence is valid.
-    This is part of zkAbacus.Pay.
+    This is called as part of zkAbacus.Pay.
 
-    This should only be called if the [`Nonce`] has never been seen before.
+    **Usage**: The given [`Nonce`] *must* be fresh; this should only be called if the `nonce` has
+    never been seen before.
 
     This will fail if the [`PayProof`] is not verifiable with the provided commitments and
     [`Nonce`].
@@ -153,10 +155,10 @@ impl Config {
     }
 
     /// Validate closing information: make sure the [`CloseStateSignature`] is on the given
-    /// [`CloseState`]. This is zkAbacus.Close.
+    /// [`CloseState`]. This is called as part of zkAbacus.Close.
     ///
-    /// Note: The merchant should also check that the revocation lock in the `CloseState`
-    /// has not been seen before.
+    /// **Usage**: The [`CloseState`] *must* be fresh; this should only be run if the revocation
+    /// lock in the given `close_state` has never been seen before.
     pub fn validate_close(
         &self,
         close_signature: CloseStateSignature,
@@ -183,9 +185,9 @@ impl<'a> Unrevoked<'a> {
     /**
     Complete a payment by issuing a pay token on the updated state, if the revocation information
     is well-formed.
-    This is part of zkAbacus.Pay.
+    This is called as part of zkAbacus.Pay.
 
-    This should only be called if the revocation lock has never been seen before.
+    **Usage**: This should *only* be called if the revocation lock has never been seen before.
 
     This will fail if the revocation information is not well-formed (e.g. the revocation lock does
     not match the revocation secret; or it does not match the stored revocation commitment).

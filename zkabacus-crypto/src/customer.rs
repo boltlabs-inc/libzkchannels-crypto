@@ -135,7 +135,7 @@ pub struct RequestMessage {
 impl Requested {
     /**
     Generate a new channel request from public parameters.
-    This is part of zkAbacus.Initialize.
+    This is called as part of zkAbacus.Initialize.
     */
     pub fn new(
         rng: &mut impl Rng,
@@ -164,7 +164,7 @@ impl Requested {
     }
 
     /// Complete channel initiation: validate approval received from the merchant.
-    /// This is part of zkAbacus.Initialize.
+    /// This is called as part of zkAbacus.Initialize.
     pub fn complete(
         self,
         closing_signature: crate::ClosingSignature,
@@ -196,7 +196,7 @@ pub struct Inactive {
 
 impl Inactive {
     /// Activate the channel with the fresh pay token from the merchant.
-    /// This is part of zkAbacus.Activate.
+    /// This is called as part of zkAbacus.Activate.
     pub fn activate(self, pay_token: crate::PayToken) -> Result<Ready, Inactive> {
         // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
@@ -265,7 +265,7 @@ impl Ready {
     }
 
     /// Extract data used to close the channel.
-    /// This is zkAbacus.Close.
+    /// This is called as part of zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
     }
@@ -350,7 +350,7 @@ impl Started {
     }
 
     /// Extract data used to close the channel on the previous balances.
-    /// This is zkAbacus.Close.
+    /// This is called as part of zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(
             rng,
@@ -390,7 +390,7 @@ impl Locked {
     }
 
     /// Extract data used to close the channel.
-    /// This is zkAbacus.Close.
+    /// This is called as part of zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
     }

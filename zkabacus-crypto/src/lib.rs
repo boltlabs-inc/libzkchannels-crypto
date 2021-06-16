@@ -63,6 +63,7 @@ mod types {
 }
 
 use crate::types::*;
+use serde::*;
 use std::convert::TryFrom;
 use thiserror::*;
 
@@ -124,11 +125,15 @@ impl Balance {
 }
 
 /// Amount of a single payment.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct PaymentAmount(i64);
 
-#[allow(unused)]
 impl PaymentAmount {
+    /// Construct a zero payment amount that does not change the balances.
+    pub fn zero() -> Self {
+        Self(0)
+    }
+
     /// Construct a *positive* payment amount from the customer to the merchant.
     pub fn pay_merchant(amount: u64) -> Result<Self, Error> {
         match i64::try_from(amount) {

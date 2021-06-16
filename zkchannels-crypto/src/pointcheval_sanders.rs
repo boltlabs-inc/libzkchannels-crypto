@@ -46,6 +46,105 @@ pub struct PublicKey<const N: usize> {
     pub y2s: [G2Affine; N],
 }
 
+#[cfg(feature = "sqlite")]
+mod sqlite {
+    use sqlx::{
+        database::HasArguments,
+        decode::Decode,
+        encode::{Encode, IsNull},
+        error::{BoxDynError, UnexpectedNullError},
+        sqlite::{Sqlite, SqliteValueRef},
+        Error, ValueRef,
+    };
+    use std::io::Cursor;
+    use std::io::Read;
+
+    const SIZE_OF_G1AFFINE: usize = 48;
+    const SIZE_OF_G2AFFINE: usize = 96;
+
+    impl<const N: usize> Encode<'_, Sqlite> for PublicKey<N> {
+        fn encode_by_ref(&self, buf: &mut <Sqlite as HasArguments<'_>>::ArgumentBuffer) -> IsNull {
+            let bytes_count = (SIZE_OF_G1AFFINE * (N + 1)) + (SIZE_OF_G2AFFINE * (N + 2));
+            let mut bytes: Vec<u8> = Vec::with_capacity(bytes_count);
+            bytes.extend(&self.g1.to_compressed());
+
+            for y1 in self.y1s.iter().map(|y1| y1.to_compressed()) {
+                bytes.extend(&y1);
+            }
+
+            bytes.extend(&self.g2.to_compressed());
+            bytes.extend(&self.x2.to_compressed());
+
+            for y2 in self.y2s.iter().map(|y2| y2.to_compressed()) {
+                bytes.extend(&y2);
+            }
+
+            bytes.encode_by_ref(buf)
+        }
+    }
+
+    fn decode_g1_affine<T>(cursor: &mut Cursor<T>) -> Result<G1Affine, BoxDynError>
+    where
+        T: AsRef<[u8]>,
+    {
+        let mut g1 = [0u8; 48];
+        cursor.read_exact(&mut g1)?;
+        let maybe_g1: Option<G1Affine> = G1Affine::from_compressed(&g1).into();
+        Ok(maybe_g1.ok_or_else(|| {
+            Error::Decode(String::from("could not read G1Affine from bytes").into())
+        })?)
+    }
+
+    fn decode_g2_affine<T>(cursor: &mut Cursor<T>) -> Result<G2Affine, BoxDynError>
+    where
+        T: AsRef<[u8]>,
+    {
+        let mut g2 = [0u8; 96];
+        cursor.read_exact(&mut g2)?;
+        let maybe_g2: Option<G2Affine> = G2Affine::from_compressed(&g2).into();
+        Ok(maybe_g2.ok_or_else(|| {
+            Error::Decode(String::from("could not read G2Affine from bytes").into())
+        })?)
+    }
+
+    impl<const N: usize> Decode<'_, Sqlite> for PublicKey<N> {
+        fn decode(value: SqliteValueRef<'_>) -> Result<Self, BoxDynError> {
+            if value.is_null() {
+                return Err(Box::new(UnexpectedNullError));
+            }
+
+            let blob: &[u8] = <&[u8] as Decode<Sqlite>>::decode(value)?;
+            let mut cursor = Cursor::new(blob);
+
+            let g1 = decode_g1_affine(&mut cursor)?;
+
+            let mut y1s = [G1Affine::default(); N];
+
+            for y1 in &mut y1s {
+                let g1 = decode_g1_affine(&mut cursor)?;
+                *y1 = g1;
+            }
+
+            let g2 = decode_g2_affine(&mut cursor)?;
+            let x2 = decode_g2_affine(&mut cursor)?;
+
+            let mut y2s = [G2Affine::default(); N];
+            for y2 in &mut y2s {
+                let g2 = decode_g2_affine(&mut cursor)?;
+                *y2 = g2;
+            }
+
+            Ok(Self {
+                g1,
+                y1s,
+                g2,
+                x2,
+                y2s,
+            })
+        }
+    }
+}
+
 /// A keypair formed from a `SecretKey` and a [`PublicKey`] for multi-message operations.
 #[derive(Debug)]
 pub struct KeyPair<const N: usize> {

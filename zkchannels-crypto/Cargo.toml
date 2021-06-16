@@ -6,6 +6,9 @@ edition = "2018"
 license = "MIT"
 description = "implementation of a randomizable signature scheme with efficient zero knowledge protocols"
 
+[features]
+sqlite = ["sqlx", "sqlx/sqlite"]
+
 [dependencies]
 rust-crypto = "0.2"
 arrayvec = "0.7"
@@ -18,3 +21,4 @@ sha3 = "0.9.1"
 thiserror = "1"
 serde = { version = "1.0.126", features = ["derive"] }
 serde-big-array = { version = "0.3.2", features = ["const-generics"] }
+sqlx = { version = "0.5.2", features = ["runtime-tokio-rustls"], optional = true }

@@ -45,8 +45,12 @@ impl ChannelId {
     }
 }
 
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_scalar_newtype!(ChannelId, ChannelId);
+
 /// Channel balance for merchant.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "sqlite", derive(sqlx::Type), sqlx(transparent))]
 pub struct MerchantBalance(Balance);
 
 impl MerchantBalance {
@@ -80,6 +84,7 @@ impl MerchantBalance {
 
 /// Channel balance for customer.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "sqlite", derive(sqlx::Type), sqlx(transparent))]
 pub struct CustomerBalance(Balance);
 
 impl CustomerBalance {
@@ -322,6 +327,7 @@ pub struct CloseStateCommitment(pub(crate) BlindedMessage);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "sqlite", derive(sqlx::Type), sqlx(transparent))]
 #[allow(missing_copy_implementations)]
 pub(crate) struct CloseStateSignature(pub(crate) Signature);
 
@@ -382,6 +388,7 @@ impl CloseStateSignature {
 /// A `PayToken` allows a customer to initiate a new payment. It is tied to a specific channel
 /// [`State`].
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "sqlite", derive(sqlx::Type), sqlx(transparent))]
 #[allow(missing_copy_implementations)]
 pub(crate) struct PayToken(pub(crate) Signature);
 

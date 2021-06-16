@@ -48,6 +48,7 @@ pub struct PublicKey<const N: usize> {
 
 #[cfg(feature = "sqlite")]
 mod sqlite {
+    use super::*;
     use sqlx::{
         database::HasArguments,
         decode::Decode,
@@ -59,6 +60,7 @@ mod sqlite {
     use std::io::Cursor;
     use std::io::Read;
 
+    const SIZE_OF_SCALAR: usize = 32;
     const SIZE_OF_G1AFFINE: usize = 48;
     const SIZE_OF_G2AFFINE: usize = 96;
 
@@ -87,7 +89,7 @@ mod sqlite {
     where
         T: AsRef<[u8]>,
     {
-        let mut g1 = [0u8; 48];
+        let mut g1 = [0u8; SIZE_OF_G1AFFINE];
         cursor.read_exact(&mut g1)?;
         let maybe_g1: Option<G1Affine> = G1Affine::from_compressed(&g1).into();
         Ok(maybe_g1.ok_or_else(|| {
@@ -99,11 +101,23 @@ mod sqlite {
     where
         T: AsRef<[u8]>,
     {
-        let mut g2 = [0u8; 96];
+        let mut g2 = [0u8; SIZE_OF_G2AFFINE];
         cursor.read_exact(&mut g2)?;
         let maybe_g2: Option<G2Affine> = G2Affine::from_compressed(&g2).into();
         Ok(maybe_g2.ok_or_else(|| {
             Error::Decode(String::from("could not read G2Affine from bytes").into())
+        })?)
+    }
+
+    fn decode_scalar<T>(cursor: &mut Cursor<T>) -> Result<Scalar, BoxDynError>
+    where
+        T: AsRef<[u8]>,
+    {
+        let mut scalar = [0u8; SIZE_OF_SCALAR];
+        cursor.read_exact(&mut scalar)?;
+        let maybe_scalar: Option<Scalar> = Scalar::from_bytes(&scalar).into();
+        Ok(maybe_scalar.ok_or_else(|| {
+            Error::Decode(String::from("could not read Scalar from bytes").into())
         })?)
     }
 
@@ -141,6 +155,68 @@ mod sqlite {
                 x2,
                 y2s,
             })
+        }
+    }
+
+    impl Encode<'_, Sqlite> for Signature {
+        fn encode_by_ref(&self, buf: &mut <Sqlite as HasArguments<'_>>::ArgumentBuffer) -> IsNull {
+            let bytes_count = SIZE_OF_G1AFFINE * 2;
+            let mut bytes: Vec<u8> = Vec::with_capacity(bytes_count);
+            bytes.extend(&self.sigma1.to_compressed());
+            bytes.extend(&self.sigma2.to_compressed());
+            bytes.encode_by_ref(buf)
+        }
+    }
+
+    impl Decode<'_, Sqlite> for Signature {
+        fn decode(value: SqliteValueRef<'_>) -> Result<Self, BoxDynError> {
+            if value.is_null() {
+                return Err(Box::new(UnexpectedNullError));
+            }
+
+            let blob: &[u8] = <&[u8] as Decode<Sqlite>>::decode(value)?;
+            let mut cursor = Cursor::new(blob);
+            let sigma1 = decode_g1_affine(&mut cursor)?;
+            let sigma2 = decode_g1_affine(&mut cursor)?;
+            Ok(Self { sigma1, sigma2 })
+        }
+    }
+
+    impl<const N: usize> Encode<'_, Sqlite> for SecretKey<N> {
+        fn encode_by_ref(&self, buf: &mut <Sqlite as HasArguments<'_>>::ArgumentBuffer) -> IsNull {
+            let bytes_count = SIZE_OF_SCALAR * (N + 1) + SIZE_OF_G1AFFINE;
+            let mut bytes: Vec<u8> = Vec::with_capacity(bytes_count);
+            bytes.extend(&self.x.to_bytes());
+
+            for y in self.ys.iter() {
+                bytes.extend(&y.to_bytes());
+            }
+
+            bytes.extend(&self.x1.to_compressed());
+            bytes.encode_by_ref(buf)
+        }
+    }
+
+    impl<const N: usize> Decode<'_, Sqlite> for SecretKey<N> {
+        fn decode(value: SqliteValueRef<'_>) -> Result<Self, BoxDynError> {
+            if value.is_null() {
+                return Err(Box::new(UnexpectedNullError));
+            }
+
+            let blob: &[u8] = <&[u8] as Decode<Sqlite>>::decode(value)?;
+            let mut cursor = Cursor::new(blob);
+
+            let x = decode_scalar(&mut cursor)?;
+
+            let mut ys = [Scalar::default(); N];
+
+            for y in &mut ys {
+                let scalar = decode_scalar(&mut cursor)?;
+                *y = scalar;
+            }
+
+            let x1 = decode_g1_affine(&mut cursor)?;
+            Ok(Self { x, ys, x1 })
         }
     }
 }

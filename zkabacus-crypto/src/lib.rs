@@ -102,7 +102,8 @@ impl From<bool> for Verification {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Balance(u64);
+#[cfg_attr(feature = "sqlite", derive(sqlx::Type), sqlx(transparent))]
+pub struct Balance(u64);
 
 impl Balance {
     fn try_new(value: u64) -> Result<Self, Error> {

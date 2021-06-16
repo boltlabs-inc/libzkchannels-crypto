@@ -1,5 +1,40 @@
 //! Cryptographic routines to establish a new merchant, establish customer channels, and
 //! process payments.
+//! A merchant is essentially a stateless object, so nearly all these functions are atomic API calls on
+//! the merchant configuration [`Config`].
+//!
+//! **Important:** Most of these API calls have a documented **Usage** requirement: typically, the
+//! merchant must ensure that certain parameters are *fresh*, and have never been seen before.
+//! These checks *must* be made for a correct zkAbacus execution.
+//!
+//! ## Init
+//! A merchant initializes itself by creating parameters that will be used over its entire lifetime.
+//!
+//! ## Establish
+//! This is a two-phase process. First, the merchant must [`initialize()`](Config::initialize())
+//! a given channel id, which verifies that the customer has correctly set up the channel state.
+//! Once initialized, it must [`activate()`](Config::activate()) the
+//! channel to allow the customer to begin making payments.
+//!
+//! ## Pay
+//! This is also a two-phase process, with an intermediate state. First, the merchant receives a
+//! payment request and decides whether to [`allow_payment()`](Config::allow_payment()), making sure the
+//! request is well-formed and valid. If so, it enters the [`Unrevoked`] state, indicating that
+//! the customer has not yet revoked the previous channel state. At this point, the customer cannot
+//! make another payment. Once the customer revokes the previous state, the
+//! merchant can [`complete_payment()](Unrevoked::complete_payment()) and allow the customer to make
+//! new payments once again.
+//!
+//! ## Close
+//! The merchant can process a close request from the customer with
+//! [`check_close_signature`](Config::check_close_signature()).
+//!
+//!
+//!
+//!
+//!
+//!
+//!
 
 use crate::{
     customer,
@@ -159,7 +194,7 @@ impl Config {
     ///
     /// **Usage**: The [`CloseState`] *must* be fresh; this should only be run if the revocation
     /// lock in the given `close_state` has never been seen before.
-    pub fn validate_close(
+    pub fn check_close_signature(
         &self,
         close_signature: CloseStateSignature,
         close_state: CloseState,

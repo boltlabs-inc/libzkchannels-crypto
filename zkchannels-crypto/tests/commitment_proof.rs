@@ -1,6 +1,6 @@
 use bls12_381::*;
 use ff::Field;
-use rand::SeedableRng;
+use rand::{SeedableRng, Rng};
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
     proofs::{ChallengeBuilder, CommitmentProofBuilder},
@@ -48,7 +48,7 @@ fn commitment_proof_fails_on_wrong_commit() {
     // Form the "correct" commmitment.
     let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
-    let _com = params.commit(&msg, bf);
+    let com = params.commit(&msg, bf);
 
     // Build proof.
     let proof_builder =
@@ -59,6 +59,10 @@ fn commitment_proof_fails_on_wrong_commit() {
     // Proof must not verify on a commitment with the wrong blinding factor.
     let bad_bf = BlindingFactor::new(&mut rng);
     let bad_bf_com = params.commit(&msg, bad_bf);
+    assert_ne!(
+        com, bad_bf_com,
+        "Unfortunate RNG seed: Accidentally generated matching messages."
+    );
     let verif_challenge = ChallengeBuilder::new()
         .with(&proof.scalar_commitment())
         .finish();
@@ -70,6 +74,10 @@ fn commitment_proof_fails_on_wrong_commit() {
     // Proof must not verify on a commitment with the wrong parameters.
     let bad_params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
     let bad_params_com = bad_params.commit(&msg, bf);
+    assert_ne!(
+        com, bad_params_com,
+        "Unfortunate RNG seed: Accidentally generated matching messages."
+    );
     assert!(
         !proof.verify_knowledge_of_opening_of_commitment(&params, bad_params_com, challenge),
         "Proof verified on commitment with wrong parameters."
@@ -151,7 +159,8 @@ fn commitment_proof_fails_on_wrong_challenge() {
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
     // Proof must *not* verify with the wrong challenge.
-    let bad_challenge = ChallengeBuilder::new().with(&com).finish();
+    let random_bytes = rng.gen::<[u8; 32]>();
+    let bad_challenge = ChallengeBuilder::new().with_bytes(&random_bytes).finish();
     assert_ne!(
         bad_challenge.to_scalar(),
         challenge.to_scalar(),

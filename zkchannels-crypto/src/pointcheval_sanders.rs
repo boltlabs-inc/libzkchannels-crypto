@@ -505,7 +505,7 @@ mod test {
 
         assert!(
             !kp.public_key().verify(&msg, &sig),
-            "Signature verified!! (*not* good, *do not* want this)"
+            "Signature verified!! (with wrong blinding factor, *not* good, *do not* want this)"
         );
     }
 

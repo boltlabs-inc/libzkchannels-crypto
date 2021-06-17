@@ -27,7 +27,7 @@ pub(crate) struct SecretKey<const N: usize> {
 }
 
 /// A public key for multi-message operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PublicKey<const N: usize> {
     /// G1 generator (g)
     #[serde(with = "SerializeElement")]
@@ -407,7 +407,7 @@ impl<const N: usize> KeyPair<N> {
 }
 
 /// A signature on a message, generated using Pointcheval-Sanders.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Signature {
     /// First part of a signature.
     ///

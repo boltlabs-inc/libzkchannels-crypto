@@ -59,7 +59,8 @@ use zkchannels_crypto::{
 };
 
 /// Keys and parameters used throughout the lifetime of a channel.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub struct Config {
     /// Merchant public parameters for blind signing and proofs.
     pub(crate) merchant_public_key: PublicKey<5>,

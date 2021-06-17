@@ -60,7 +60,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeInput for Commitment<G>
 /// Parameters for Pedersen commitments.
 ///
 /// These are defined over the prime-order pairing groups from BLS12-381.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(bound = "G: SerializeG1")]
 pub struct PedersenParameters<G, const N: usize>
 where

@@ -55,19 +55,23 @@ fn range_proof_with_commitment_verifies() {
     let range_proof = range_proof_builder.generate_proof_response(challenge);
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&range_proof)
+        .with(&proof)
+        .finish();
     // Verify range proof is valid with respect to the corresponding response scalar from the commitment proof.
     assert!(range_proof.verify_range_proof(
         &rp_params,
-        challenge,
+        verif_challenge,
         proof.conjunction_response_scalars()[0]
     ));
     // Verify commitment proof is valid.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, challenge));
+    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
 
     // Verify that the range proof *doesn't* pass with a different response scalar.
     assert!(!range_proof.verify_range_proof(
         &rp_params,
-        challenge,
+        verif_challenge,
         proof.conjunction_response_scalars()[2]
     ));
 }
@@ -113,19 +117,23 @@ fn range_proof_with_signature_verifies() {
     let range_proof = range_proof_builder.generate_proof_response(challenge);
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&range_proof)
+        .with(&proof)
+        .finish();
     // Signature proof must be valid.
-    assert!(proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Range proof must be valid with respect to the corresponding response scalar from the signature proof.
     assert!(range_proof.verify_range_proof(
         &rp_params,
-        challenge,
+        verif_challenge,
         proof.conjunction_response_scalars()[0]
     ));
 
     // Range proof must *not* pass with any other response scalar.
     assert!(!range_proof.verify_range_proof(
         &rp_params,
-        challenge,
+        verif_challenge,
         proof.conjunction_response_scalars()[2]
     ));
 }
@@ -189,18 +197,23 @@ fn range_proof_test_extremes() {
     let max_proof = max_builder.generate_proof_response(challenge);
     let com_proof = com_builder.generate_proof_response(&msg, bf, challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&com_proof)
+        .with(&zero_proof)
+        .with(&max_proof)
+        .finish();
     // Verify that all proofs are valid.
     let zero_verifies = zero_proof.verify_range_proof(
         &rp_params,
-        challenge,
+        verif_challenge,
         com_proof.conjunction_response_scalars()[0],
     );
     let max_verifies = max_proof.verify_range_proof(
         &rp_params,
-        challenge,
+        verif_challenge,
         com_proof.conjunction_response_scalars()[1],
     );
-    let com_verifies = com_proof.verify_knowledge_of_opening_of_commitment(&params, com, challenge);
+    let com_verifies = com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge);
 
     assert!(zero_verifies && max_verifies && com_verifies);
 }
@@ -251,14 +264,18 @@ fn range_proof_fails_with_wrong_input() {
     let range_proof = range_proof_builder.generate_proof_response(challenge);
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&range_proof)
+        .with(&proof)
+        .finish();
     // Verify commitment proof is valid.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, challenge));
+    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
 
     // Failure expected: verify range proof is *not* valid with respect to the response scalar
     // from the commitment proof.
     assert!(!range_proof.verify_range_proof(
         &rp_params,
-        challenge,
+        verif_challenge,
         proof.conjunction_response_scalars()[0]
     ));
 }
@@ -301,11 +318,15 @@ fn range_proof_fails_if_unlinked() {
     let range_proof = range_proof_builder.generate_proof_response(challenge);
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&range_proof)
+        .with(&proof)
+        .finish();
     // Commitment proof should still verify.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, challenge));
+    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
     // Range proof should fail, since the commitment proof isn't built correctly w.r.t it.
     let range_value_response_scalar = proof.conjunction_response_scalars()[0];
-    assert!(!range_proof.verify_range_proof(&rp_params, challenge, range_value_response_scalar));
+    assert!(!range_proof.verify_range_proof(&rp_params, verif_challenge, range_value_response_scalar));
 }
 
 #[test]
@@ -350,13 +371,17 @@ fn range_proof_value_revealed() {
     let range_proof = range_proof_builder.generate_proof_response(challenge);
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&range_proof)
+        .with(&proof)
+        .finish();
     // Range proof and commitment proof must verify.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, challenge));
+    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
     let range_value_response_scalar = proof.conjunction_response_scalars()[0];
-    assert!(range_proof.verify_range_proof(&rp_params, challenge, range_value_response_scalar));
+    assert!(range_proof.verify_range_proof(&rp_params, verif_challenge, range_value_response_scalar));
     // Revealed value should match partial opening.
     assert_eq!(
         range_value_response_scalar,
-        challenge.to_scalar() * msg[0] + range_value_commitment_scalar
+        verif_challenge.to_scalar() * msg[0] + range_value_commitment_scalar
     );
 }

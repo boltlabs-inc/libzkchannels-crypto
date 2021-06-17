@@ -171,6 +171,11 @@ impl PaymentAmount {
             Scalar::from(self.0 as u64)
         }
     }
+
+    /// Convert `PaymentAmount` to an [`i64`].
+    pub fn to_i64(self) -> i64 {
+        self.0
+    }
 }
 
 /// The "CLOSE" scalar constant, used in place of a state's nonce to form a [`CloseStateCommitment`].

@@ -59,14 +59,13 @@ pub type CommitmentParameters = zkchannels_crypto::pedersen::PedersenParameters<
 
 pub use states::{
     ChannelId, CloseState, CloseStateCommitment, CloseStateSignature, CustomerBalance,
-    MerchantBalance, StateCommitment,
+    CustomerRandomness, MerchantBalance, MerchantRandomness, StateCommitment,
 };
 
 mod nonce;
 mod proofs;
 mod states;
 
-#[allow(unused)]
 mod types {
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
     pub use zkchannels_crypto::*;

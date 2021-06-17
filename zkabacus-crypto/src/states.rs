@@ -31,10 +31,12 @@ use sha3::{Digest, Sha3_256};
 use std::convert::{TryFrom, TryInto};
 use zkchannels_crypto::{pointcheval_sanders::*, BlindingFactor, Message};
 
+/// Randomness produced by the customer, used to create the [`ChannelId`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct CustomerRandomness([u8; 32]);
 
 impl CustomerRandomness {
+    /// Generates `CustomerRandomness` uniformly at random.
     pub fn new(rng: &mut impl Rng) -> Self {
         let mut buf = [0; 32];
         rng.fill_bytes(&mut buf);
@@ -42,10 +44,12 @@ impl CustomerRandomness {
     }
 }
 
+/// Randomness produced by the merchant, used to create the [`ChannelId`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct MerchantRandomness([u8; 32]);
 
 impl MerchantRandomness {
+    /// Generates `MerchantRandomness` uniformly at random.
     pub fn new(rng: &mut impl Rng) -> Self {
         let mut buf = [0; 32];
         rng.fill_bytes(&mut buf);

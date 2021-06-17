@@ -150,7 +150,7 @@ mod test {
 
         let bad_msg = Message::random(&mut rng);
 
-        assert_ne!(&*msg, &*bad_msg, "weird RNG: bad_msg should be different");
+        assert_ne!(&*msg, &*bad_msg, "unfortunate RNG seed: bad_msg should be different");
 
         let com = params.commit(&msg, bf);
         assert!(!params.decommit(&bad_msg, bf, com));
@@ -173,7 +173,7 @@ mod test {
         let bf = BlindingFactor::new(&mut rng);
         let bad_bf = BlindingFactor::new(&mut rng);
 
-        assert_ne!(bf.0, bad_bf.0, "weird RNG: bad_bf should be different");
+        assert_ne!(bf.0, bad_bf.0, "unfortunate RNG seed: bad_bf should be different");
 
         let com = params.commit(&msg, bf);
         assert!(!params.decommit(&msg, bad_bf, com));
@@ -202,7 +202,7 @@ mod test {
 
         let com = params.commit(&msg, bf);
 
-        assert_ne!(com.0, bad_com.0, "weird RNG: bad_com should be different");
+        assert_ne!(com.0, bad_com.0, "unfortunate RNG seed: bad_com should be different");
         assert!(!params.decommit(&msg, bf, bad_com));
     }
 

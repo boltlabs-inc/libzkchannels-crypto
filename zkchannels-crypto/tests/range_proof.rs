@@ -219,7 +219,7 @@ fn range_proof_fails_with_wrong_input() {
     assert_ne!(
         Scalar::from(u64::from(range_tested_value)),
         msg[0],
-        "weird rng behavior."
+        "unfortunate RNG seed"
     );
 
     // Form commitment to message

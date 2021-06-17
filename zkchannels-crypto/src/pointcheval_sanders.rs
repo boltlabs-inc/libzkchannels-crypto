@@ -9,7 +9,7 @@
 use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
-    proofs::{ChallengeBuilder, ChallengeDigest},
+    proofs::{ChallengeBuilder, ChallengeInput},
     serde::SerializeElement,
     BlindingFactor,
 };
@@ -202,18 +202,18 @@ impl<const N: usize> PublicKey<N> {
     }
 }
 
-impl<const N: usize> ChallengeDigest for PublicKey<N> {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.g1.to_bytes());
-        builder.digest_bytes(self.g2.to_bytes());
-        builder.digest_bytes(self.x2.to_bytes());
+impl<const N: usize> ChallengeInput for PublicKey<N> {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume_bytes(self.g1.to_bytes());
+        builder.consume_bytes(self.g2.to_bytes());
+        builder.consume_bytes(self.x2.to_bytes());
 
         for y1 in &self.y1s {
-            builder.digest_bytes(y1.to_bytes());
+            builder.consume_bytes(y1.to_bytes());
         }
 
         for y2 in &self.y2s {
-            builder.digest_bytes(y2.to_bytes());
+            builder.consume_bytes(y2.to_bytes());
         }
     }
 }
@@ -309,10 +309,10 @@ impl Signature {
     }
 }
 
-impl ChallengeDigest for Signature {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.sigma1);
-        builder.digest(&self.sigma2);
+impl ChallengeInput for Signature {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.sigma1);
+        builder.consume(&self.sigma2);
     }
 }
 
@@ -338,9 +338,9 @@ impl BlindedMessage {
     }
 }
 
-impl ChallengeDigest for BlindedMessage {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.0);
+impl ChallengeInput for BlindedMessage {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.0);
     }
 }
 
@@ -390,8 +390,8 @@ impl BlindedSignature {
     }
 }
 
-impl ChallengeDigest for BlindedSignature {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.0);
+impl ChallengeInput for BlindedSignature {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.0);
     }
 }

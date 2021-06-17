@@ -53,7 +53,7 @@ use crate::{
     pedersen::Commitment,
     pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
     proofs::{
-        Challenge, ChallengeBuilder, ChallengeDigest, CommitmentProof, CommitmentProofBuilder,
+        Challenge, ChallengeBuilder, ChallengeInput, CommitmentProof, CommitmentProofBuilder,
     },
     BlindingFactor,
 };
@@ -152,11 +152,11 @@ impl<const N: usize> SignatureProofBuilder<N> {
     }
 }
 
-impl<const N: usize> ChallengeDigest for SignatureProofBuilder<N> {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.message_commitment);
-        builder.digest(&self.blinded_signature);
-        builder.digest(&self.commitment_proof_builder);
+impl<const N: usize> ChallengeInput for SignatureProofBuilder<N> {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.message_commitment);
+        builder.consume(&self.blinded_signature);
+        builder.consume(&self.commitment_proof_builder);
     }
 }
 
@@ -203,10 +203,10 @@ impl<const N: usize> SignatureProof<N> {
     }
 }
 
-impl<const N: usize> ChallengeDigest for SignatureProof<N> {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.message_commitment);
-        builder.digest(&self.blinded_signature);
-        builder.digest(&self.commitment_proof);
+impl<const N: usize> ChallengeInput for SignatureProof<N> {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.message_commitment);
+        builder.consume(&self.blinded_signature);
+        builder.consume(&self.commitment_proof);
     }
 }

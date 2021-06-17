@@ -215,4 +215,28 @@ mod test {
     fn commit_does_not_decommit_on_wrong_commit_g2() {
         commit_does_not_decommit_on_wrong_commit::<G2Projective>()
     }
+
+    fn commit_does_not_decommit_on_random_commit<G: Group<Scalar = Scalar>>() {
+        let mut rng = crate::test::rng();
+        let params = PedersenParameters::<G, 3>::new(&mut rng);
+        let msg = Message::random(&mut rng);
+        let bf = BlindingFactor::new(&mut rng);
+
+        let bad_com = Commitment::<G>(G::random(&mut rng));
+
+        let com = params.commit(&msg, bf);
+
+        assert_ne!(com.0, bad_com.0, "unfortunate RNG seed: bad_com should be different");
+        assert!(!params.decommit(&msg, bf, bad_com));
+    }
+
+    #[test]
+    fn commit_does_not_decommit_on_random_commit_g1() {
+        commit_does_not_decommit_on_random_commit::<G1Projective>()
+    }
+
+    #[test]
+    fn commit_does_not_decommit_on_random_commit_g2() {
+        commit_does_not_decommit_on_random_commit::<G2Projective>()
+    }
 }

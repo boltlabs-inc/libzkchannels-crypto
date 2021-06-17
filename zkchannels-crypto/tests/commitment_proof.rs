@@ -1,6 +1,6 @@
 use bls12_381::*;
 use ff::Field;
-use rand::{SeedableRng, Rng};
+use rand::{Rng, SeedableRng};
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
     proofs::{ChallengeBuilder, CommitmentProofBuilder},

@@ -63,11 +63,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureProof<const N: usize> {
     /// Commitment to the signed message.
-    pub message_commitment: Commitment<G2Projective>,
+    message_commitment: Commitment<G2Projective>,
     /// Blinded, randomized version of the signature.
-    pub blinded_signature: BlindedSignature,
+    blinded_signature: BlindedSignature,
     /// Proof of knowledge of opening of the `message_commitment`.
-    pub commitment_proof: CommitmentProof<G2Projective, N>,
+    commitment_proof: CommitmentProof<G2Projective, N>,
 }
 
 /// A partially-built [`SignatureProof`].

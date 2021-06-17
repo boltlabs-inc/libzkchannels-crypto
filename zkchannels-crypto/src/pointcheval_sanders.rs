@@ -46,6 +46,50 @@ pub struct PublicKey<const N: usize> {
     pub y2s: [G2Affine; N],
 }
 
+#[cfg(all(test, feature = "sqlite"))]
+mod sqlite_tests {
+    use super::*;
+    use sqlx::{
+        encode::{Encode, IsNull},
+        error::BoxDynError,
+        sqlite::SqliteArgumentValue,
+    };
+
+    #[test]
+    fn test_encode_decode() -> Result<(), BoxDynError> {
+        let mut rng = rand::thread_rng();
+        let kp = KeyPair::<3>::new(&mut rng);
+
+        let msg = Message::new([
+            Scalar::random(&mut rng),
+            Scalar::random(&mut rng),
+            Scalar::random(&mut rng),
+        ]);
+
+        let sig = kp.sign(&mut rng, &msg);
+        let pk = kp.public_key();
+
+        // encode and decode the pk
+        let mut buf = Vec::new();
+        let is_null = Encode::encode_by_ref(&pk, &mut buf);
+        assert!(matches!(is_null, IsNull::No));
+        let bytes = match &buf[0] {
+            SqliteArgumentValue::Blob(bytes) => bytes,
+            _ => panic!("did not decode to bytes"),
+        };
+
+        let decoded_pk = sqlite::decode_public_key::<3>(&bytes)?;
+        assert!(
+            decoded_pk.verify(&msg, &sig),
+            "Signature didn't verify!! {:?}, {:?}",
+            kp,
+            msg
+        );
+
+        Ok(())
+    }
+}
+
 #[cfg(feature = "sqlite")]
 mod sqlite {
     use super::*;
@@ -108,40 +152,45 @@ mod sqlite {
         })?)
     }
 
+    /// Get a `PublicKey<N>` from a slice of bytes. Extracted for the sake of tests.
+    pub fn decode_public_key<const N: usize>(bytes: &[u8]) -> Result<PublicKey<N>, BoxDynError> {
+        let mut cursor = Cursor::new(bytes);
+
+        let g1 = decode_g1_affine(&mut cursor)?;
+
+        let mut y1s = [G1Affine::default(); N];
+
+        for y1 in &mut y1s {
+            let g1 = decode_g1_affine(&mut cursor)?;
+            *y1 = g1;
+        }
+
+        let g2 = decode_g2_affine(&mut cursor)?;
+        let x2 = decode_g2_affine(&mut cursor)?;
+
+        let mut y2s = [G2Affine::default(); N];
+        for y2 in &mut y2s {
+            let g2 = decode_g2_affine(&mut cursor)?;
+            *y2 = g2;
+        }
+
+        Ok(PublicKey {
+            g1,
+            y1s,
+            g2,
+            x2,
+            y2s,
+        })
+    }
+
     impl<const N: usize> Decode<'_, Sqlite> for PublicKey<N> {
         fn decode(value: SqliteValueRef<'_>) -> Result<Self, BoxDynError> {
             if value.is_null() {
                 return Err(Box::new(UnexpectedNullError));
             }
 
-            let blob: &[u8] = <&[u8] as Decode<Sqlite>>::decode(value)?;
-            let mut cursor = Cursor::new(blob);
-
-            let g1 = decode_g1_affine(&mut cursor)?;
-
-            let mut y1s = [G1Affine::default(); N];
-
-            for y1 in &mut y1s {
-                let g1 = decode_g1_affine(&mut cursor)?;
-                *y1 = g1;
-            }
-
-            let g2 = decode_g2_affine(&mut cursor)?;
-            let x2 = decode_g2_affine(&mut cursor)?;
-
-            let mut y2s = [G2Affine::default(); N];
-            for y2 in &mut y2s {
-                let g2 = decode_g2_affine(&mut cursor)?;
-                *y2 = g2;
-            }
-
-            Ok(Self {
-                g1,
-                y1s,
-                g2,
-                x2,
-                y2s,
-            })
+            let bytes: &[u8] = <&[u8] as Decode<Sqlite>>::decode(value)?;
+            decode_public_key(bytes)
         }
     }
 }

@@ -57,10 +57,14 @@ fn signature_commitment_proof_linear_relation() {
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
     let com_proof = com_proof_builder.generate_proof_response(&msg, bf, challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&sig_proof)
+        .with(&com_proof)
+        .finish();
     // Verify commitment proof is valid.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, challenge));
+    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
     // Verify signature proof is valid.
-    assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Verify they are on the same message - response scalars must match.
     assert_eq!(
         com_proof.conjunction_response_scalars(),
@@ -107,10 +111,14 @@ fn commitment_signature_proof_linear_relation() {
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
     let com_proof = com_proof_builder.generate_proof_response(&msg, bf, challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&com_proof)
+        .with(&sig_proof)
+        .finish();
     // Commitment proof must be valid.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, challenge));
+    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
     // Signature proof must be valid.
-    assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Proofs must be on the same message - e.g. have matching response scalars.
     assert_eq!(
         com_proof.conjunction_response_scalars(),
@@ -159,12 +167,16 @@ fn commitment_signature_proof_linear_relation_public_addition() {
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
     let com_proof = com_proof_builder.generate_proof_response(&msg2, bf, challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&sig_proof)
+        .with(&com_proof)
+        .finish();
     // Both proofs must verify.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, challenge));
-    assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // The response scalars must have the expected relationship.
     assert_eq!(
         com_proof.conjunction_response_scalars()[0],
-        sig_proof.conjunction_response_scalars()[0] + challenge.to_scalar() * public_value
+        sig_proof.conjunction_response_scalars()[0] + verif_challenge.to_scalar() * public_value
     );
 }

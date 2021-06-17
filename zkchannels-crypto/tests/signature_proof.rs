@@ -34,8 +34,13 @@ fn signature_proof_verifies() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof.message_commitment)
+        .with(&proof.blinded_signature)
+        .with(&proof.commitment_proof)
+        .finish();
     // Proof must verify with the same challenge and keypair.
-    assert!(proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
 
 #[test]
@@ -59,8 +64,13 @@ fn signature_proof_fails_with_wrong_message() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof.message_commitment)
+        .with(&proof.blinded_signature)
+        .with(&proof.commitment_proof)
+        .finish();
     // Proof must not verify.
-    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
 
 #[test]
@@ -86,8 +96,13 @@ fn signature_proof_fails_with_wrong_parameters_for_signature() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof.message_commitment)
+        .with(&proof.blinded_signature)
+        .with(&proof.commitment_proof)
+        .finish();
     // Proof must not verify.
-    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
 
 #[test]
@@ -113,8 +128,13 @@ fn signature_proof_fails_with_wrong_parameters_for_proof() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof.message_commitment)
+        .with(&proof.blinded_signature)
+        .with(&proof.commitment_proof)
+        .finish();
     // Proof must not verify.
-    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
 
 #[test]
@@ -140,8 +160,13 @@ fn signature_proof_fails_with_wrong_parameters_for_verification() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof.message_commitment)
+        .with(&proof.blinded_signature)
+        .with(&proof.commitment_proof)
+        .finish();
     // Proof must not verify against the wrong parameters.
-    assert!(!proof.verify_knowledge_of_signature(bad_kp.public_key(), challenge));
+    assert!(!proof.verify_knowledge_of_signature(bad_kp.public_key(), verif_challenge));
 }
 
 #[test]
@@ -224,9 +249,17 @@ fn signature_proof_linear_relation() {
     let proof1 = sig_proof_builder1.generate_proof_response(challenge);
     let proof2 = sig_proof_builder2.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof1.message_commitment)
+        .with(&proof1.blinded_signature)
+        .with(&proof1.commitment_proof)
+        .with(&proof2.message_commitment)
+        .with(&proof2.blinded_signature)
+        .with(&proof2.commitment_proof)
+        .finish();
     // Proofs must verify.
-    assert!(proof1.verify_knowledge_of_signature(kp.public_key(), challenge));
-    assert!(proof2.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(proof1.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
+    assert!(proof2.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 
     // Response scalars for matching elements must match.
     assert_eq!(
@@ -271,21 +304,26 @@ fn signature_proof_public_value() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof.message_commitment)
+        .with(&proof.blinded_signature)
+        .with(&proof.commitment_proof)
+        .finish();
     // Proof must verify.
-    assert!(proof.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 
     // Verify response scalars are correctly formed w.r.t public message and revealed commitment scalars.
     let response_scalars = proof.conjunction_response_scalars();
     assert_eq!(
-        msg[0] * challenge.to_scalar() + commitment_scalars[0],
+        msg[0] * verif_challenge.to_scalar() + commitment_scalars[0],
         response_scalars[0]
     );
     assert_eq!(
-        msg[1] * challenge.to_scalar() + commitment_scalars[1],
+        msg[1] * verif_challenge.to_scalar() + commitment_scalars[1],
         response_scalars[1]
     );
     assert_eq!(
-        msg[2] * challenge.to_scalar() + commitment_scalars[2],
+        msg[2] * verif_challenge.to_scalar() + commitment_scalars[2],
         response_scalars[2]
     );
 }
@@ -329,13 +367,21 @@ fn signature_proof_linear_relation_public_addition() {
     let proof1 = sig_proof_builder1.generate_proof_response(challenge);
     let proof2 = sig_proof_builder2.generate_proof_response(challenge);
 
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof1.message_commitment)
+        .with(&proof1.blinded_signature)
+        .with(&proof1.commitment_proof)
+        .with(&proof2.message_commitment)
+        .with(&proof2.blinded_signature)
+        .with(&proof2.commitment_proof)
+        .finish();
     // Both signature proofs must verify.
-    assert!(proof1.verify_knowledge_of_signature(kp.public_key(), challenge));
-    assert!(proof2.verify_knowledge_of_signature(kp.public_key(), challenge));
+    assert!(proof1.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
+    assert!(proof2.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 
     // The expected linear relationship must hold for the response scalars.
     assert_eq!(
-        proof1.conjunction_response_scalars()[0] + challenge.to_scalar() * public_value,
+        proof1.conjunction_response_scalars()[0] + verif_challenge.to_scalar() * public_value,
         proof2.conjunction_response_scalars()[0]
     );
 }

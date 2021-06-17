@@ -34,9 +34,7 @@ fn signature_proof_verifies() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must verify with the same challenge and keypair.
     assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
@@ -62,9 +60,7 @@ fn signature_proof_fails_with_wrong_message() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
@@ -92,9 +88,7 @@ fn signature_proof_fails_with_wrong_parameters_for_signature() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
@@ -122,9 +116,7 @@ fn signature_proof_fails_with_wrong_parameters_for_proof() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
@@ -152,9 +144,7 @@ fn signature_proof_fails_with_wrong_parameters_for_verification() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must not verify against the wrong parameters.
     assert!(!proof.verify_knowledge_of_signature(bad_kp.public_key(), verif_challenge));
 }
@@ -239,10 +229,7 @@ fn signature_proof_linear_relation() {
     let proof1 = sig_proof_builder1.generate_proof_response(challenge);
     let proof2 = sig_proof_builder2.generate_proof_response(challenge);
 
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof1)
-        .with(&proof2)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
     // Proofs must verify.
     assert!(proof1.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     assert!(proof2.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
@@ -290,9 +277,7 @@ fn signature_proof_public_value() {
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must verify.
     assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 
@@ -351,10 +336,7 @@ fn signature_proof_linear_relation_public_addition() {
     let proof1 = sig_proof_builder1.generate_proof_response(challenge);
     let proof2 = sig_proof_builder2.generate_proof_response(challenge);
 
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof1)
-        .with(&proof2)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
     // Both signature proofs must verify.
     assert!(proof1.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     assert!(proof2.verify_knowledge_of_signature(kp.public_key(), verif_challenge));

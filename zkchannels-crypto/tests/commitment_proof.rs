@@ -32,9 +32,7 @@ fn commitment_proof_verifies() {
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
     // Proof must verify with the original commit.
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
 }
 
@@ -63,9 +61,7 @@ fn commitment_proof_fails_on_wrong_commit() {
         com, bad_bf_com,
         "Unfortunate RNG seed: Accidentally generated matching messages."
     );
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(
         !proof.verify_knowledge_of_opening_of_commitment(&params, bad_bf_com, verif_challenge),
         "Proof verified on commitment with wrong blinding factor."
@@ -87,9 +83,7 @@ fn commitment_proof_fails_on_wrong_commit() {
     let bad_msg = Message::<3>::random(&mut rng);
     assert_ne!(&*msg, &*bad_msg, "Accidentally generated matching messages");
     let bad_msg_com = params.commit(&bad_msg, bf);
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(
         !proof.verify_knowledge_of_opening_of_commitment(&params, bad_msg_com, verif_challenge),
         "Proof verified on commitment with wrong message."
@@ -123,9 +117,7 @@ fn commitment_proof_fails_on_bad_response_phase() {
         "Accidentally generated matching messages."
     );
     let proof = proof_builder_for_msg.generate_proof_response(&bad_msg, bf, challenge);
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(
         !proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge),
         "Proof verified with bad message in response phase."
@@ -257,9 +249,7 @@ fn commitment_proof_with_public_value() {
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
     // Verify underlying proof.
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof)
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
 
     // Verify response scalars are correctly formed against the public msg.

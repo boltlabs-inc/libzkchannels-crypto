@@ -213,7 +213,8 @@ fn range_proof_test_extremes() {
         verif_challenge,
         com_proof.conjunction_response_scalars()[1],
     );
-    let com_verifies = com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge);
+    let com_verifies =
+        com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge);
 
     assert!(zero_verifies && max_verifies && com_verifies);
 }
@@ -326,7 +327,11 @@ fn range_proof_fails_if_unlinked() {
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
     // Range proof should fail, since the commitment proof isn't built correctly w.r.t it.
     let range_value_response_scalar = proof.conjunction_response_scalars()[0];
-    assert!(!range_proof.verify_range_proof(&rp_params, verif_challenge, range_value_response_scalar));
+    assert!(!range_proof.verify_range_proof(
+        &rp_params,
+        verif_challenge,
+        range_value_response_scalar
+    ));
 }
 
 #[test]
@@ -378,7 +383,11 @@ fn range_proof_value_revealed() {
     // Range proof and commitment proof must verify.
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
     let range_value_response_scalar = proof.conjunction_response_scalars()[0];
-    assert!(range_proof.verify_range_proof(&rp_params, verif_challenge, range_value_response_scalar));
+    assert!(range_proof.verify_range_proof(
+        &rp_params,
+        verif_challenge,
+        range_value_response_scalar
+    ));
     // Revealed value should match partial opening.
     assert_eq!(
         range_value_response_scalar,

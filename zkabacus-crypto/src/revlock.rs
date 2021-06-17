@@ -26,6 +26,11 @@ pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 #[allow(missing_copy_implementations)]
 pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
 
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_scalar_newtype!(RevocationLock, RevocationLock);
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_scalar_newtype!(RevocationSecret, RevocationSecret);
+
 /// A commitment to a [`RevocationLock`].
 ///
 /// This has the standard properties of a commitment scheme:
@@ -39,12 +44,12 @@ pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
 /// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that verify with the commitment.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLockCommitment(Commitment<G1Projective>);
+pub struct RevocationLockCommitment(pub(crate) Commitment<G1Projective>);
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct RevocationLockBlindingFactor(BlindingFactor);
+pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 
 impl RevocationLockBlindingFactor {
     /// Generate a blinding factor uniformly at random.
@@ -73,6 +78,11 @@ impl RevocationSecret {
             u64::from_le_bytes(<[u8; 8]>::try_from(&digested[24..32]).unwrap()),
         ]);
         RevocationLock(scalar)
+    }
+
+    /// Convert a revocation secret to its canonical `Scalar` representation.
+    fn to_scalar(&self) -> Scalar {
+        self.0
     }
 }
 

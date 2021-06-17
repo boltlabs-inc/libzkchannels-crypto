@@ -25,11 +25,20 @@ Ch 3.3: Off-network channel protocol zkAbacus.
 #![warn(future_incompatible)]
 #![warn(unused)]
 #![forbid(broken_intra_doc_links)]
+
+#[cfg(feature = "sqlite")]
+#[macro_use]
+mod sqlite;
+
+#[doc(hidden)]
+pub mod internal;
+
 pub mod customer;
 pub mod merchant;
 pub mod revlock;
 
 pub use nonce::Nonce;
+pub use proofs::Context;
 pub use proofs::EstablishProof;
 pub use proofs::PayProof;
 
@@ -53,7 +62,22 @@ mod types {
     pub use zkchannels_crypto::*;
 }
 
-use types::*;
+use crate::types::*;
+use serde::*;
+use std::convert::TryFrom;
+use thiserror::*;
+
+/// Possible error conditions returned from the ZkAbacus API.
+#[derive(Debug, Error, Clone, Copy)]
+pub enum Error {
+    /// An amount was too large to be representable as a 64-bit signed integer.
+    #[error("amount too large to be representable (greater than 2^63: {0})")]
+    AmountTooLarge(u64),
+
+    /// A payment would have created a negative balance.
+    #[error("insufficient funds for operation")]
+    InsufficientFunds,
+}
 
 /// Trait synonym for a cryptographically secure random number generator.
 pub trait Rng: rand::CryptoRng + rand::RngCore {}
@@ -78,19 +102,60 @@ impl From<bool> for Verification {
     }
 }
 
-/// Amount of a single payment.
 #[derive(Debug, Clone, Copy)]
-pub struct PaymentAmount;
+struct Balance(u64);
+
+impl Balance {
+    fn try_new(value: u64) -> Result<Self, Error> {
+        if value > i64::MAX as u64 {
+            Err(Error::AmountTooLarge(value))
+        } else {
+            Ok(Self(value))
+        }
+    }
+
+    fn to_scalar(self) -> Scalar {
+        Scalar::from(self.0)
+    }
+
+    /// Always returns a `u64` which is less than `i64::MAX`.
+    fn into_inner(self) -> u64 {
+        self.0 as u64
+    }
+}
+
+/// Amount of a single payment.
+#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct PaymentAmount(i64);
 
 impl PaymentAmount {
+    /// Construct a zero payment amount that does not change the balances.
+    pub fn zero() -> Self {
+        Self(0)
+    }
+
     /// Construct a *positive* payment amount from the customer to the merchant.
-    pub fn pay_merchant(_amount: usize) -> Self {
-        todo!()
+    pub fn pay_merchant(amount: u64) -> Result<Self, Error> {
+        match i64::try_from(amount) {
+            Ok(i) => Ok(Self(i)),
+            Err(_) => Err(Error::AmountTooLarge(amount)),
+        }
     }
 
     /// Construct a *negative* payment amount from the merchant to the customer (i.e. a refund).
-    pub fn pay_customer(_amount: usize) -> Self {
-        todo!()
+    pub fn pay_customer(amount: u64) -> Result<Self, Error> {
+        match i64::try_from(amount) {
+            Ok(i) => Ok(Self(-i)),
+            Err(_) => Err(Error::AmountTooLarge(amount)),
+        }
+    }
+
+    pub(crate) fn to_scalar(self) -> Scalar {
+        if self.0.is_negative() {
+            Scalar::zero() - Scalar::from(self.0.abs() as u64)
+        } else {
+            Scalar::from(self.0 as u64)
+        }
     }
 }
 

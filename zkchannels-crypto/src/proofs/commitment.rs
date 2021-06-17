@@ -35,20 +35,25 @@ use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
     proofs::{Challenge, ChallengeBuilder, ChallengeDigest},
+    serde::SerializeElement,
 };
 use arrayvec::ArrayVec;
 use ff::Field;
 use group::Group;
+use serde::*;
 
 /// Fully constructed proof of knowledge of the opening of a commitment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(bound = "G: SerializeElement")]
 pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
     /// The commitment to the commitment scalars.
     scalar_commitment: Commitment<G>,
     /// The response scalar for the blinding factor, conceptually prepended to the tuple of response
     /// scalars for this commitment proof.
+    #[serde(with = "SerializeElement")]
     blinding_factor_response_scalar: Scalar,
     /// The remaining response scalars.
+    #[serde(with = "SerializeElement")]
     message_response_scalars: [Scalar; N],
 }
 
@@ -111,9 +116,12 @@ pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     /// Run the commitment phase of a Schnorr-style commitment proof.
     ///
-    /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
-    /// commitment scalars in the case that they need to satisfy some sort of constraint, for
-    /// example when implementing equality or linear combination constraints on top of the proof.
+    /// The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
+    /// scalars for the message tuple. This allows them to express constraints among messages in one or more
+    /// proof objects.
+    /// For example, equality of two message elements is enforced by using the same commitment scalar for those
+    /// elements. A linear equation (message tuples `a`, `b`, `c` where `c = a + b`) is enforced by setting the
+    /// commitment scalar for `c` to the sum of the commitment scalars for `a` and `b`.
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
         conjunction_commitment_scalars: &[Option<Scalar>; N],

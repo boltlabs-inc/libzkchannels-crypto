@@ -11,10 +11,8 @@ pub struct Nonce(#[serde(with = "SerializeElement")] Scalar);
 
 #[allow(unused)]
 impl Nonce {
-    /// Generate a new cryptographically random nonce with the given random number generator. This
-    /// is not part of the public API and may change between major releases.
-    #[doc(hidden)]
-    pub fn new(rng: &mut impl Rng) -> Self {
+    /// Generate a new cryptographically random nonce with the given random number generator.
+    pub(crate) fn new(rng: &mut impl Rng) -> Self {
         Self(Scalar::random(rng))
     }
 
@@ -25,33 +23,4 @@ impl Nonce {
 }
 
 #[cfg(feature = "sqlite")]
-use sqlx::{
-    database::HasArguments,
-    encode::{Encode, IsNull},
-    sqlite::{Sqlite, SqliteTypeInfo},
-    Type,
-};
-
-#[cfg(feature = "sqlite")]
-impl Encode<'_, Sqlite> for Nonce {
-    fn encode_by_ref(&self, buf: &mut <Sqlite as HasArguments<'_>>::ArgumentBuffer) -> IsNull {
-        let bytes = self.0.to_bytes().to_vec();
-        <Vec<u8> as sqlx::Encode<'_, Sqlite>>::encode_by_ref(&bytes, buf)
-    }
-
-    fn encode(self, buf: &mut <Sqlite as HasArguments<'_>>::ArgumentBuffer) -> IsNull {
-        let bytes = self.0.to_bytes().to_vec();
-        <Vec<u8> as sqlx::Encode<'_, Sqlite>>::encode(bytes, buf)
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl Type<Sqlite> for Nonce {
-    fn type_info() -> SqliteTypeInfo {
-        <Vec<u8> as Type<Sqlite>>::type_info()
-    }
-
-    fn compatible(ty: &SqliteTypeInfo) -> bool {
-        <Vec<u8> as Type<Sqlite>>::compatible(ty)
-    }
-}
+impl_sqlx_for_scalar_newtype!(Nonce, Nonce);

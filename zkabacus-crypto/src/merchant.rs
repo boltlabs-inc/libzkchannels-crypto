@@ -4,14 +4,16 @@
 use crate::{
     customer,
     nonce::Nonce,
-    proofs::{EstablishProof, EstablishProofVerification, PayProof, PayProofVerification},
+    proofs::{Context, EstablishProof, EstablishProofPublicValues, PayProof, PayProofPublicValues},
     revlock::*,
     states::*,
     types::*,
     PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
-use zkchannels_crypto::{pedersen::PedersenParameters, pointcheval_sanders::KeyPair};
+use zkchannels_crypto::{
+    pedersen::PedersenParameters, pointcheval_sanders::KeyPair, proofs::RangeProofParameters,
+};
 
 /// A merchant that is ready to establish channels and process payments.
 /// This is a merchant that has completed zkAbacus.Init.
@@ -25,19 +27,18 @@ pub struct Config {
     pub(crate) signing_keypair: KeyPair<5>,
     /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
+    /// Parameters for generating and verifying range proofs.
+    pub(crate) range_proof_parameters: RangeProofParameters,
 }
 
 impl Config {
     /// Instantiate a new merchant with all parameters.
     /// This executes zkAbacus.Init.
-    #[allow(clippy::new_without_default)]
     pub fn new(rng: &mut impl Rng) -> Self {
-        let signing_keypair = KeyPair::new(&mut *rng);
-        let revocation_commitment_parameters = PedersenParameters::new(&mut *rng);
-
         Self {
-            signing_keypair,
-            revocation_commitment_parameters,
+            signing_keypair: KeyPair::new(rng),
+            revocation_commitment_parameters: PedersenParameters::new(rng),
+            range_proof_parameters: RangeProofParameters::new(rng),
         }
     }
 
@@ -46,6 +47,7 @@ impl Config {
         customer::Config {
             merchant_public_key: self.signing_keypair.public_key().clone(),
             revocation_commitment_parameters: self.revocation_commitment_parameters.clone(),
+            range_proof_parameters: self.range_proof_parameters.clone(),
         }
     }
 
@@ -68,26 +70,25 @@ impl Config {
         channel_id: &ChannelId,
         customer_balance: CustomerBalance,
         merchant_balance: MerchantBalance,
-        state_commitment: &StateCommitment,
-        close_state_commitment: CloseStateCommitment,
         proof: EstablishProof,
-    ) -> Option<crate::ClosingSignature> {
+        context: &Context,
+    ) -> Option<(crate::ClosingSignature, StateCommitment)> {
         // Collect items used to verify the proof.
-        let verification_objects = EstablishProofVerification {
-            state_commitment,
-            close_state_commitment,
+        let public_values = EstablishProofPublicValues {
             channel_id: *channel_id,
             merchant_balance,
             customer_balance,
         };
         // Verify that proof is consistent with the expected inputs.
-        match proof.verify(&self, &verification_objects) {
+        match proof.verify(&self, &public_values, context) {
             // If so, blindly sign the close state.
-            Verified => Some(CloseStateBlindedSignature::new(
-                rng,
-                &self,
-                verification_objects.close_state_commitment,
-            )),
+            Verified => {
+                let (state_commitment, close_state_commitment) = proof.extract_commitments();
+                Some((
+                    CloseStateBlindedSignature::sign(rng, &self, close_state_commitment),
+                    state_commitment,
+                ))
+            }
             Failed => None,
         }
     }
@@ -101,12 +102,12 @@ impl Config {
     pub fn activate(
         &self,
         rng: &mut impl Rng,
-        state_commitment: &StateCommitment,
+        state_commitment: StateCommitment,
     ) -> crate::PayToken {
         // Blindly sign the pay token.
         // Note that this should _only_ be called after the merchant has received a valid
         // `EstablishProof` that is consistent with the `state_commitment`.
-        BlindedPayToken::new(rng, &self, state_commitment)
+        BlindedPayToken::sign(rng, &self, &state_commitment)
     }
 
     /**
@@ -125,29 +126,28 @@ impl Config {
         amount: PaymentAmount,
         nonce: &Nonce,
         pay_proof: PayProof,
-        revocation_lock_commitment: RevocationLockCommitment,
-        state_commitment: StateCommitment,
-        close_state_commitment: CloseStateCommitment,
+        context: &Context,
     ) -> Option<(Unrevoked<'a>, crate::ClosingSignature)> {
         // Collect items used to verify the proof.
-        let verification_objects = PayProofVerification {
-            revocation_lock_commitment: &revocation_lock_commitment,
-            state_commitment: &state_commitment,
-            close_state_commitment: &close_state_commitment,
-            nonce: *nonce,
+        let public_values = PayProofPublicValues {
+            old_nonce: *nonce,
             amount,
         };
         // Verify that proof is consistent with the expected inputs.
-        match pay_proof.verify(&self, &verification_objects) {
+        match pay_proof.verify(&self, &public_values, context) {
             // If so, blindly sign the close state.
-            Verified => Some((
-                Unrevoked {
-                    config: &self,
-                    revocation_lock_commitment,
-                    state_commitment,
-                },
-                CloseStateBlindedSignature::new(rng, &self, close_state_commitment),
-            )),
+            Verified => {
+                let (revocation_lock_commitment, state_commitment, close_state_commitment) =
+                    pay_proof.extract_commitments();
+                Some((
+                    Unrevoked {
+                        config: &self,
+                        revocation_lock_commitment,
+                        state_commitment,
+                    },
+                    CloseStateBlindedSignature::sign(rng, &self, close_state_commitment),
+                ))
+            }
             Failed => None,
         }
     }
@@ -193,7 +193,7 @@ impl<'a> Unrevoked<'a> {
             // If so, blindly sign the pay token.
             // Note that the merchant should _only_ call this function after receiving
             // a valid [`PayProof`] that is consistent with the given `state_commitment`.
-            Verified => Ok(BlindedPayToken::new(
+            Verified => Ok(BlindedPayToken::sign(
                 rng,
                 self.config,
                 &self.state_commitment,

@@ -46,14 +46,16 @@ At any of these points, the customer can call the associated `close()` function 
 
 use crate::{
     nonce::Nonce,
-    proofs::{BlindingFactors, EstablishProof, PayProof},
+    proofs::{BlindingFactors, Context, EstablishProof, PayProof},
     revlock::*,
     states::*,
     types::*,
-    PaymentAmount, Rng,
+    Error, PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
-use zkchannels_crypto::{pedersen::PedersenParameters, pointcheval_sanders::PublicKey};
+use zkchannels_crypto::{
+    pedersen::PedersenParameters, pointcheval_sanders::PublicKey, proofs::RangeProofParameters,
+};
 
 /// Keys and parameters used throughout the lifetime of a channel.
 #[derive(Debug)]
@@ -62,6 +64,8 @@ pub struct Config {
     pub(crate) merchant_public_key: PublicKey<5>,
     /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
+    /// Parameters for building and verifying range proofs.
+    pub(crate) range_proof_parameters: RangeProofParameters,
 }
 
 impl Config {
@@ -69,10 +73,12 @@ impl Config {
     pub fn new(
         merchant_public_key: PublicKey<5>,
         revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
+        range_proof_parameters: RangeProofParameters,
     ) -> Self {
         Self {
             merchant_public_key,
             revocation_commitment_parameters,
+            range_proof_parameters,
         }
     }
 
@@ -84,6 +90,11 @@ impl Config {
     /// The parameters for committing to revocation locks.
     pub fn revocation_commitment_parameters(&self) -> &PedersenParameters<G1Projective, 1> {
         &self.revocation_commitment_parameters
+    }
+
+    /// The parameters for constructing range proofs.
+    pub fn range_proof_parameters(&self) -> &RangeProofParameters {
+        &self.range_proof_parameters
     }
 }
 
@@ -131,24 +142,14 @@ impl Requested {
         channel_id: ChannelId,
         merchant_balance: MerchantBalance,
         customer_balance: CustomerBalance,
-    ) -> (Self, RequestMessage) {
+        context: &Context,
+    ) -> (Self, EstablishProof) {
         // Construct initial state.
         let state = State::new(rng, channel_id, merchant_balance, customer_balance);
-        let close_state = state.close_state();
-
-        // Commit to state and corresponding close state.
-        let (state_commitment, pay_token_blinding_factor) = state.commit(rng, &config);
-        let (close_state_commitment, close_state_blinding_factor) =
-            close_state.commit(rng, &config);
 
         // Form proof that the state / close state are correct.
-        let proof = EstablishProof::new(
-            rng,
-            &config,
-            &state,
-            close_state_blinding_factor,
-            pay_token_blinding_factor,
-        );
+        let (proof, close_state_blinding_factor, pay_token_blinding_factor) =
+            EstablishProof::new(rng, &config, &state, context);
 
         (
             Self {
@@ -157,11 +158,7 @@ impl Requested {
                 close_state_blinding_factor,
                 pay_token_blinding_factor,
             },
-            RequestMessage {
-                close_state_commitment,
-                state_commitment,
-                proof,
-            },
+            proof,
         )
     }
 
@@ -224,47 +221,34 @@ pub struct StartMessage {
     pub nonce: Nonce,
     /// The zero-knowledge proof of the validity of the payment.
     pub pay_proof: PayProof,
-    /// The commitment to the (not yet revealed) revocation lock.
-    pub revocation_lock_commitment: RevocationLockCommitment,
-    /// The commitment to the close state.
-    pub close_state_commitment: CloseStateCommitment,
-    /// The commitment to the state.
-    pub state_commitment: StateCommitment,
 }
 
 impl Ready {
     /// Start a payment of the given [`PaymentAmount`].
     /// This is part of zkAbacus.Pay.
-    pub fn start(self, rng: &mut impl Rng, amount: PaymentAmount) -> (Started, StartMessage) {
+    pub fn start(
+        self,
+        rng: &mut impl Rng,
+        amount: PaymentAmount,
+        context: &Context,
+    ) -> Result<(Started, StartMessage), Error> {
         // Generate correctly-updated state.
-        let new_state = self.state.apply_payment(rng, amount);
-
-        // Commit to new state and old revocation lock.
-        let (revocation_lock_commitment, revocation_lock_bf) =
-            self.state.commit_to_revocation(rng, &self.config);
-        let (state_commitment, state_bf) = self.state.commit(rng, &self.config);
-        let (close_state_commitment, close_state_bf) =
-            self.state.close_state().commit(rng, &self.config);
-
-        // Save the blinding factors together.
-        let blinding_factors = BlindingFactors {
-            for_revocation_lock: revocation_lock_bf,
-            for_pay_token: state_bf,
-            for_close_state: close_state_bf,
-        };
+        let new_state = self.state.apply_payment(rng, amount)?;
 
         // Form proof that the payment correctly updates a valid state.
-        let pay_proof = PayProof::new(
+        let (pay_proof, blinding_factors) = PayProof::new(
             rng,
             &self.config,
             self.pay_token,
             &self.state,
             &new_state,
-            blinding_factors,
+            context,
         );
 
+        // Save nonce.
         let old_nonce = *self.state.nonce();
-        (
+
+        Ok((
             Started {
                 config: self.config,
                 new_state,
@@ -275,11 +259,8 @@ impl Ready {
             StartMessage {
                 nonce: old_nonce,
                 pay_proof,
-                revocation_lock_commitment,
-                close_state_commitment,
-                state_commitment,
             },
-        )
+        ))
     }
 
     /// Extract data used to close the channel.
@@ -340,7 +321,7 @@ impl Started {
                 LockMessage {
                     revocation_lock: self.old_state.revocation_lock(),
                     revocation_secret: self.old_state.revocation_secret(),
-                    revocation_lock_blinding_factor: self.blinding_factors.for_revocation_lock,
+                    revocation_lock_blinding_factor: self.blinding_factors.for_old_revocation_lock,
                 },
             )),
             Failed => Err(self),

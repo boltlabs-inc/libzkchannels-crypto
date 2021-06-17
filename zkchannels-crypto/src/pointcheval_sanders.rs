@@ -161,7 +161,7 @@ impl<const N: usize> PublicKey<N> {
     }
 
     /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
-    pub(crate) fn to_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective, N> {
+    pub fn to_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective, N> {
         let gs = self
             .y1s
             .iter()
@@ -323,7 +323,7 @@ impl ChallengeDigest for Signature {
 /// programmatically, a `BlindedMessage` can be constructed using
 /// [`PublicKey::blind_message`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindedMessage(Commitment<G1Projective>);
+pub struct BlindedMessage(pub(crate) Commitment<G1Projective>);
 
 impl BlindedMessage {
     /// Extract the internal commitment object.
@@ -335,6 +335,12 @@ impl BlindedMessage {
     /// for `self.to_commitment().to_element()`.
     pub fn to_g1(self) -> G1Projective {
         self.to_commitment().to_element()
+    }
+}
+
+impl ChallengeDigest for BlindedMessage {
+    fn digest(&self, builder: &mut ChallengeBuilder) {
+        builder.digest(&self.0);
     }
 }
 

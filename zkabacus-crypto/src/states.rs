@@ -23,46 +23,91 @@ The customer must blind the input and unblind the output with the _same_ blindin
 */
 
 use crate::{
-    customer, merchant, revlock::*, types::*, Nonce, PaymentAmount, Rng, Verification, CLOSE_SCALAR,
+    customer, merchant, revlock::*, types::*, Balance, Error, Nonce, PaymentAmount, Rng,
+    Verification, CLOSE_SCALAR,
 };
+use ff::Field;
 use serde::*;
 use zkchannels_crypto::{pointcheval_sanders::*, BlindingFactor, Message};
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy)]
-pub struct ChannelId;
+pub struct ChannelId(Scalar);
 
 impl ChannelId {
-    fn to_scalar(self) -> Scalar {
-        todo!()
+    /// Generate a new channel ID uniformly at random.
+    pub fn new(rng: &mut impl Rng) -> Self {
+        Self(Scalar::random(&mut *rng))
+    }
+
+    pub(crate) fn to_scalar(self) -> Scalar {
+        self.0
     }
 }
 
 /// Channel balance for merchant.
 #[derive(Debug, Clone, Copy)]
-pub struct MerchantBalance;
+pub struct MerchantBalance(Balance);
 
 impl MerchantBalance {
-    fn apply(self, _amt: PaymentAmount) -> Self {
-        todo!()
+    /// Create a new merchant balance.
+    ///
+    /// Raise an error if the proposed balance is too large.
+    pub fn try_new(value: u64) -> Result<Self, Error> {
+        Balance::try_new(value).map(Self)
     }
 
-    fn to_scalar(self) -> Scalar {
-        todo!()
+    fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
+        // The merchant adds, the customer subtracts
+        let new_value = self.0 .0 as i64 + amt.0;
+        if new_value.is_negative() {
+            Err(Error::InsufficientFunds)
+        } else {
+            Self::try_new(new_value as u64)
+        }
+    }
+
+    pub(crate) fn to_scalar(self) -> Scalar {
+        self.0.to_scalar()
+    }
+
+    /// Convert into the inner `u64` value. Per internal invariants, this will always produce a
+    /// `u64` which is less than `i64::MAX`.
+    pub fn into_inner(self) -> u64 {
+        self.0.into_inner()
     }
 }
 
 /// Channel balance for customer.
 #[derive(Debug, Clone, Copy)]
-pub struct CustomerBalance;
+pub struct CustomerBalance(Balance);
 
 impl CustomerBalance {
-    fn apply(self, _amt: PaymentAmount) -> Self {
-        todo!()
+    /// Create a new customer balance.
+    ///
+    /// Raise an error if the proposed balance is too large.
+    pub fn try_new(value: u64) -> Result<Self, Error> {
+        Balance::try_new(value).map(Self)
     }
 
-    fn to_scalar(self) -> Scalar {
-        todo!()
+    fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
+        // The merchant adds, the customer subtracts
+        let new_value = self.0 .0 as i64 - amt.0;
+        if new_value.is_negative() {
+            Err(Error::InsufficientFunds)
+        } else {
+            Self::try_new(new_value as u64)
+        }
+    }
+
+    pub(crate) fn to_scalar(self) -> Scalar {
+        self.0.to_scalar()
+    }
+
+    /// Convert into the inner `u64` value. Per internal invariants, this will always produce a
+    /// `u64` which is less than `i64::MAX`.
+    pub fn into_inner(self) -> u64 {
+        self.0.into_inner()
     }
 }
 
@@ -179,14 +224,14 @@ impl State {
     /// *decreases* the [`MerchantBalance`].
     ///
     /// This is typically called by the customer.
-    pub fn apply_payment(&self, rng: &mut impl Rng, amt: PaymentAmount) -> State {
-        State {
+    pub fn apply_payment(&self, rng: &mut impl Rng, amt: PaymentAmount) -> Result<State, Error> {
+        Ok(State {
             channel_id: self.channel_id,
             nonce: Nonce::new(rng),
             revocation_secret: RevocationSecret::new(rng),
-            customer_balance: self.customer_balance.apply(amt),
-            merchant_balance: self.merchant_balance.apply(amt),
-        }
+            customer_balance: self.customer_balance.apply(amt)?,
+            merchant_balance: self.merchant_balance.apply(amt)?,
+        })
     }
 
     /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
@@ -213,7 +258,7 @@ impl State {
     }
 
     /// Get the message representation of a State.
-    fn to_message(&self) -> Message<5> {
+    pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
             self.channel_id.to_scalar(),
             self.nonce.to_scalar(),
@@ -248,7 +293,7 @@ impl CloseState<'_> {
     }
 
     /// Get the message representation of a CloseState.
-    fn to_message(&self) -> Message<5> {
+    pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
             self.channel_id.to_scalar(),
             CLOSE_SCALAR,
@@ -265,7 +310,7 @@ impl CloseState<'_> {
 /// used to generate [`BlindedPayToken`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct StateCommitment(BlindedMessage);
+pub struct StateCommitment(pub(crate) BlindedMessage);
 
 /// Commitment to a CloseState and a constant, fixed close tag.
 ///
@@ -273,29 +318,29 @@ pub struct StateCommitment(BlindedMessage);
 /// used to generate [`CloseStateBlindedSignature`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateCommitment(BlindedMessage);
+pub struct CloseStateCommitment(pub(crate) BlindedMessage);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct CloseStateSignature(Signature);
+pub(crate) struct CloseStateSignature(pub(crate) Signature);
 
 /// Blinded signature on a close state and a constant, fixed close tag.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateBlindedSignature(BlindedSignature);
+pub struct CloseStateBlindedSignature(pub(crate) BlindedSignature);
 
 /// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
 #[derive(Debug, Clone, Copy)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct CloseStateBlindingFactor(BlindingFactor);
+pub(crate) struct CloseStateBlindingFactor(pub(crate) BlindingFactor);
 
 #[allow(unused)]
 impl CloseStateBlindedSignature {
     /// Produce a [`CloseStateBlindedSignature`] by blindly signing the given [`CloseStateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub(crate) fn new(
+    pub(crate) fn sign(
         rng: &mut impl Rng,
         param: &merchant::Config,
         com: CloseStateCommitment,
@@ -338,7 +383,7 @@ impl CloseStateSignature {
 /// [`State`].
 #[derive(Debug, Clone)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct PayToken(Signature);
+pub(crate) struct PayToken(pub(crate) Signature);
 
 /// A blinded pay token.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -346,14 +391,18 @@ pub struct BlindedPayToken(BlindedSignature);
 
 /// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct PayTokenBlindingFactor(BlindingFactor);
+pub(crate) struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
 
 #[allow(unused)]
 impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
     ///
     /// This is typically called by the merchant.
-    pub(crate) fn new(rng: &mut impl Rng, param: &merchant::Config, com: &StateCommitment) -> Self {
+    pub(crate) fn sign(
+        rng: &mut impl Rng,
+        param: &merchant::Config,
+        com: &StateCommitment,
+    ) -> Self {
         BlindedPayToken(param.signing_keypair.blind_sign(rng, &com.0))
     }
 
@@ -383,10 +432,70 @@ mod test {
     use super::*;
 
     #[test]
-    #[should_panic]
-    fn apply_payment_works() {
+    fn apply_positive_payment_works() {
         let mut rng = rand::thread_rng();
-        let s = State::new(&mut rng, ChannelId, MerchantBalance, CustomerBalance);
-        let _s_prev = s.apply_payment(&mut rng, PaymentAmount::pay_merchant(1));
+        let channel_id = ChannelId::new(&mut rng);
+        let s = State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new(0).unwrap(),
+            CustomerBalance::try_new(1).unwrap(),
+        );
+        let s_prime = s
+            .apply_payment(&mut rng, PaymentAmount::pay_merchant(1).unwrap())
+            .unwrap();
+
+        assert_eq!(s_prime.merchant_balance.0 .0, 1);
+        assert_eq!(s_prime.customer_balance.0 .0, 0);
+    }
+
+    #[test]
+    fn apply_negative_payment_works() {
+        let mut rng = rand::thread_rng();
+        let channel_id = ChannelId::new(&mut rng);
+        let s = State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new(1).unwrap(),
+            CustomerBalance::try_new(0).unwrap(),
+        );
+        let s_prime = s
+            .apply_payment(&mut rng, PaymentAmount::pay_customer(1).unwrap())
+            .unwrap();
+
+        assert_eq!(s_prime.merchant_balance.0 .0, 0);
+        assert_eq!(s_prime.customer_balance.0 .0, 1);
+    }
+
+    #[test]
+    #[should_panic = "InsufficientFunds"]
+    fn apply_payment_fails_for_insufficient_customer_funds() {
+        let mut rng = rand::thread_rng();
+        let channel_id = ChannelId::new(&mut rng);
+        let s = State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new(0).unwrap(),
+            CustomerBalance::try_new(1).unwrap(),
+        );
+        let _ = s
+            .apply_payment(&mut rng, PaymentAmount::pay_merchant(2).unwrap())
+            .unwrap();
+    }
+
+    #[test]
+    #[should_panic = "InsufficientFunds"]
+    fn apply_payment_fails_for_insufficient_merchant_funds() {
+        let mut rng = rand::thread_rng();
+        let channel_id = ChannelId::new(&mut rng);
+        let s = State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new(0).unwrap(),
+            CustomerBalance::try_new(1).unwrap(),
+        );
+        let _ = s
+            .apply_payment(&mut rng, PaymentAmount::pay_customer(1).unwrap())
+            .unwrap();
     }
 }

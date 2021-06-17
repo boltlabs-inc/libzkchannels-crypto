@@ -57,9 +57,10 @@ use crate::{
     },
     BlindingFactor,
 };
+use serde::{Deserialize, Serialize};
 
 /// Fully constructed proof of knowledge of a signature.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureProof<const N: usize> {
     /// Commitment to the signed message.
     message_commitment: Commitment<G2Projective>,

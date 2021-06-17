@@ -399,10 +399,12 @@ impl ChallengeDigest for BlindedSignature {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::proofs::SignatureProofBuilder;
+    use crate::test::rng;
 
     #[test]
     fn verify_signed_message() {
-        let mut rng = crate::test::rng();
+        let mut rng = rng();
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
@@ -418,7 +420,7 @@ mod test {
 
     #[test]
     fn fail_verification_of_different_message() {
-        let mut rng = crate::test::rng();
+        let mut rng = rng();
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
@@ -437,7 +439,7 @@ mod test {
 
     #[test]
     fn fail_verification_with_wrong_keypair() {
-        let mut rng = crate::test::rng();
+        let mut rng = rng();
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
@@ -452,7 +454,7 @@ mod test {
 
     #[test]
     fn fail_unit_signature() {
-        let mut rng = crate::test::rng();
+        let mut rng = rng();
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
@@ -469,7 +471,7 @@ mod test {
 
     #[test]
     fn randomized_signatures_verify() {
-        let mut rng = crate::test::rng();
+        let mut rng = rng();
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
@@ -481,7 +483,7 @@ mod test {
 
     #[test]
     fn blind_signing_verifies() {
-        let mut rng = crate::test::rng();
+        let mut rng = rng();
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
@@ -498,7 +500,7 @@ mod test {
 
     #[test]
     fn blind_signing_requires_correct_blinding_factor() {
-        let mut rng = crate::test::rng();
+        let mut rng = rng();
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
@@ -517,7 +519,7 @@ mod test {
 
     #[test]
     fn blind_signature_randomization_commutes() {
-        let mut rng = crate::test::rng();
+        let mut rng = rng();
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
@@ -531,5 +533,117 @@ mod test {
             kp.public_key().verify(&msg, &sig),
             "Signature didn't verify!!"
         );
+    }
+
+    #[test]
+    fn signature_proof_from_sig_with_identities() {
+        let mut rng = rng();
+
+        // Generate message and form signature.
+        let msg = Message::<3>::random(&mut rng);
+        let kp = KeyPair::new(&mut rng);
+        let sig = Signature {
+            sigma1: G1Affine::identity(),
+            sigma2: G1Affine::identity(),
+        };
+
+        // Construct proof.
+        let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+            &mut rng,
+            msg,
+            sig,
+            &[None; 3],
+            kp.public_key(),
+        );
+        let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+        let proof = sig_proof_builder.generate_proof_response(challenge);
+
+        let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+        // Proof must verify with the same challenge and keypair.
+        assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
+    }
+
+    #[test]
+    fn signature_proof_from_sig_with_identity_first() {
+        let mut rng = rng();
+
+        // Generate message and form signature.
+        let msg = Message::<3>::random(&mut rng);
+        let kp = KeyPair::new(&mut rng);
+        let sig = Signature {
+            sigma1: G1Affine::identity(),
+            sigma2: G1Projective::random(&mut rng).into(),
+        };
+
+        // Construct proof.
+        let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+            &mut rng,
+            msg,
+            sig,
+            &[None; 3],
+            kp.public_key(),
+        );
+        let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+        let proof = sig_proof_builder.generate_proof_response(challenge);
+
+        let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+        // Proof must verify with the same challenge and keypair.
+        assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
+    }
+
+    #[test]
+    fn signature_proof_from_sig_with_identity_second() {
+        let mut rng = rng();
+
+        // Generate message and form signature.
+        let msg = Message::<3>::random(&mut rng);
+        let kp = KeyPair::new(&mut rng);
+        let sig = Signature {
+            sigma1: G1Projective::random(&mut rng).into(),
+            sigma2: G1Affine::identity(),
+        };
+
+        // Construct proof.
+        let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+            &mut rng,
+            msg,
+            sig,
+            &[None; 3],
+            kp.public_key(),
+        );
+        let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+        let proof = sig_proof_builder.generate_proof_response(challenge);
+
+        let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+        // Proof must verify with the same challenge and keypair.
+        assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
+    }
+
+    #[test]
+    fn signature_proof_from_random_sig() {
+        let mut rng = rng();
+
+        // Generate message and form signature.
+        let msg = Message::<3>::random(&mut rng);
+        let kp = KeyPair::new(&mut rng);
+        let sig = Signature {
+            sigma1: G1Projective::random(&mut rng).into(),
+            sigma2: G1Projective::random(&mut rng).into(),
+        };
+
+        // Construct proof.
+        let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+            &mut rng,
+            msg,
+            sig,
+            &[None; 3],
+            kp.public_key(),
+        );
+        let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+        let proof = sig_proof_builder.generate_proof_response(challenge);
+
+        let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+        // Proof must verify with the same challenge and keypair.
+        assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     }
 }

@@ -33,7 +33,7 @@ fn commitment_proof_verifies() {
 
     // Proof must verify with the original commit.
     let verif_challenge = ChallengeBuilder::new()
-        .with(&proof.scalar_commitment())
+        .with(&proof)
         .finish();
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
 }
@@ -64,7 +64,7 @@ fn commitment_proof_fails_on_wrong_commit() {
         "Unfortunate RNG seed: Accidentally generated matching messages."
     );
     let verif_challenge = ChallengeBuilder::new()
-        .with(&proof.scalar_commitment())
+        .with(&proof)
         .finish();
     assert!(
         !proof.verify_knowledge_of_opening_of_commitment(&params, bad_bf_com, verif_challenge),
@@ -88,7 +88,7 @@ fn commitment_proof_fails_on_wrong_commit() {
     assert_ne!(&*msg, &*bad_msg, "Accidentally generated matching messages");
     let bad_msg_com = params.commit(&bad_msg, bf);
     let verif_challenge = ChallengeBuilder::new()
-        .with(&proof.scalar_commitment())
+        .with(&proof)
         .finish();
     assert!(
         !proof.verify_knowledge_of_opening_of_commitment(&params, bad_msg_com, verif_challenge),
@@ -124,7 +124,7 @@ fn commitment_proof_fails_on_bad_response_phase() {
     );
     let proof = proof_builder_for_msg.generate_proof_response(&bad_msg, bf, challenge);
     let verif_challenge = ChallengeBuilder::new()
-        .with(&proof.scalar_commitment())
+        .with(&proof)
         .finish();
     assert!(
         !proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge),
@@ -258,7 +258,7 @@ fn commitment_proof_with_public_value() {
 
     // Verify underlying proof.
     let verif_challenge = ChallengeBuilder::new()
-        .with(&proof.scalar_commitment())
+        .with(&proof)
         .finish();
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
 

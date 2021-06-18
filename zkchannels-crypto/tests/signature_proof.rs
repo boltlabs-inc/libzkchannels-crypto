@@ -1,3 +1,4 @@
+use arrayvec::ArrayVec;
 use bls12_381::Scalar;
 use ff::Field;
 use rand::{Rng, SeedableRng};
@@ -16,10 +17,19 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
 
 #[test]
 fn signature_proof_verifies() {
+    run_signature_proof_verifies::<1>();
+    run_signature_proof_verifies::<2>();
+    run_signature_proof_verifies::<3>();
+    run_signature_proof_verifies::<5>();
+    run_signature_proof_verifies::<8>();
+    run_signature_proof_verifies::<13>();
+}
+
+fn run_signature_proof_verifies<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
 
@@ -28,7 +38,7 @@ fn signature_proof_verifies() {
         &mut rng,
         msg,
         sig,
-        &[None; 3],
+        &[None; N],
         kp.public_key(),
     );
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
@@ -41,11 +51,20 @@ fn signature_proof_verifies() {
 
 #[test]
 fn signature_proof_fails_with_wrong_message() {
+    run_signature_proof_fails_with_wrong_message::<1>();
+    run_signature_proof_fails_with_wrong_message::<2>();
+    run_signature_proof_fails_with_wrong_message::<3>();
+    run_signature_proof_fails_with_wrong_message::<5>();
+    run_signature_proof_fails_with_wrong_message::<8>();
+    run_signature_proof_fails_with_wrong_message::<13>();
+}
+
+fn run_signature_proof_fails_with_wrong_message<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
-    let msg = Message::<3>::random(&mut rng);
-    let bad_msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
+    let bad_msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
 
@@ -54,7 +73,7 @@ fn signature_proof_fails_with_wrong_message() {
         &mut rng,
         bad_msg,
         sig,
-        &[None; 3],
+        &[None; N],
         kp.public_key(),
     );
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
@@ -67,10 +86,19 @@ fn signature_proof_fails_with_wrong_message() {
 
 #[test]
 fn signature_proof_fails_with_wrong_parameters_for_signature() {
+    run_signature_proof_fails_with_wrong_parameters_for_signature::<1>();
+    run_signature_proof_fails_with_wrong_parameters_for_signature::<2>();
+    run_signature_proof_fails_with_wrong_parameters_for_signature::<3>();
+    run_signature_proof_fails_with_wrong_parameters_for_signature::<5>();
+    run_signature_proof_fails_with_wrong_parameters_for_signature::<8>();
+    run_signature_proof_fails_with_wrong_parameters_for_signature::<13>();
+}
+
+fn run_signature_proof_fails_with_wrong_parameters_for_signature<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
     let bad_kp = KeyPair::new(&mut rng);
 
@@ -82,7 +110,7 @@ fn signature_proof_fails_with_wrong_parameters_for_signature() {
         &mut rng,
         msg,
         sig,
-        &[None; 3],
+        &[None; N],
         kp.public_key(),
     );
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
@@ -95,10 +123,19 @@ fn signature_proof_fails_with_wrong_parameters_for_signature() {
 
 #[test]
 fn signature_proof_fails_with_wrong_parameters_for_proof() {
+    run_signature_proof_fails_with_wrong_parameters_for_proof::<1>();
+    run_signature_proof_fails_with_wrong_parameters_for_proof::<2>();
+    run_signature_proof_fails_with_wrong_parameters_for_proof::<3>();
+    run_signature_proof_fails_with_wrong_parameters_for_proof::<5>();
+    run_signature_proof_fails_with_wrong_parameters_for_proof::<8>();
+    run_signature_proof_fails_with_wrong_parameters_for_proof::<13>();
+}
+
+fn run_signature_proof_fails_with_wrong_parameters_for_proof<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
     let bad_kp = KeyPair::new(&mut rng);
 
@@ -110,7 +147,7 @@ fn signature_proof_fails_with_wrong_parameters_for_proof() {
         &mut rng,
         msg,
         sig,
-        &[None; 3],
+        &[None; N],
         bad_kp.public_key(),
     );
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
@@ -123,10 +160,19 @@ fn signature_proof_fails_with_wrong_parameters_for_proof() {
 
 #[test]
 fn signature_proof_fails_with_wrong_parameters_for_verification() {
+    run_signature_proof_fails_with_wrong_parameters_for_verification::<1>();
+    run_signature_proof_fails_with_wrong_parameters_for_verification::<2>();
+    run_signature_proof_fails_with_wrong_parameters_for_verification::<3>();
+    run_signature_proof_fails_with_wrong_parameters_for_verification::<5>();
+    run_signature_proof_fails_with_wrong_parameters_for_verification::<8>();
+    run_signature_proof_fails_with_wrong_parameters_for_verification::<13>();
+}
+
+fn run_signature_proof_fails_with_wrong_parameters_for_verification<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
     let bad_kp = KeyPair::new(&mut rng);
 
@@ -138,7 +184,7 @@ fn signature_proof_fails_with_wrong_parameters_for_verification() {
         &mut rng,
         msg,
         sig,
-        &[None; 3],
+        &[None; N],
         kp.public_key(),
     );
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
@@ -151,10 +197,19 @@ fn signature_proof_fails_with_wrong_parameters_for_verification() {
 
 #[test]
 fn signature_proof_fails_with_wrong_challenge() {
+    run_signature_proof_fails_with_wrong_challenge::<1>();
+    run_signature_proof_fails_with_wrong_challenge::<2>();
+    run_signature_proof_fails_with_wrong_challenge::<3>();
+    run_signature_proof_fails_with_wrong_challenge::<5>();
+    run_signature_proof_fails_with_wrong_challenge::<8>();
+    run_signature_proof_fails_with_wrong_challenge::<13>();
+}
+
+fn run_signature_proof_fails_with_wrong_challenge<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
 
     // Sign message.
@@ -165,7 +220,7 @@ fn signature_proof_fails_with_wrong_challenge() {
         &mut rng,
         msg,
         sig,
-        &[None; 3],
+        &[None; N],
         kp.public_key(),
     );
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
@@ -180,20 +235,34 @@ fn signature_proof_fails_with_wrong_challenge() {
 }
 
 #[test]
-fn signature_proof_linear_relation() {
+fn signature_proof_equality_relation() {
+    run_signature_proof_equality_relation::<1>();
+    run_signature_proof_equality_relation::<2>();
+    run_signature_proof_equality_relation::<3>();
+    run_signature_proof_equality_relation::<5>();
+    run_signature_proof_equality_relation::<8>();
+    run_signature_proof_equality_relation::<13>();
+}
+
+fn run_signature_proof_equality_relation<const N: usize>() {
     let mut rng = rng();
-    let length = 3;
     // Construct messages of the form [a, ., .]; [., ., a]
     // e.g. where the first and last elements of the two messages must match.
     let msg_vec1 = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(length)
-        .collect::<Vec<Scalar>>();
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let first_pos = rng.gen_range(0..N);
+    let second_pos = rng.gen_range(0..N);
     let mut msg_vec2 = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(length - 1)
-        .collect::<Vec<Scalar>>();
-    msg_vec2.push(msg_vec1[0]);
-    let msg = Message::<3>::random(&mut rng);
-    let msg2 = Message::new([Scalar::random(&mut rng), Scalar::random(&mut rng), msg[0]]);
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    msg_vec2[second_pos] = msg_vec1[first_pos];
+    let msg = Message::new(msg_vec1);
+    let msg2 = Message::new(msg_vec2);
 
     // Sign the messages
     let kp = KeyPair::new(&mut rng);
@@ -205,18 +274,21 @@ fn signature_proof_linear_relation() {
         &mut rng,
         msg,
         sig1,
-        &[None; 3],
+        &[None; N],
         kp.public_key(),
     );
+    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    conjunction_commitment_scalars[second_pos] =
+        Some(sig_proof_builder1.conjunction_commitment_scalars()[first_pos]);
     let sig_proof_builder2 = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
         msg2,
         sig2,
-        &[
-            None,
-            None,
-            Some(sig_proof_builder1.conjunction_commitment_scalars()[0]),
-        ],
+        &conjunction_commitment_scalars,
         kp.public_key(),
     );
 
@@ -237,31 +309,40 @@ fn signature_proof_linear_relation() {
 
     // Response scalars for matching elements must match.
     assert_eq!(
-        proof1.conjunction_response_scalars()[0],
-        proof2.conjunction_response_scalars()[2]
+        proof1.conjunction_response_scalars()[first_pos],
+        proof2.conjunction_response_scalars()[second_pos]
     );
 
     // Response scalars for other elements should *not* match!
-    assert_ne!(
-        proof1.conjunction_response_scalars()[0],
-        proof2.conjunction_response_scalars()[0]
-    );
-    assert_ne!(
-        proof1.conjunction_response_scalars()[1],
-        proof2.conjunction_response_scalars()[1]
-    );
-    assert_ne!(
-        proof1.conjunction_response_scalars()[2],
-        proof2.conjunction_response_scalars()[2]
-    );
+    for i in 0..N {
+        for j in 0..N {
+            if i != first_pos && j != second_pos {
+                assert_ne!(
+                    proof1.conjunction_response_scalars()[i],
+                    proof2.conjunction_response_scalars()[j]
+                );
+            }
+        }
+    }
 }
 
 #[test]
 fn signature_proof_public_value() {
+    run_signature_proof_public_value::<1>();
+    run_signature_proof_public_value::<2>();
+    run_signature_proof_public_value::<3>();
+    run_signature_proof_public_value::<5>();
+    run_signature_proof_public_value::<8>();
+    run_signature_proof_public_value::<13>();
+}
+
+fn run_signature_proof_public_value<const N: usize>() {
     let mut rng = rng();
 
     // Form message and signature.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
+    let pos = rng.gen_range(0..N);
+    let public_value = msg[pos];
     let kp = KeyPair::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
 
@@ -270,7 +351,7 @@ fn signature_proof_public_value() {
         &mut rng,
         msg,
         sig,
-        &[None; 3],
+        &[None; N],
         kp.public_key(),
     );
     // Save commitment scalars for publicly revealed values (in this case, all of them).
@@ -282,29 +363,43 @@ fn signature_proof_public_value() {
     // Proof must verify.
     assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 
-    // Verify response scalars are correctly formed w.r.t public message and revealed commitment scalars.
+    // Verify response scalar is correctly formed w.r.t public message and revealed commitment scalar.
     let response_scalars = proof.conjunction_response_scalars();
     assert_eq!(
-        msg[0] * verif_challenge.to_scalar() + commitment_scalars[0],
-        response_scalars[0]
-    );
-    assert_eq!(
-        msg[1] * verif_challenge.to_scalar() + commitment_scalars[1],
-        response_scalars[1]
-    );
-    assert_eq!(
-        msg[2] * verif_challenge.to_scalar() + commitment_scalars[2],
-        response_scalars[2]
+        public_value * verif_challenge.to_scalar() + commitment_scalars[pos],
+        response_scalars[pos]
     );
 }
 
 #[test]
 fn signature_proof_linear_relation_public_addition() {
+    run_signature_proof_linear_relation_public_addition::<1>();
+    run_signature_proof_linear_relation_public_addition::<2>();
+    run_signature_proof_linear_relation_public_addition::<3>();
+    run_signature_proof_linear_relation_public_addition::<5>();
+    run_signature_proof_linear_relation_public_addition::<8>();
+    run_signature_proof_linear_relation_public_addition::<13>();
+}
+
+fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
     let mut rng = rng();
     // Create messages of the form [a], [a + public_value].
     let public_value = Scalar::random(&mut rng);
-    let msg = Message::new([Scalar::random(&mut rng)]);
-    let msg2 = Message::new([msg[0] + public_value]);
+    let msg_vec1 = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let first_pos = rng.gen_range(0..N);
+    let second_pos = rng.gen_range(0..N);
+    let mut msg_vec2 = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    msg_vec2[second_pos] = msg_vec1[first_pos] + public_value;
+    let msg = Message::new(msg_vec1);
+    let msg2 = Message::new(msg_vec2);
 
     // Form signatures on messages.
     let kp = KeyPair::new(&mut rng);
@@ -316,14 +411,21 @@ fn signature_proof_linear_relation_public_addition() {
         &mut rng,
         msg,
         sig1,
-        &[None; 1],
+        &[None; N],
         kp.public_key(),
     );
+    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    conjunction_commitment_scalars[second_pos] =
+        Some(sig_proof_builder1.conjunction_commitment_scalars()[first_pos]);
     let sig_proof_builder2 = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
         msg2,
         sig2,
-        &[Some(sig_proof_builder1.conjunction_commitment_scalars()[0])],
+        &conjunction_commitment_scalars,
         kp.public_key(),
     );
 
@@ -344,7 +446,8 @@ fn signature_proof_linear_relation_public_addition() {
 
     // The expected linear relationship must hold for the response scalars.
     assert_eq!(
-        proof1.conjunction_response_scalars()[0] + verif_challenge.to_scalar() * public_value,
-        proof2.conjunction_response_scalars()[0]
+        proof1.conjunction_response_scalars()[first_pos]
+            + verif_challenge.to_scalar() * public_value,
+        proof2.conjunction_response_scalars()[second_pos]
     );
 }

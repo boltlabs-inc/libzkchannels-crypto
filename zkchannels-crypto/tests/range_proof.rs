@@ -1,6 +1,8 @@
+use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
+use std::iter;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
     pointcheval_sanders::KeyPair,
@@ -19,15 +21,28 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
 
 #[test]
 fn range_proof_with_commitment_verifies() {
+    run_range_proof_with_commitment_verifies::<1>();
+    run_range_proof_with_commitment_verifies::<2>();
+    run_range_proof_with_commitment_verifies::<3>();
+    run_range_proof_with_commitment_verifies::<5>();
+    run_range_proof_with_commitment_verifies::<8>();
+    run_range_proof_with_commitment_verifies::<13>();
+}
+
+fn run_range_proof_with_commitment_verifies<const N: usize>() {
     let mut rng = rng();
-    let range_tested_value: u32 = 10;
+    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
     // Generate message and form commitment.
-    let msg = Message::new([
-        Scalar::from(u64::from(range_tested_value)),
-        Scalar::random(&mut rng),
-        Scalar::random(&mut rng),
-    ]);
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let pos = rng.gen_range(0..N);
+    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
+    let msg = Message::new(msg_vec);
+
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
@@ -39,9 +54,15 @@ fn range_proof_with_commitment_verifies() {
         &mut rng,
     )
     .unwrap();
+    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    conjunction_commitment_scalars[pos] = Some(range_proof_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &[Some(range_proof_builder.commitment_scalar()), None, None],
+        &conjunction_commitment_scalars,
         &params,
     );
 
@@ -63,30 +84,48 @@ fn range_proof_with_commitment_verifies() {
     assert!(range_proof.verify_range_proof(
         &rp_params,
         verif_challenge,
-        proof.conjunction_response_scalars()[0]
+        proof.conjunction_response_scalars()[pos]
     ));
     // Verify commitment proof is valid.
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
 
     // Verify that the range proof *doesn't* pass with a different response scalar.
-    assert!(!range_proof.verify_range_proof(
-        &rp_params,
-        verif_challenge,
-        proof.conjunction_response_scalars()[2]
-    ));
+    for i in 0..N {
+        if i != pos {
+            assert!(!range_proof.verify_range_proof(
+                &rp_params,
+                verif_challenge,
+                proof.conjunction_response_scalars()[i]
+            ));
+        }
+    }
 }
 
 #[test]
 fn range_proof_with_signature_verifies() {
+    run_range_proof_with_signature_verifies::<1>();
+    run_range_proof_with_signature_verifies::<2>();
+    run_range_proof_with_signature_verifies::<3>();
+    run_range_proof_with_signature_verifies::<5>();
+    run_range_proof_with_signature_verifies::<8>();
+    run_range_proof_with_signature_verifies::<13>();
+}
+
+fn run_range_proof_with_signature_verifies<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and signature.
-    let range_tested_value: u32 = 10;
-    let msg = Message::new([
-        Scalar::from(u64::from(range_tested_value)),
-        Scalar::random(&mut rng),
-        Scalar::random(&mut rng),
-    ]);
+    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
+    // Generate message and form commitment.
+    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let pos = rng.gen_range(0..N);
+    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
+    let msg = Message::new(msg_vec);
+
     let kp = KeyPair::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
 
@@ -99,11 +138,17 @@ fn range_proof_with_signature_verifies() {
         &mut rng,
     )
     .unwrap();
+    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    conjunction_commitment_scalars[pos] = Some(range_proof_builder.commitment_scalar());
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
         msg,
         sig,
-        &[Some(range_proof_builder.commitment_scalar()), None, None],
+        &conjunction_commitment_scalars,
         kp.public_key(),
     );
 
@@ -127,15 +172,19 @@ fn range_proof_with_signature_verifies() {
     assert!(range_proof.verify_range_proof(
         &rp_params,
         verif_challenge,
-        proof.conjunction_response_scalars()[0]
+        proof.conjunction_response_scalars()[pos]
     ));
 
     // Range proof must *not* pass with any other response scalar.
-    assert!(!range_proof.verify_range_proof(
-        &rp_params,
-        verif_challenge,
-        proof.conjunction_response_scalars()[2]
-    ));
+    for i in 0..N {
+        if i != pos {
+            assert!(!range_proof.verify_range_proof(
+                &rp_params,
+                verif_challenge,
+                proof.conjunction_response_scalars()[i]
+            ));
+        }
+    }
 }
 
 #[test]
@@ -221,23 +270,29 @@ fn range_proof_test_extremes() {
 
 #[test]
 fn range_proof_fails_with_wrong_input() {
+    run_range_proof_fails_with_wrong_input::<1>();
+    run_range_proof_fails_with_wrong_input::<2>();
+    run_range_proof_fails_with_wrong_input::<3>();
+    run_range_proof_fails_with_wrong_input::<5>();
+    run_range_proof_fails_with_wrong_input::<8>();
+    run_range_proof_fails_with_wrong_input::<13>();
+}
+
+fn run_range_proof_fails_with_wrong_input<const N: usize>() {
     let mut rng = rng();
 
     // Generate a value to range-test and a *random* (unrelated) message.
-    let range_tested_value: u32 = 10;
-    let msg = Message::new([
-        Scalar::random(&mut rng),
-        Scalar::random(&mut rng),
-        Scalar::random(&mut rng),
-    ]);
+    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
+    let msg = Message::<N>::random(&mut rng);
+    let pos = rng.gen_range(0..N);
     assert_ne!(
         Scalar::from(u64::from(range_tested_value)),
-        msg[0],
+        msg[pos],
         "unfortunate RNG seed"
     );
 
     // Form commitment to message
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
@@ -249,9 +304,15 @@ fn range_proof_fails_with_wrong_input() {
         &mut rng,
     )
     .unwrap();
+    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    conjunction_commitment_scalars[pos] = Some(range_proof_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &[Some(range_proof_builder.commitment_scalar()), None, None],
+        &conjunction_commitment_scalars,
         &params,
     );
 
@@ -277,23 +338,36 @@ fn range_proof_fails_with_wrong_input() {
     assert!(!range_proof.verify_range_proof(
         &rp_params,
         verif_challenge,
-        proof.conjunction_response_scalars()[0]
+        proof.conjunction_response_scalars()[pos]
     ));
 }
 
 #[test]
 fn range_proof_fails_if_unlinked() {
+    run_range_proof_fails_if_unlinked::<1>();
+    run_range_proof_fails_if_unlinked::<2>();
+    run_range_proof_fails_if_unlinked::<3>();
+    run_range_proof_fails_if_unlinked::<5>();
+    run_range_proof_fails_if_unlinked::<8>();
+    run_range_proof_fails_if_unlinked::<13>();
+}
+
+fn run_range_proof_fails_if_unlinked<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
-    let range_tested_value: u32 = 10;
-    let msg = Message::new([
-        Scalar::from(u64::from(range_tested_value)),
-        Scalar::random(&mut rng),
-        Scalar::random(&mut rng),
-    ]);
+    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
+    // Generate message and form commitment.
+    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let pos = rng.gen_range(0..N);
+    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
+    let msg = Message::new(msg_vec);
     // Form commitment to message.
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
@@ -307,7 +381,7 @@ fn range_proof_fails_if_unlinked() {
     .unwrap();
     // Failure case: *don't* use the range commitment scalar in the commitment proof.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None, None, None], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
 
     // Form challenge using both proofs.
     let challenge = ChallengeBuilder::new()
@@ -326,7 +400,7 @@ fn range_proof_fails_if_unlinked() {
     // Commitment proof should still verify.
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
     // Range proof should fail, since the commitment proof isn't built correctly w.r.t it.
-    let range_value_response_scalar = proof.conjunction_response_scalars()[0];
+    let range_value_response_scalar = proof.conjunction_response_scalars()[pos];
     assert!(!range_proof.verify_range_proof(
         &rp_params,
         verif_challenge,
@@ -336,18 +410,31 @@ fn range_proof_fails_if_unlinked() {
 
 #[test]
 fn range_proof_value_revealed() {
+    run_range_proof_value_revealed::<1>();
+    run_range_proof_value_revealed::<2>();
+    run_range_proof_value_revealed::<3>();
+    run_range_proof_value_revealed::<5>();
+    run_range_proof_value_revealed::<8>();
+    run_range_proof_value_revealed::<13>();
+}
+
+fn run_range_proof_value_revealed<const N: usize>() {
     let mut rng = rng();
 
-    let range_tested_value: u32 = 10;
     // Generate message.
-    let msg = Message::new([
-        Scalar::from(u64::from(range_tested_value)),
-        Scalar::random(&mut rng),
-        Scalar::random(&mut rng),
-    ]);
+    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
+    // Generate message and form commitment.
+    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let pos = rng.gen_range(0..N);
+    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
+    let msg = Message::new(msg_vec);
 
     // Form commitment to message
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
@@ -360,9 +447,15 @@ fn range_proof_value_revealed() {
     )
     .unwrap();
     let range_value_commitment_scalar = range_proof_builder.commitment_scalar();
+    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    conjunction_commitment_scalars[pos] = Some(range_value_commitment_scalar);
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &[Some(range_value_commitment_scalar), None, None],
+        &conjunction_commitment_scalars,
         &params,
     );
 
@@ -382,7 +475,7 @@ fn range_proof_value_revealed() {
         .finish();
     // Range proof and commitment proof must verify.
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
-    let range_value_response_scalar = proof.conjunction_response_scalars()[0];
+    let range_value_response_scalar = proof.conjunction_response_scalars()[pos];
     assert!(range_proof.verify_range_proof(
         &rp_params,
         verif_challenge,
@@ -391,6 +484,6 @@ fn range_proof_value_revealed() {
     // Revealed value should match partial opening.
     assert_eq!(
         range_value_response_scalar,
-        verif_challenge.to_scalar() * msg[0] + range_value_commitment_scalar
+        verif_challenge.to_scalar() * msg[pos] + range_value_commitment_scalar
     );
 }

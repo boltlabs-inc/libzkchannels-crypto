@@ -733,6 +733,16 @@ mod tests {
         run_happy_path_establish_proof(100, 0);
     }
 
+    #[test]
+    fn establish_proof_with_max_merch_balance_verifies() {
+        run_happy_path_establish_proof(i64::MAX as u64, 100);
+    }
+
+    #[test]
+    fn establish_proof_with_max_cust_balance_verifies() {
+        run_happy_path_establish_proof(100, i64::MAX as u64);
+    }
+
     fn run_happy_path_establish_proof(merchant_balance: u64, customer_balance: u64) {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);

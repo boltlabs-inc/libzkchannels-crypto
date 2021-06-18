@@ -77,6 +77,19 @@ impl Config {
         }
     }
 
+    /// Instantiate a merchant with pre-defined parameters.
+    pub fn from_parts(
+        signing_keypair: crate::KeyPair,
+        revocation_commitment_parameters: crate::CommitmentParameters,
+        range_proof_parameters: RangeProofParameters,
+    ) -> Self {
+        Self {
+            signing_keypair,
+            revocation_commitment_parameters,
+            range_proof_parameters,
+        }
+    }
+
     /// Extract public configuration for customers.
     pub fn to_customer_config(&self) -> customer::Config {
         customer::Config {
@@ -84,6 +97,21 @@ impl Config {
             revocation_commitment_parameters: self.revocation_commitment_parameters.clone(),
             range_proof_parameters: self.range_proof_parameters.clone(),
         }
+    }
+
+    /// Extract Pointcheval-Sanders [`KeyPair`].
+    pub fn signing_keypair(&self) -> &crate::KeyPair {
+        &self.signing_keypair
+    }
+
+    /// Extract [`PedersenParameters`] for commitments to revocation locks.
+    pub fn revocation_commitment_parameters(&self) -> &crate::CommitmentParameters {
+        &self.revocation_commitment_parameters
+    }
+
+    /// Extract [`RangeProofParameters`].
+    pub fn range_proof_parameters(&self) -> &RangeProofParameters {
+        &self.range_proof_parameters
     }
 
     /**

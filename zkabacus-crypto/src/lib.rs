@@ -56,6 +56,8 @@ pub use zkchannels_crypto::proofs::RangeProofParameters;
 pub type PublicKey = zkchannels_crypto::pointcheval_sanders::PublicKey<5>;
 /// Commitment parameters, used to construct [`customer::Config`].
 pub type CommitmentParameters = zkchannels_crypto::pedersen::PedersenParameters<G1Projective, 1>;
+/// Pointcheval-Sanders keypair, used as part of [`merchant::Config`]
+pub type KeyPair = zkchannels_crypto::pointcheval_sanders::KeyPair<5>;
 
 pub use states::{
     ChannelId, CloseState, CloseStateCommitment, CloseStateSignature, CustomerBalance,

@@ -135,11 +135,6 @@ impl<const N: usize> SignatureProofBuilder<N> {
             .conjunction_commitment_scalars()
     }
 
-    /// Get the commitment to the message.
-    pub fn message_commitment(&self) -> Commitment<G2Projective> {
-        self.message_commitment
-    }
-
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
     pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof<N> {
         // Run response phase for PoK of opening of commitment to message

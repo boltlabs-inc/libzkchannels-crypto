@@ -1,6 +1,6 @@
 use bls12_381::Scalar;
 use ff::Field;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use std::iter;
 use zkchannels_crypto::{
     pointcheval_sanders::KeyPair,
@@ -169,8 +169,9 @@ fn signature_proof_fails_with_wrong_challenge() {
         kp.public_key(),
     );
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+    let random_challenge_seed = rng.gen::<[u8; 32]>();
     let bad_challenge = ChallengeBuilder::new()
-        .with(&sig_proof_builder.message_commitment())
+        .with_bytes(&random_challenge_seed)
         .finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
 

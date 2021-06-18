@@ -162,7 +162,7 @@ fn commitment_proof_fails_on_wrong_challenge() {
 }
 
 #[test]
-fn commitment_proof_with_linear_relation() {
+fn commitment_proof_with_equality_relation() {
     let mut rng = rng();
 
     // Construct messages of the form [a, ., .]; [., ., a]
@@ -215,7 +215,7 @@ fn commitment_proof_with_linear_relation() {
         proof1.conjunction_response_scalars()[0],
         proof2.conjunction_response_scalars()[2]
     );
-    // Verify the above was not an accident.
+    // Verify the above was not an accident. (such as all elements are the same, or there are other equalities)
     assert_ne!(
         proof1.conjunction_response_scalars()[0],
         proof2.conjunction_response_scalars()[0]
@@ -225,7 +225,15 @@ fn commitment_proof_with_linear_relation() {
         proof2.conjunction_response_scalars()[1]
     );
     assert_ne!(
+        proof1.conjunction_response_scalars()[0],
+        proof2.conjunction_response_scalars()[1]
+    );
+    assert_ne!(
         proof1.conjunction_response_scalars()[2],
+        proof2.conjunction_response_scalars()[2]
+    );
+    assert_ne!(
+        proof1.conjunction_response_scalars()[1],
         proof2.conjunction_response_scalars()[2]
     );
 }
@@ -236,6 +244,7 @@ fn commitment_proof_with_public_value() {
 
     // Construct message and commitment.
     let msg = Message::<3>::random(&mut rng);
+    let public_value = msg[0];
     let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
@@ -252,19 +261,11 @@ fn commitment_proof_with_public_value() {
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
 
-    // Verify response scalars are correctly formed against the public msg.
+    // Verify response scalars are correctly formed against the public msg. The commitment_scalar for the public value is revealed alongside the proof
     let response_scalars = proof.conjunction_response_scalars();
     assert_eq!(
-        msg[0] * challenge.to_scalar() + commitment_scalars[0],
+        public_value * verif_challenge.to_scalar() + commitment_scalars[0],
         response_scalars[0]
-    );
-    assert_eq!(
-        msg[1] * challenge.to_scalar() + commitment_scalars[1],
-        response_scalars[1]
-    );
-    assert_eq!(
-        msg[2] * challenge.to_scalar() + commitment_scalars[2],
-        response_scalars[2]
     );
 }
 

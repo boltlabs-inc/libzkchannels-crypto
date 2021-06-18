@@ -746,7 +746,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "AmountTooLarge")]
     fn establish_proof_negative_customer_balance_rejected() {
-        run_establish_proof(100, (-5 as i64) as u64);
+        run_establish_proof(100, -5_i64 as u64);
     }
 
     #[test]
@@ -758,7 +758,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "AmountTooLarge")]
     fn establish_proof_negative_merchant_balance_rejected() {
-        run_establish_proof((-5 as i64) as u64, 100);
+        run_establish_proof(-5_i64 as u64, 100);
     }
 
     #[test]
@@ -801,7 +801,7 @@ mod tests {
 
     #[test]
     fn pay_proof_verifies() {
-        run_pay_proof(0, 100, 10,PaymentAmount::pay_merchant);
+        run_pay_proof(0, 100, 10, PaymentAmount::pay_merchant);
     }
 
     #[test]
@@ -809,7 +809,36 @@ mod tests {
         run_pay_proof(100, 100, 10, PaymentAmount::pay_customer);
     }
 
-    fn run_pay_proof(merchant_balance: u64, customer_balance: u64, amount: u64, pay: fn (u64) -> Result<PaymentAmount, crate::Error>) {
+    #[test]
+    #[should_panic(expected = "InsufficientFunds")]
+    fn pay_proof_with_customer_going_negative() {
+        run_pay_proof(100, 100, 101, PaymentAmount::pay_merchant);
+    }
+
+    #[test]
+    #[should_panic(expected = "InsufficientFunds")]
+    fn pay_proof_with_merchant_going_negative() {
+        run_pay_proof(100, 100, 101, PaymentAmount::pay_customer);
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn pay_proof_with_customer_going_above_max() {
+        run_pay_proof(100, i64::MAX as u64, 100, PaymentAmount::pay_customer);
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn pay_proof_with_merchant_going_above_max() {
+        run_pay_proof(i64::MAX as u64, 100, 100, PaymentAmount::pay_merchant);
+    }
+
+    fn run_pay_proof(
+        merchant_balance: u64,
+        customer_balance: u64,
+        amount: u64,
+        pay: fn(u64) -> Result<PaymentAmount, crate::Error>,
+    ) {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);
         let params = merchant_params.to_customer_config();

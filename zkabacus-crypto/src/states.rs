@@ -59,7 +59,7 @@ impl MerchantBalance {
 
     fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
         // The merchant adds, the customer subtracts
-        let new_value = self.0 .0 as i64 + amt.0;
+        let new_value = self.0 .0 as i128 + amt.0 as i128;
         if new_value.is_negative() {
             Err(Error::InsufficientFunds)
         } else {
@@ -92,7 +92,7 @@ impl CustomerBalance {
 
     fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
         // The merchant adds, the customer subtracts
-        let new_value = self.0 .0 as i64 - amt.0;
+        let new_value = self.0 .0 as i128 - amt.0 as i128;
         if new_value.is_negative() {
             Err(Error::InsufficientFunds)
         } else {

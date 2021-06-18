@@ -37,6 +37,8 @@ pub mod customer;
 pub mod merchant;
 pub mod revlock;
 
+use std::ops::BitAnd;
+
 pub use nonce::Nonce;
 pub use proofs::Context;
 pub use proofs::EstablishProof;
@@ -49,7 +51,8 @@ pub use states::BlindedPayToken as PayToken;
 pub use states::CloseStateBlindedSignature as ClosingSignature;
 
 pub use states::{
-    ChannelId, CloseStateCommitment, CustomerBalance, MerchantBalance, StateCommitment,
+    ChannelId, CloseState, CloseStateCommitment, CloseStateSignature, CustomerBalance,
+    MerchantBalance, StateCommitment,
 };
 
 mod nonce;
@@ -102,7 +105,18 @@ impl From<bool> for Verification {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+impl BitAnd for Verification {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Verification::Verified, Verification::Verified) => Verification::Verified,
+            (_, _) => Verification::Failed,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct Balance(u64);
 
 impl Balance {
@@ -156,6 +170,11 @@ impl PaymentAmount {
         } else {
             Scalar::from(self.0 as u64)
         }
+    }
+
+    /// Convert `PaymentAmount` to an [`i64`].
+    pub fn to_i64(self) -> i64 {
+        self.0
     }
 }
 

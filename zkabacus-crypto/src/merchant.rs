@@ -1,5 +1,40 @@
 //! Cryptographic routines to establish a new merchant, establish customer channels, and
 //! process payments.
+//! A merchant is essentially a stateless object, so nearly all these functions are atomic API calls on
+//! the merchant configuration [`Config`].
+//!
+//! **Important:** Most of these API calls have a documented **Usage** requirement: typically, the
+//! merchant must ensure that certain parameters are *fresh*, and have never been seen before.
+//! These checks *must* be made for a correct zkAbacus execution.
+//!
+//! ## Init
+//! A merchant initializes itself by creating parameters that will be used over its entire lifetime.
+//!
+//! ## Establish
+//! This is a two-phase process. First, the merchant must [`initialize()`](Config::initialize())
+//! a given channel id, which verifies that the customer has correctly set up the channel state.
+//! Once initialized, it must [`activate()`](Config::activate()) the
+//! channel to allow the customer to begin making payments.
+//!
+//! ## Pay
+//! This is also a two-phase process, with an intermediate state. First, the merchant receives a
+//! payment request and decides whether to [`allow_payment()`](Config::allow_payment()), making sure the
+//! request is well-formed and valid. If so, it enters the [`Unrevoked`] state, indicating that
+//! the customer has not yet revoked the previous channel state. At this point, the customer cannot
+//! make another payment. Once the customer revokes the previous state, the
+//! merchant can [`complete_payment()](Unrevoked::complete_payment()) and allow the customer to make
+//! new payments once again.
+//!
+//! ## Close
+//! The merchant can process a close request from the customer with
+//! [`check_close_signature`](Config::check_close_signature()).
+//!
+//!
+//!
+//!
+//!
+//!
+//!
 
 use crate::{
     customer,
@@ -9,7 +44,7 @@ use crate::{
     states::*,
     types::*,
     PaymentAmount, Rng,
-    Verification::{Failed, Verified},
+    Verification::{self, Failed, Verified},
 };
 use zkchannels_crypto::{
     pedersen::PedersenParameters, pointcheval_sanders::KeyPair, proofs::RangeProofParameters,
@@ -33,7 +68,7 @@ pub struct Config {
 
 impl Config {
     /// Instantiate a new merchant with all parameters.
-    /// This executes zkAbacus.Init.
+    /// This is called as part of zkAbacus.Init.
     pub fn new(rng: &mut impl Rng) -> Self {
         Self {
             signing_keypair: KeyPair::new(rng),
@@ -53,13 +88,13 @@ impl Config {
 
     /**
     Respond to a customer request to initialize a new channel.
-    This executes zkAbacus.Initialize.
+    This is called as part of zkAbacus.Initialize.
 
     Fails in the case where the given [`EstablishProof`] does not verify with respect to the
     public variables (channel ID, balances, and provided commitments).
 
-    The given `channel_id` *must* be fresh; this should only be called if the [`ChannelId`] has
-    never been seen before.
+    **Usage**: The given `channel_id` *must* be fresh; this should only be called if the [`ChannelId`]
+    has never been seen before.
 
     Note: there are two "flavors" of inputs here. Channel ID + balances are public inputs, should
     be agreed on outside of zkAbacus. The commitments + proof are received from the customer.
@@ -94,10 +129,11 @@ impl Config {
     }
 
     /**
-    Activate a channel with the given ID. This is part of zkAbacus.Activate.
+    Activate a channel with the given ID. This is called as part of zkAbacus.Activate.
 
-    This should only be called _after_ the merchant has executed [`initialize()`](Config::initialize()) for the given
-    [`ChannelId`].
+    **Usage**: The [`StateCommitment`] *must* be associated with a valid [`EstablishProof`]. This
+    should only be called _after_ the merchant has successfully run [`initialize()`](Config::initialize())
+    with the given `state_commitment`.
     */
     pub fn activate(
         &self,
@@ -113,9 +149,10 @@ impl Config {
     /**
     On receiving a payment request, issue a [`ClosingSignature`](crate::ClosingSignature) on the
     updated state, if the provided evidence is valid.
-    This is part of zkAbacus.Pay.
+    This is called as part of zkAbacus.Pay.
 
-    This should only be called if the [`Nonce`] has never been seen before.
+    **Usage**: The given [`Nonce`] *must* be fresh; this should only be called if the `nonce` has
+    never been seen before.
 
     This will fail if the [`PayProof`] is not verifiable with the provided commitments and
     [`Nonce`].
@@ -151,6 +188,20 @@ impl Config {
             Failed => None,
         }
     }
+
+    /// Validate closing information: make sure the [`CloseStateSignature`] is on the given
+    /// [`CloseState`]. This is called as part of zkAbacus.Close.
+    ///
+    /// **Usage**: The [`CloseState`] *must* be fresh; this should only be run if the revocation
+    /// lock in the given `close_state` has never been seen before.
+    pub fn check_close_signature(
+        &self,
+        close_signature: CloseStateSignature,
+        close_state: CloseState,
+    ) -> Verification {
+        // Verify the signature is on the message
+        close_signature.verify(&self.to_customer_config(), close_state)
+    }
 }
 /**
 A merchant that has approved a new payment on a channel, but has not received revocation
@@ -169,9 +220,9 @@ impl<'a> Unrevoked<'a> {
     /**
     Complete a payment by issuing a pay token on the updated state, if the revocation information
     is well-formed.
-    This is part of zkAbacus.Pay.
+    This is called as part of zkAbacus.Pay.
 
-    This should only be called if the revocation lock has never been seen before.
+    **Usage**: This should *only* be called if the revocation lock has never been seen before.
 
     This will fail if the revocation information is not well-formed (e.g. the revocation lock does
     not match the revocation secret; or it does not match the stored revocation commitment).

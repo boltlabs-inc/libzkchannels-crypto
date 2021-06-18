@@ -34,7 +34,7 @@
 use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
-    proofs::{Challenge, ChallengeBuilder, ChallengeDigest},
+    proofs::{Challenge, ChallengeBuilder, ChallengeInput},
     serde::SerializeElement,
 };
 use arrayvec::ArrayVec;
@@ -91,11 +91,11 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     }
 }
 
-impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
     for CommitmentProof<G, N>
 {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.scalar_commitment());
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.scalar_commitment());
     }
 }
 
@@ -188,10 +188,10 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     }
 }
 
-impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
     for CommitmentProofBuilder<G, N>
 {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest(&self.scalar_commitment());
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.scalar_commitment());
     }
 }

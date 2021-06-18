@@ -10,44 +10,44 @@ use sha3::{Digest, Sha3_256};
 use std::convert::TryFrom;
 
 /// A trait implemented by types which can feed their public components into a [`ChallengeBuilder`].
-pub trait ChallengeDigest {
+pub trait ChallengeInput {
     /// Incorporate public components of this type into a [`ChallengeBuilder`].
-    fn digest(&self, builder: &mut ChallengeBuilder);
+    fn consume(&self, builder: &mut ChallengeBuilder);
 }
 
-impl<'a, T: ChallengeDigest> ChallengeDigest for &'a T {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        (**self).digest(builder);
+impl<'a, T: ChallengeInput> ChallengeInput for &'a T {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        (**self).consume(builder);
     }
 }
 
-impl ChallengeDigest for Scalar {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.to_bytes());
+impl ChallengeInput for Scalar {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume_bytes(self.to_bytes());
     }
 }
 
-impl ChallengeDigest for G1Affine {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.to_bytes());
+impl ChallengeInput for G1Affine {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume_bytes(self.to_bytes());
     }
 }
 
-impl ChallengeDigest for G2Affine {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.to_bytes());
+impl ChallengeInput for G2Affine {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume_bytes(self.to_bytes());
     }
 }
 
-impl ChallengeDigest for G1Projective {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.to_bytes());
+impl ChallengeInput for G1Projective {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume_bytes(self.to_bytes());
     }
 }
 
-impl ChallengeDigest for G2Projective {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.to_bytes());
+impl ChallengeInput for G2Projective {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume_bytes(self.to_bytes());
     }
 }
 
@@ -85,24 +85,24 @@ impl ChallengeBuilder {
     }
 
     /// Incorporate public data from some given type into the challenge.
-    pub fn digest<T: ChallengeDigest>(&mut self, object: &T) {
-        object.digest(self);
+    pub fn consume<T: ChallengeInput>(&mut self, object: &T) {
+        object.consume(self);
     }
 
-    /// A conveniently chainable variant of [`ChallengeBuilder::digest`].
-    pub fn with<T: ChallengeDigest>(mut self, object: &T) -> Self {
-        object.digest(&mut self);
+    /// A conveniently chainable variant of [`ChallengeBuilder::consume`].
+    pub fn with<T: ChallengeInput>(mut self, object: &T) -> Self {
+        object.consume(&mut self);
         self
     }
 
     /// Incorporate arbitrary bytes into the challenge.
-    pub fn digest_bytes(&mut self, bytes: impl AsRef<[u8]>) {
+    pub fn consume_bytes(&mut self, bytes: impl AsRef<[u8]>) {
         self.hasher.update(bytes);
     }
 
-    /// A conveniently chainable variant of [`ChallengeBuilder::digest_bytes`].
+    /// A conveniently chainable variant of [`ChallengeBuilder::consume_bytes`].
     pub fn with_bytes(mut self, bytes: impl AsRef<[u8]>) -> Self {
-        self.digest_bytes(bytes);
+        self.consume_bytes(bytes);
         self
     }
 

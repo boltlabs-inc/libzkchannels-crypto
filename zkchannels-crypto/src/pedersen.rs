@@ -29,7 +29,7 @@
 
 use crate::{
     common::*,
-    proofs::{ChallengeBuilder, ChallengeDigest},
+    proofs::{ChallengeBuilder, ChallengeInput},
     serde::{SerializeElement, SerializeG1},
 };
 use arrayvec::ArrayVec;
@@ -51,9 +51,9 @@ impl<G: Group<Scalar = Scalar>> Commitment<G> {
     }
 }
 
-impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeDigest for Commitment<G> {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.to_element().to_bytes());
+impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeInput for Commitment<G> {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume_bytes(self.to_element().to_bytes());
     }
 }
 
@@ -107,13 +107,13 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
     }
 }
 
-impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeDigest
+impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
     for PedersenParameters<G, N>
 {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
-        builder.digest_bytes(self.h.to_bytes());
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume_bytes(self.h.to_bytes());
         for g in &self.gs {
-            builder.digest_bytes(g.to_bytes());
+            builder.consume_bytes(g.to_bytes());
         }
     }
 }

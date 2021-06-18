@@ -84,7 +84,7 @@
 use crate::{
     common::*,
     pointcheval_sanders::{KeyPair, PublicKey, Signature},
-    proofs::{Challenge, ChallengeBuilder, ChallengeDigest, SignatureProof, SignatureProofBuilder},
+    proofs::{Challenge, ChallengeBuilder, ChallengeInput, SignatureProof, SignatureProofBuilder},
 };
 use arrayvec::ArrayVec;
 use serde::*;
@@ -237,10 +237,10 @@ impl RangeProofBuilder {
     }
 }
 
-impl ChallengeDigest for RangeProofBuilder {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
+impl ChallengeInput for RangeProofBuilder {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
         for digit_proof in &self.digit_proof_builders {
-            builder.digest(digit_proof);
+            builder.consume(digit_proof);
         }
     }
 }
@@ -285,10 +285,10 @@ impl RangeProof {
     }
 }
 
-impl ChallengeDigest for RangeProof {
-    fn digest(&self, builder: &mut ChallengeBuilder) {
+impl ChallengeInput for RangeProof {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
         for digit_proof in &self.digit_proofs {
-            builder.digest(digit_proof);
+            builder.consume(digit_proof);
         }
     }
 }

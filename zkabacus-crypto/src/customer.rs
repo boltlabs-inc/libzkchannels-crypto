@@ -41,7 +41,7 @@ The customer has the option to close at multiple points in the protocol:
 - [`Locked`]. A locked channel can close on the updated balances.
 
 At any of these points, the customer can call the associated `close()` function to retrieve the
-[`Closing`] information.
+[`ClosingMessage`] information.
 */
 
 use crate::{
@@ -53,6 +53,7 @@ use crate::{
     Error, PaymentAmount, Rng,
     Verification::{Failed, Verified},
 };
+use serde::*;
 use zkchannels_crypto::{
     pedersen::PedersenParameters, pointcheval_sanders::PublicKey, proofs::RangeProofParameters,
 };
@@ -134,7 +135,7 @@ pub struct RequestMessage {
 impl Requested {
     /**
     Generate a new channel request from public parameters.
-    This is part of zkAbacus.Initialize.
+    This is called as part of zkAbacus.Initialize.
     */
     pub fn new(
         rng: &mut impl Rng,
@@ -163,7 +164,7 @@ impl Requested {
     }
 
     /// Complete channel initiation: validate approval received from the merchant.
-    /// This is part of zkAbacus.Initialize.
+    /// This is called as part of zkAbacus.Initialize.
     pub fn complete(
         self,
         closing_signature: crate::ClosingSignature,
@@ -195,7 +196,7 @@ pub struct Inactive {
 
 impl Inactive {
     /// Activate the channel with the fresh pay token from the merchant.
-    /// This is part of zkAbacus.Activate.
+    /// This is called as part of zkAbacus.Activate.
     pub fn activate(self, pay_token: crate::PayToken) -> Result<Ready, Inactive> {
         // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
@@ -264,8 +265,9 @@ impl Ready {
     }
 
     /// Extract data used to close the channel.
-    pub fn close(self) -> Closing {
-        todo!()
+    /// This is called as part of zkAbacus.Close.
+    pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
+        ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
     }
 }
 
@@ -294,9 +296,28 @@ pub struct LockMessage {
 }
 
 /// The information necessary to perform a close for a state.
-#[derive(Debug, Clone)]
-#[allow(missing_copy_implementations)]
-pub struct Closing {}
+/// This is sent as part of zkAbacus.Close.
+#[derive(Debug, Serialize, Deserialize)]
+#[non_exhaustive]
+pub struct ClosingMessage {
+    close_signature: CloseStateSignature,
+    close_state: CloseState,
+}
+
+impl ClosingMessage {
+    /// Create a new `ClosingMessage`. This randomizes the signature.
+    pub fn new(
+        rng: &mut impl Rng,
+        mut close_signature: CloseStateSignature,
+        close_state: CloseState,
+    ) -> Self {
+        close_signature.randomize(&mut *rng);
+        Self {
+            close_signature,
+            close_state,
+        }
+    }
+}
 
 impl Started {
     /// Revoke the ability to close the channel on the outdated balances.
@@ -329,8 +350,13 @@ impl Started {
     }
 
     /// Extract data used to close the channel on the previous balances.
-    pub fn close(self) -> Closing {
-        todo!()
+    /// This is called as part of zkAbacus.Close.
+    pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
+        ClosingMessage::new(
+            rng,
+            self.old_close_state_signature,
+            self.old_state.close_state(),
+        )
     }
 }
 
@@ -364,7 +390,8 @@ impl Locked {
     }
 
     /// Extract data used to close the channel.
-    pub fn close(self) -> Closing {
-        todo!()
+    /// This is called as part of zkAbacus.Close.
+    pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
+        ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
     }
 }

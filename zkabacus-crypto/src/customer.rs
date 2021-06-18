@@ -72,7 +72,7 @@ pub struct Config {
 
 impl Config {
     /// Construct a new customer configuration from the merchant's public parameters.
-    pub fn new(
+    pub fn from_parts(
         merchant_public_key: PublicKey<5>,
         revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
         range_proof_parameters: RangeProofParameters,

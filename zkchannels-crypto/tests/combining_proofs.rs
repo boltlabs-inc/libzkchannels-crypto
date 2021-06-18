@@ -1,6 +1,8 @@
+use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
+use std::iter;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
     pointcheval_sanders::KeyPair,
@@ -18,16 +20,25 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
 /// Prove knowledge of a signature and knowledge of opening of a commitment that are on the same
 /// message. This test constructs the signataure proof first.
 fn signature_commitment_proof_linear_relation() {
+    run_signature_commitment_proof_linear_relation::<1>();
+    run_signature_commitment_proof_linear_relation::<2>();
+    run_signature_commitment_proof_linear_relation::<3>();
+    run_signature_commitment_proof_linear_relation::<5>();
+    run_signature_commitment_proof_linear_relation::<8>();
+    run_signature_commitment_proof_linear_relation::<13>();
+}
+
+fn run_signature_commitment_proof_linear_relation<const N: usize>() {
     let mut rng = rng();
     // Generate message.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
 
     // Form signature on message.
-    let kp = KeyPair::<3>::new(&mut rng);
+    let kp = KeyPair::<N>::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
 
     // Form commitment on message.
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
@@ -37,15 +48,18 @@ fn signature_commitment_proof_linear_relation() {
         &mut rng,
         msg,
         sig,
-        &[None; 3],
+        &[None; N],
         kp.public_key(),
     );
-    let ccs = sig_proof_builder.conjunction_commitment_scalars();
-    let com_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng,
-        &[Some(ccs[0]), Some(ccs[1]), Some(ccs[2])],
-        &params,
-    );
+    let ccs = sig_proof_builder
+        .conjunction_commitment_scalars()
+        .iter()
+        .map(|&ccs| Some(ccs))
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let com_proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &ccs, &params);
 
     // Form challenge from both proofs.
     let challenge = ChallengeBuilder::new()
@@ -76,28 +90,43 @@ fn signature_commitment_proof_linear_relation() {
 /// Prove knowledge of a signature and knowledge of opening of a commitment that are on the same
 /// message. This test constructs the commitment proof first.
 fn commitment_signature_proof_linear_relation() {
+    run_commitment_signature_proof_linear_relation::<1>();
+    run_commitment_signature_proof_linear_relation::<2>();
+    run_commitment_signature_proof_linear_relation::<3>();
+    run_commitment_signature_proof_linear_relation::<5>();
+    run_commitment_signature_proof_linear_relation::<8>();
+    run_commitment_signature_proof_linear_relation::<13>();
+}
+
+fn run_commitment_signature_proof_linear_relation<const N: usize>() {
     let mut rng = rng();
     // Generate message.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
     // Form signature on message
-    let kp = KeyPair::<3>::new(&mut rng);
+    let kp = KeyPair::<N>::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
 
     // Form commitment to message.
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
     // Construct proof - commitment phase.
     // Use matching commitment scalars for each message item.
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
-    let ccs = com_proof_builder.conjunction_commitment_scalars();
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+    let ccs = com_proof_builder
+        .conjunction_commitment_scalars()
+        .iter()
+        .map(|&ccs| Some(ccs))
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
         msg,
         sig,
-        &[Some(ccs[0]), Some(ccs[1]), Some(ccs[2])],
+        &ccs,
         kp.public_key(),
     );
 
@@ -131,29 +160,49 @@ fn commitment_signature_proof_linear_relation() {
 /// with each other and a public value:
 /// Sig( a ); Com( a + public_value )
 fn commitment_signature_proof_linear_relation_public_addition() {
+    run_commitment_signature_proof_linear_relation_public_addition::<1>();
+    run_commitment_signature_proof_linear_relation_public_addition::<2>();
+    run_commitment_signature_proof_linear_relation_public_addition::<3>();
+    run_commitment_signature_proof_linear_relation_public_addition::<5>();
+    run_commitment_signature_proof_linear_relation_public_addition::<8>();
+    run_commitment_signature_proof_linear_relation_public_addition::<13>();
+}
+
+fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize>() {
     let mut rng = rng();
     // Form message [a]; [a + public_value]
     let public_value = Scalar::random(&mut rng);
-    let msg = Message::<1>::random(&mut rng);
-    let msg2 = Message::new([msg[0] + public_value]);
+    let msg = Message::<N>::random(&mut rng);
+    let first_pos = rng.gen_range(0..N);
+    let second_pos = rng.gen_range(0..N);
+    let mut msg2_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    msg2_vec[second_pos] = msg[first_pos] + public_value;
+    let msg2 = Message::new(msg2_vec);
 
     // Sign [a].
     let kp = KeyPair::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
 
     // Commit to [a + public_value].
-    let params = PedersenParameters::<G1Projective, 1>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg2, bf);
 
     // Proof commitment phase: use the same commitment scalar for both messages.
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 1], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+    let mut conjunction_commitment_scalars = [None; N];
+    conjunction_commitment_scalars[first_pos] =
+        Some(com_proof_builder.conjunction_commitment_scalars()[second_pos]);
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
         msg,
         sig,
-        &[Some(com_proof_builder.conjunction_commitment_scalars()[0])],
+        &conjunction_commitment_scalars,
         kp.public_key(),
     );
 
@@ -176,7 +225,8 @@ fn commitment_signature_proof_linear_relation_public_addition() {
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // The response scalars must have the expected relationship.
     assert_eq!(
-        com_proof.conjunction_response_scalars()[0],
-        sig_proof.conjunction_response_scalars()[0] + verif_challenge.to_scalar() * public_value
+        sig_proof.conjunction_response_scalars()[first_pos]
+            + verif_challenge.to_scalar() * public_value,
+        com_proof.conjunction_response_scalars()[second_pos],
     );
 }

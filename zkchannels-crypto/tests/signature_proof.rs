@@ -248,11 +248,7 @@ fn run_signature_proof_equality_relation<const N: usize>() {
     let mut rng = rng();
     // Construct messages of the form [a, ., .]; [., ., a]
     // e.g. where the first and last elements of the two messages must match.
-    let msg_vec1 = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let msg = Message::<N>::random(&mut rng);
     let first_pos = rng.gen_range(0..N);
     let second_pos = rng.gen_range(0..N);
     let mut msg_vec2 = iter::repeat_with(|| Scalar::random(&mut rng))
@@ -260,8 +256,7 @@ fn run_signature_proof_equality_relation<const N: usize>() {
         .collect::<ArrayVec<_, N>>()
         .into_inner()
         .expect("length mismatch impossible");
-    msg_vec2[second_pos] = msg_vec1[first_pos];
-    let msg = Message::new(msg_vec1);
+    msg_vec2[second_pos] = msg[first_pos];
     let msg2 = Message::new(msg_vec2);
 
     // Sign the messages
@@ -277,11 +272,7 @@ fn run_signature_proof_equality_relation<const N: usize>() {
         &[None; N],
         kp.public_key(),
     );
-    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[second_pos] =
         Some(sig_proof_builder1.conjunction_commitment_scalars()[first_pos]);
     let sig_proof_builder2 = SignatureProofBuilder::generate_proof_commitments(
@@ -385,11 +376,7 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
     let mut rng = rng();
     // Create messages of the form [a], [a + public_value].
     let public_value = Scalar::random(&mut rng);
-    let msg_vec1 = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let msg = Message::<N>::random(&mut rng);
     let first_pos = rng.gen_range(0..N);
     let second_pos = rng.gen_range(0..N);
     let mut msg_vec2 = iter::repeat_with(|| Scalar::random(&mut rng))
@@ -397,8 +384,7 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
         .collect::<ArrayVec<_, N>>()
         .into_inner()
         .expect("length mismatch impossible");
-    msg_vec2[second_pos] = msg_vec1[first_pos] + public_value;
-    let msg = Message::new(msg_vec1);
+    msg_vec2[second_pos] = msg[first_pos] + public_value;
     let msg2 = Message::new(msg_vec2);
 
     // Form signatures on messages.
@@ -414,11 +400,7 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
         &[None; N],
         kp.public_key(),
     );
-    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[second_pos] =
         Some(sig_proof_builder1.conjunction_commitment_scalars()[first_pos]);
     let sig_proof_builder2 = SignatureProofBuilder::generate_proof_commitments(

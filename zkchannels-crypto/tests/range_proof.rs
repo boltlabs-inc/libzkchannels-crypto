@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
-use rand::{Rng, SeedableRng};
+use rand::{CryptoRng, Rng, RngCore, SeedableRng};
 use std::iter;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
@@ -31,16 +31,7 @@ fn range_proof_with_commitment_verifies() {
 
 fn run_range_proof_with_commitment_verifies<const N: usize>() {
     let mut rng = rng();
-    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
-    // Generate message and form commitment.
-    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
-    let pos = rng.gen_range(0..N);
-    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
-    let msg = Message::new(msg_vec);
+    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
 
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
@@ -54,11 +45,7 @@ fn run_range_proof_with_commitment_verifies<const N: usize>() {
         &mut rng,
     )
     .unwrap();
-    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[pos] = Some(range_proof_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
@@ -115,16 +102,7 @@ fn run_range_proof_with_signature_verifies<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and signature.
-    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
-    // Generate message and form commitment.
-    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
-    let pos = rng.gen_range(0..N);
-    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
-    let msg = Message::new(msg_vec);
+    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
 
     let kp = KeyPair::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
@@ -138,11 +116,7 @@ fn run_range_proof_with_signature_verifies<const N: usize>() {
         &mut rng,
     )
     .unwrap();
-    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[pos] = Some(range_proof_builder.commitment_scalar());
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
@@ -304,11 +278,7 @@ fn run_range_proof_fails_with_wrong_input<const N: usize>() {
         &mut rng,
     )
     .unwrap();
-    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[pos] = Some(range_proof_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
@@ -356,16 +326,8 @@ fn run_range_proof_fails_if_unlinked<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
-    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
-    // Generate message and form commitment.
-    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
-    let pos = rng.gen_range(0..N);
-    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
-    let msg = Message::new(msg_vec);
+    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
+
     // Form commitment to message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
@@ -422,16 +384,7 @@ fn run_range_proof_value_revealed<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
-    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
-    // Generate message and form commitment.
-    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
-    let pos = rng.gen_range(0..N);
-    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
-    let msg = Message::new(msg_vec);
+    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
 
     // Form commitment to message
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
@@ -447,11 +400,7 @@ fn run_range_proof_value_revealed<const N: usize>() {
     )
     .unwrap();
     let range_value_commitment_scalar = range_proof_builder.commitment_scalar();
-    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[pos] = Some(range_value_commitment_scalar);
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
@@ -486,4 +435,20 @@ fn run_range_proof_value_revealed<const N: usize>() {
         range_value_response_scalar,
         verif_challenge.to_scalar() * msg[pos] + range_value_commitment_scalar
     );
+}
+
+fn message_with_value_in_range<const N: usize>(
+    mut rng: &mut (impl CryptoRng + RngCore),
+) -> (u32, usize, Message<N>) {
+    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
+    // Generate message and form commitment.
+    let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let pos = rng.gen_range(0..N);
+    msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
+    let msg = Message::new(msg_vec);
+    (range_tested_value, pos, msg)
 }

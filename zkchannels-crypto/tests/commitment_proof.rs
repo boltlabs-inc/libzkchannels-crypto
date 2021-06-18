@@ -214,12 +214,7 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
 
     // Construct messages of the form [a, ., .]; [., ., a]
     // e.g. the last element of the second equals the first element of the first.
-    let msg1_vec = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
-    let msg1 = Message::new(msg1_vec);
+    let msg1 = Message::<N>::random(&mut rng);
     let first_pos = rng.gen_range(0..N);
     let second_pos = rng.gen_range(0..N);
     let mut msg2_vec = iter::repeat_with(|| Scalar::random(&mut rng))
@@ -227,7 +222,7 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
         .collect::<ArrayVec<_, N>>()
         .into_inner()
         .expect("length mismatch impossible");
-    msg2_vec[second_pos] = msg1_vec[first_pos];
+    msg2_vec[second_pos] = msg1[first_pos];
     let msg2 = Message::new(msg2_vec);
 
     // Construct commitments.
@@ -240,11 +235,7 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
     // Construct proofs - commitment phase.
     let proof_builder1 =
         CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
-    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[second_pos] =
         Some(proof_builder1.conjunction_commitment_scalars()[first_pos]);
     // Set commitment scalars for the matching elements to be equal:
@@ -349,12 +340,7 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     // e.g. the last element of the second equals the first element of the first.
     let public_value = Scalar::random(&mut rng);
 
-    let msg1_vec = iter::repeat_with(|| Scalar::random(&mut rng))
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
-    let msg1 = Message::new(msg1_vec);
+    let msg1 = Message::<N>::random(&mut rng);
     let first_pos = rng.gen_range(0..N);
     let second_pos = rng.gen_range(0..N);
     let mut msg2_vec = iter::repeat_with(|| Scalar::random(&mut rng))
@@ -362,7 +348,7 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
         .collect::<ArrayVec<_, N>>()
         .into_inner()
         .expect("length mismatch impossible");
-    msg2_vec[second_pos] = msg1_vec[first_pos] + public_value;
+    msg2_vec[second_pos] = msg1[first_pos] + public_value;
     let msg2 = Message::new(msg2_vec);
 
     // Construct commitments.
@@ -376,11 +362,7 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     let proof_builder1 =
         CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
     // Commitment scalars for elements with linear relationships must match.
-    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
-        .take(N)
-        .collect::<ArrayVec<_, N>>()
-        .into_inner()
-        .expect("length mismatch impossible");
+    let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[second_pos] =
         Some(proof_builder1.conjunction_commitment_scalars()[first_pos]);
     let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(

@@ -1,6 +1,8 @@
+use arrayvec::ArrayVec;
 use bls12_381::*;
 use ff::Field;
 use rand::{Rng, SeedableRng};
+use std::iter;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
     proofs::{ChallengeBuilder, CommitmentProofBuilder},
@@ -15,19 +17,28 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
 
 #[test]
 fn commitment_proof_verifies() {
+    run_commitment_proof_verifies::<1>();
+    run_commitment_proof_verifies::<2>();
+    run_commitment_proof_verifies::<3>();
+    run_commitment_proof_verifies::<5>();
+    run_commitment_proof_verifies::<8>();
+    run_commitment_proof_verifies::<13>();
+}
+
+fn run_commitment_proof_verifies<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
 
     // Form commmitment.
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
     // Build proof.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
@@ -38,19 +49,28 @@ fn commitment_proof_verifies() {
 
 #[test]
 fn commitment_proof_fails_on_wrong_commit() {
+    run_commitment_proof_fails_on_wrong_commit::<1>();
+    run_commitment_proof_fails_on_wrong_commit::<2>();
+    run_commitment_proof_fails_on_wrong_commit::<3>();
+    run_commitment_proof_fails_on_wrong_commit::<5>();
+    run_commitment_proof_fails_on_wrong_commit::<8>();
+    run_commitment_proof_fails_on_wrong_commit::<13>();
+}
+
+fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
 
     // Form the "correct" commmitment.
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
     // Build proof.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
@@ -68,7 +88,7 @@ fn commitment_proof_fails_on_wrong_commit() {
     );
 
     // Proof must not verify on a commitment with the wrong parameters.
-    let bad_params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bad_params_com = bad_params.commit(&msg, bf);
     assert_ne!(
         com, bad_params_com,
@@ -80,7 +100,7 @@ fn commitment_proof_fails_on_wrong_commit() {
     );
 
     // Proof must to verify on a commitment with the wrong message.
-    let bad_msg = Message::<3>::random(&mut rng);
+    let bad_msg = Message::<N>::random(&mut rng);
     assert_ne!(&*msg, &*bad_msg, "Accidentally generated matching messages");
     let bad_msg_com = params.commit(&bad_msg, bf);
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
@@ -92,26 +112,35 @@ fn commitment_proof_fails_on_wrong_commit() {
 
 #[test]
 fn commitment_proof_fails_on_bad_response_phase() {
+    run_commitment_proof_fails_on_bad_response_phase::<1>();
+    run_commitment_proof_fails_on_bad_response_phase::<2>();
+    run_commitment_proof_fails_on_bad_response_phase::<3>();
+    run_commitment_proof_fails_on_bad_response_phase::<5>();
+    run_commitment_proof_fails_on_bad_response_phase::<8>();
+    run_commitment_proof_fails_on_bad_response_phase::<13>();
+}
+
+fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
 
     // Form commmitment.
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
     // Start proof, making a copy for each version of this test.
     let proof_builder_for_msg =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
     let challenge = ChallengeBuilder::new()
         .with(&proof_builder_for_msg)
         .finish();
     let proof_builder_for_bf = proof_builder_for_msg.clone();
 
     // Run response phase with wrong message.
-    let bad_msg = Message::<3>::random(&mut rng);
+    let bad_msg = Message::<N>::random(&mut rng);
     assert_ne!(
         &*msg, &*bad_msg,
         "Accidentally generated matching messages."
@@ -134,19 +163,28 @@ fn commitment_proof_fails_on_bad_response_phase() {
 
 #[test]
 fn commitment_proof_fails_on_wrong_challenge() {
+    run_commitment_proof_fails_on_wrong_challenge::<1>();
+    run_commitment_proof_fails_on_wrong_challenge::<2>();
+    run_commitment_proof_fails_on_wrong_challenge::<3>();
+    run_commitment_proof_fails_on_wrong_challenge::<5>();
+    run_commitment_proof_fails_on_wrong_challenge::<8>();
+    run_commitment_proof_fails_on_wrong_challenge::<13>();
+}
+
+fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
-    let msg = Message::<3>::random(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
 
     // Form commmitment.
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
     // Build proof using normally-generated challenge.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
 
@@ -163,15 +201,37 @@ fn commitment_proof_fails_on_wrong_challenge() {
 
 #[test]
 fn commitment_proof_with_equality_relation() {
+    run_commitment_proof_with_equality_relation::<1>();
+    run_commitment_proof_with_equality_relation::<2>();
+    run_commitment_proof_with_equality_relation::<3>();
+    run_commitment_proof_with_equality_relation::<5>();
+    run_commitment_proof_with_equality_relation::<8>();
+    run_commitment_proof_with_equality_relation::<13>();
+}
+
+fn run_commitment_proof_with_equality_relation<const N: usize>() {
     let mut rng = rng();
 
     // Construct messages of the form [a, ., .]; [., ., a]
     // e.g. the last element of the second equals the first element of the first.
-    let msg1 = Message::<3>::random(&mut rng);
-    let msg2 = Message::new([Scalar::random(&mut rng), Scalar::random(&mut rng), msg1[0]]);
+    let msg1_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let msg1 = Message::new(msg1_vec);
+    let first_pos = rng.gen_range(0..N);
+    let second_pos = rng.gen_range(0..N);
+    let mut msg2_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    msg2_vec[second_pos] = msg1_vec[first_pos];
+    let msg2 = Message::new(msg2_vec);
 
     // Construct commitments.
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf1 = BlindingFactor::new(&mut rng);
     let com1 = params.commit(&msg1, bf1);
     let bf2 = BlindingFactor::new(&mut rng);
@@ -179,16 +239,19 @@ fn commitment_proof_with_equality_relation() {
 
     // Construct proofs - commitment phase.
     let proof_builder1 =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    conjunction_commitment_scalars[second_pos] =
+        Some(proof_builder1.conjunction_commitment_scalars()[first_pos]);
     // Set commitment scalars for the matching elements to be equal:
     // Pass in the commitment scalar of the first position onto the third position.
     let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &[
-            None,
-            None,
-            Some(proof_builder1.conjunction_commitment_scalars()[0]),
-        ],
+        &conjunction_commitment_scalars,
         &params,
     );
 
@@ -212,46 +275,46 @@ fn commitment_proof_with_equality_relation() {
 
     // Verify linear equation.
     assert_eq!(
-        proof1.conjunction_response_scalars()[0],
-        proof2.conjunction_response_scalars()[2]
+        proof1.conjunction_response_scalars()[first_pos],
+        proof2.conjunction_response_scalars()[second_pos]
     );
     // Verify the above was not an accident. (such as all elements are the same, or there are other equalities)
-    assert_ne!(
-        proof1.conjunction_response_scalars()[0],
-        proof2.conjunction_response_scalars()[0]
-    );
-    assert_ne!(
-        proof1.conjunction_response_scalars()[1],
-        proof2.conjunction_response_scalars()[1]
-    );
-    assert_ne!(
-        proof1.conjunction_response_scalars()[0],
-        proof2.conjunction_response_scalars()[1]
-    );
-    assert_ne!(
-        proof1.conjunction_response_scalars()[2],
-        proof2.conjunction_response_scalars()[2]
-    );
-    assert_ne!(
-        proof1.conjunction_response_scalars()[1],
-        proof2.conjunction_response_scalars()[2]
-    );
+    for i in 0..N {
+        for j in 0..N {
+            if i != first_pos && j != second_pos {
+                assert_ne!(
+                    proof1.conjunction_response_scalars()[i],
+                    proof2.conjunction_response_scalars()[j]
+                );
+            }
+        }
+    }
 }
 
 #[test]
 fn commitment_proof_with_public_value() {
+    run_commitment_proof_with_public_value::<1>();
+    run_commitment_proof_with_public_value::<2>();
+    run_commitment_proof_with_public_value::<3>();
+    run_commitment_proof_with_public_value::<5>();
+    run_commitment_proof_with_public_value::<8>();
+    run_commitment_proof_with_public_value::<13>();
+}
+
+fn run_commitment_proof_with_public_value<const N: usize>() {
     let mut rng = rng();
 
     // Construct message and commitment.
-    let msg = Message::<3>::random(&mut rng);
-    let public_value = msg[0];
-    let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    let msg = Message::<N>::random(&mut rng);
+    let public_pos = rng.gen_range(0..N);
+    let public_value = msg[public_pos];
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
     let com = params.commit(&msg, bf);
 
     // Construct proof.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
     // Save commitment scalars for public elements (in this case, all of them).
     let commitment_scalars = proof_builder.conjunction_commitment_scalars().to_vec();
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
@@ -264,25 +327,46 @@ fn commitment_proof_with_public_value() {
     // Verify response scalars are correctly formed against the public msg. The commitment_scalar for the public value is revealed alongside the proof
     let response_scalars = proof.conjunction_response_scalars();
     assert_eq!(
-        public_value * verif_challenge.to_scalar() + commitment_scalars[0],
-        response_scalars[0]
+        public_value * verif_challenge.to_scalar() + commitment_scalars[public_pos],
+        response_scalars[public_pos]
     );
 }
 
 #[test]
 fn commitment_proof_with_linear_relation_public_addition() {
+    run_commitment_proof_with_linear_relation_public_addition::<1>();
+    run_commitment_proof_with_linear_relation_public_addition::<2>();
+    run_commitment_proof_with_linear_relation_public_addition::<3>();
+    run_commitment_proof_with_linear_relation_public_addition::<5>();
+    run_commitment_proof_with_linear_relation_public_addition::<8>();
+    run_commitment_proof_with_linear_relation_public_addition::<13>();
+}
+
+fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     let mut rng = rng();
 
     // Construct messages of the form [a]; [a + public_value]
     // e.g. the last element of the second equals the first element of the first.
     let public_value = Scalar::random(&mut rng);
-    let msg_vec1 = [Scalar::random(&mut rng)];
-    let msg_vec2 = [msg_vec1[0] + public_value];
-    let msg1 = Message::new(msg_vec1);
-    let msg2 = Message::new(msg_vec2);
+
+    let msg1_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    let msg1 = Message::new(msg1_vec);
+    let first_pos = rng.gen_range(0..N);
+    let second_pos = rng.gen_range(0..N);
+    let mut msg2_vec = iter::repeat_with(|| Scalar::random(&mut rng))
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    msg2_vec[second_pos] = msg1_vec[first_pos] + public_value;
+    let msg2 = Message::new(msg2_vec);
 
     // Construct commitments.
-    let params = PedersenParameters::<G1Projective, 1>::new(&mut rng);
+    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf1 = BlindingFactor::new(&mut rng);
     let com1 = params.commit(&msg1, bf1);
     let bf2 = BlindingFactor::new(&mut rng);
@@ -290,11 +374,18 @@ fn commitment_proof_with_linear_relation_public_addition() {
 
     // Construct proof - commitment phase.
     let proof_builder1 =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 1], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
     // Commitment scalars for elements with linear relationships must match.
+    let mut conjunction_commitment_scalars = iter::repeat_with(|| None)
+        .take(N)
+        .collect::<ArrayVec<_, N>>()
+        .into_inner()
+        .expect("length mismatch impossible");
+    conjunction_commitment_scalars[second_pos] =
+        Some(proof_builder1.conjunction_commitment_scalars()[first_pos]);
     let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &[Some(proof_builder1.conjunction_commitment_scalars()[0])],
+        &conjunction_commitment_scalars,
         &params,
     );
 
@@ -316,7 +407,20 @@ fn commitment_proof_with_linear_relation_public_addition() {
 
     // Verify linear equation.
     assert_eq!(
-        proof1.conjunction_response_scalars()[0] + verif_challenge.to_scalar() * public_value,
-        proof2.conjunction_response_scalars()[0]
+        proof1.conjunction_response_scalars()[first_pos]
+            + verif_challenge.to_scalar() * public_value,
+        proof2.conjunction_response_scalars()[second_pos]
     );
+    // Verify the above was not an accident. (such as all elements are the same, or there are other equalities)
+    for i in 0..N {
+        for j in 0..N {
+            if i != first_pos && j != second_pos {
+                assert_ne!(
+                    proof1.conjunction_response_scalars()[i]
+                        + verif_challenge.to_scalar() * public_value,
+                    proof2.conjunction_response_scalars()[j]
+                );
+            }
+        }
+    }
 }

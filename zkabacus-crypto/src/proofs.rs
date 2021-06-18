@@ -720,6 +720,20 @@ mod tests {
 
     #[test]
     fn establish_proof_verifies() {
+        run_happy_path_establish_proof(0, 100);
+    }
+
+    #[test]
+    fn establish_proof_with_merch_balance_verifies() {
+        run_happy_path_establish_proof(100, 100);
+    }
+
+    #[test]
+    fn establish_proof_only_merch_balance_verifies() {
+        run_happy_path_establish_proof(100, 0);
+    }
+
+    fn run_happy_path_establish_proof(merchant_balance: u64, customer_balance: u64) {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);
         let params = merchant_params.to_customer_config();
@@ -729,8 +743,8 @@ mod tests {
         let state = State::new(
             &mut rng,
             channel_id,
-            MerchantBalance::try_new(0).unwrap(),
-            CustomerBalance::try_new(100).unwrap(),
+            MerchantBalance::try_new(merchant_balance).unwrap(),
+            CustomerBalance::try_new(customer_balance).unwrap(),
         );
 
         let context = Context::new(b"establish proof verify test");

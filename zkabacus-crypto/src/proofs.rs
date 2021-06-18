@@ -752,6 +752,36 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn establish_proof_negative_customer_balance_rejected() {
+        let mut rng = rng();
+
+        // Create a new state.
+        let channel_id = ChannelId::new(&mut rng);
+        State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new(100).unwrap(),
+            CustomerBalance::try_new((-5 as i64) as u64).unwrap(),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn establish_proof_negative_merchant_balance_rejected() {
+        let mut rng = rng();
+
+        // Create a new state.
+        let channel_id = ChannelId::new(&mut rng);
+        State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new((-5 as i64) as u64).unwrap(),
+            CustomerBalance::try_new(100).unwrap(),
+        );
+    }
+
+    #[test]
     fn pay_proof_verifies() {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);

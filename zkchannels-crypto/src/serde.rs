@@ -192,6 +192,23 @@ impl<G: SerializeElement> SerializeElement for Vec<G> {
     }
 }
 
+impl<G: SerializeElement, const N: usize> SerializeElement for Box<[G; N]> {
+    fn serialize<S>(this: &Self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let this: &[G; N] = &*this;
+        SerializeElement::serialize(this, serializer)
+    }
+
+    fn deserialize<'de, D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(Box::new(SerializeElement::deserialize(deserializer)?))
+    }
+}
+
 impl<G: SerializeElement, const N: usize> SerializeElement for [G; N] {
     fn serialize<S>(this: &Self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -241,6 +258,28 @@ impl<G: SerializeElement, const N: usize> SerializeElement for [G; N] {
         };
 
         deserializer.deserialize_seq(visitor)
+    }
+}
+
+pub mod big_boxed_array {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<T, S, const N: usize>(array: &[T; N], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: Serialize + for<'de> Deserialize<'de>,
+        S: Serializer,
+    {
+        serde_big_array::BigArray::serialize(&*array, serializer)
+    }
+
+    pub fn deserialize<'de, T, D, const N: usize>(deserializer: D) -> Result<Box<[T; N]>, D::Error>
+    where
+        T: Serialize + Deserialize<'de>,
+        D: Deserializer<'de>,
+    {
+        Ok(Box::new(serde_big_array::BigArray::deserialize(
+            deserializer,
+        )?))
     }
 }
 

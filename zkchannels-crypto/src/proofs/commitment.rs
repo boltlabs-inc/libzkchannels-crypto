@@ -53,8 +53,10 @@ pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
     #[serde(with = "SerializeElement")]
     blinding_factor_response_scalar: Scalar,
     /// The remaining response scalars.
+    ///
+    /// Uses Box to avoid stack overflows for proofs on large messages.
     #[serde(with = "SerializeElement")]
-    message_response_scalars: [Scalar; N],
+    message_response_scalars: Box<[Scalar; N]>,
 }
 
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
@@ -67,7 +69,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     ) -> bool {
         // Construct commitment to response scalars.
         let rhs = params.commit(
-            &Message::new(self.message_response_scalars),
+            &Message::new(*self.message_response_scalars),
             BlindingFactor::from_scalar(self.blinding_factor_response_scalar),
         );
 
@@ -110,7 +112,9 @@ pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
     blinding_factor_commitment_scalar: Scalar,
     /// The commitment scalars for the message, conceptually appended to the commitment scalar for
     /// the blinding factor.
-    message_commitment_scalars: [Scalar; N],
+    ///
+    /// Uses Box to avoid stack overflows for proofs on large messages.
+    message_commitment_scalars: Box<[Scalar; N]>,
 }
 
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
@@ -129,16 +133,18 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     ) -> Self {
         let blinding_factor_commitment_scalar = Scalar::random(&mut *rng);
         // Choose commitment scalars (that haven't already been specified)
-        let message_commitment_scalars = conjunction_commitment_scalars
-            .iter()
-            .map(|&maybe_scalar| maybe_scalar.unwrap_or_else(|| Scalar::random(&mut *rng)))
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("length mismatch impossible");
+        let message_commitment_scalars = Box::new(
+            conjunction_commitment_scalars
+                .iter()
+                .map(|&maybe_scalar| maybe_scalar.unwrap_or_else(|| Scalar::random(&mut *rng)))
+                .collect::<ArrayVec<_, N>>()
+                .into_inner()
+                .expect("length mismatch impossible"),
+        );
 
         // Commit to the scalars
         let scalar_commitment = params.commit(
-            &Message::new(message_commitment_scalars),
+            &Message::new(*message_commitment_scalars),
             BlindingFactor::from_scalar(blinding_factor_commitment_scalar),
         );
 
@@ -172,13 +178,14 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         // Generate response scalars.
         let blinding_factor_response_scalar = challenge.to_scalar() * blinding_factor.to_scalar()
             + self.blinding_factor_commitment_scalar;
-        let message_response_scalars = msg
-            .iter()
-            .zip(&self.message_commitment_scalars)
-            .map(|(mi, cs)| challenge.to_scalar() * mi + cs)
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("length mismatch impossible");
+        let message_response_scalars = Box::new(
+            msg.iter()
+                .zip(&*self.message_commitment_scalars)
+                .map(|(mi, cs)| challenge.to_scalar() * mi + cs)
+                .collect::<ArrayVec<_, N>>()
+                .into_inner()
+                .expect("length mismatch impossible"),
+        );
 
         CommitmentProof {
             scalar_commitment: self.scalar_commitment,

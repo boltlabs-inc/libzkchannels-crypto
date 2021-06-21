@@ -15,6 +15,8 @@
 pub mod pedersen;
 pub mod pointcheval_sanders;
 pub mod proofs;
+#[macro_use]
+mod sqlite;
 
 mod serde;
 

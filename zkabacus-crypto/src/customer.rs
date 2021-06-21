@@ -59,7 +59,7 @@ use zkchannels_crypto::{
 };
 
 /// Keys and parameters used throughout the lifetime of a channel.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct Config {
     /// Merchant public parameters for blind signing and proofs.
@@ -102,7 +102,8 @@ impl Config {
 
 /// An activated channel that allows payments and closing.
 /// This is a channel that has completed zkAbacus.Activate.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "sqlite", derive(sqlx::FromRow))]
 pub struct Ready {
     config: Config,
     state: State,

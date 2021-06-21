@@ -26,10 +26,6 @@ Ch 3.3: Off-network channel protocol zkAbacus.
 #![warn(unused)]
 #![forbid(broken_intra_doc_links)]
 
-#[cfg(feature = "sqlite")]
-#[macro_use]
-mod sqlite;
-
 #[doc(hidden)]
 pub mod internal;
 

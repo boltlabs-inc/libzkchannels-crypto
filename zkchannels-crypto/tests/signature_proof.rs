@@ -1,12 +1,13 @@
 use arrayvec::ArrayVec;
-use bls12_381::Scalar;
+use bls12_381::{G1Projective, Scalar};
 use ff::Field;
+use group::Group;
 use rand::{Rng, SeedableRng};
 use std::iter;
 use zkchannels_crypto::{
-    pointcheval_sanders::KeyPair,
+    pointcheval_sanders::{KeyPair, Signature},
     proofs::{ChallengeBuilder, SignatureProofBuilder},
-    Message,
+    Message, SerializeElement,
 };
 
 // Seeded rng for replicable tests.
@@ -432,4 +433,80 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
             + verif_challenge.to_scalar() * public_value,
         proof2.conjunction_response_scalars()[second_pos]
     );
+}
+
+#[test]
+fn signature_proof_from_random_sig() {
+    let mut rng = rng();
+
+    // Deserialize a bad signature (x, y)
+    let mut bytes = Vec::<u8>::new();
+    let mut serializer = bincode::Serializer::new(&mut bytes, bincode::options());
+    SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
+    SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
+    let bad_sig: Signature = bincode::deserialize(&bytes).unwrap();
+
+    build_proof_on_invalid_signature(&mut rng, bad_sig);
+}
+
+#[test]
+fn signature_proof_from_sig_with_identities() {
+    let mut rng = rng();
+
+    // Deserialize bad signature (1, 1)
+    let mut bytes = Vec::<u8>::new();
+    let mut serializer = bincode::Serializer::new(&mut bytes, bincode::options());
+    SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
+    SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
+    let bad_sig: Signature = bincode::deserialize(&bytes).unwrap();
+
+    build_proof_on_invalid_signature(&mut rng, bad_sig);
+}
+
+#[test]
+fn signature_proof_from_sig_with_identity_first() {
+    let mut rng = rng();
+
+    // Form bad signature (1, x)
+    let mut bytes = Vec::<u8>::new();
+    let mut serializer = bincode::Serializer::new(&mut bytes, bincode::options());
+    SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
+    SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
+    let bad_sig: Signature = bincode::deserialize(&bytes).unwrap();
+
+    build_proof_on_invalid_signature(&mut rng, bad_sig);
+}
+
+#[test]
+fn signature_proof_from_sig_with_identity_second() {
+    let mut rng = rng();
+
+    // Form bad signature (x, 1)
+    let mut bytes = Vec::<u8>::new();
+    let mut serializer = bincode::Serializer::new(&mut bytes, bincode::options());
+    SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
+    SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
+    let bad_sig: Signature = bincode::deserialize(&bytes).unwrap();
+
+    build_proof_on_invalid_signature(&mut rng, bad_sig);
+}
+
+fn build_proof_on_invalid_signature(rng: &mut impl zkchannels_crypto::Rng, sig: Signature) {
+    let msg = Message::<5>::random(rng);
+    let kp = KeyPair::new(rng);
+
+    // Construct proof.
+    let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+        rng,
+        msg,
+        sig,
+        &[None; 5],
+        kp.public_key(),
+    );
+    let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+    let proof = sig_proof_builder.generate_proof_response(challenge);
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+
+    // Proof must not verify, since the underlying sig is invalid.
+    assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }

@@ -121,7 +121,6 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::proofs::CommitmentProofBuilder;
 
     fn commit_decommit<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();
@@ -251,46 +250,5 @@ mod test {
     #[test]
     fn commit_does_not_decommit_on_random_commit_g2() {
         commit_does_not_decommit_on_random_commit::<G2Projective>()
-    }
-
-    fn commitment_proof_fails_on_wrong_commit<G: Group<Scalar = Scalar> + GroupEncoding>() {
-        let mut rng = crate::test::rng();
-
-        // Generate message.
-        let msg = Message::<3>::random(&mut rng);
-
-        // Form the "correct" commmitment.
-        let params = PedersenParameters::<G, 3>::new(&mut rng);
-        let bf = BlindingFactor::new(&mut rng);
-        let com = params.commit(&msg, bf);
-
-        // Build proof.
-        let proof_builder =
-            CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
-        let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
-        let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
-
-        let bad_com = Commitment::<G>(G::random(&mut rng));
-        assert_ne!(
-            com, bad_com,
-            "Unfortunate RNG seed: Accidentally generated matching messages."
-        );
-        let verif_challenge = ChallengeBuilder::new()
-            .with(&proof.scalar_commitment())
-            .finish();
-        assert!(
-            !proof.verify_knowledge_of_opening_of_commitment(&params, bad_com, verif_challenge),
-            "Proof verified on commitment with wrong blinding factor."
-        );
-    }
-
-    #[test]
-    fn commitment_proof_fails_on_wrong_commit_g1() {
-        commitment_proof_fails_on_wrong_commit::<G1Projective>()
-    }
-
-    #[test]
-    fn commitment_proof_fails_on_wrong_commit_g2() {
-        commitment_proof_fails_on_wrong_commit::<G2Projective>()
     }
 }

@@ -1,12 +1,14 @@
 use arrayvec::ArrayVec;
 use bls12_381::*;
 use ff::Field;
+use group::{Group, GroupEncoding};
 use rand::{Rng, SeedableRng};
 use std::iter;
 use zkchannels_crypto::{
+    pedersen::Commitment,
     pedersen::PedersenParameters,
     proofs::{ChallengeBuilder, CommitmentProofBuilder},
-    BlindingFactor, Message,
+    BlindingFactor, Message, SerializeElement,
 };
 
 // Seeded rng for replicable tests.
@@ -405,4 +407,57 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
             }
         }
     }
+}
+
+fn commitment_proof_fails_on_random_commit<
+    G: Group<Scalar = Scalar> + GroupEncoding + SerializeElement,
+>() {
+    let mut rng = rng();
+
+    // Generate message.
+    let msg = Message::<3>::random(&mut rng);
+
+    // Form the "correct" commmitment.
+    let params = PedersenParameters::<G, 3>::new(&mut rng);
+    let bf = BlindingFactor::new(&mut rng);
+
+    // Build proof.
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
+    let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
+    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+
+    // Generate a bad commitment by deserializing it from a random element in G.
+    let mut bytes = Vec::<u8>::new();
+    SerializeElement::serialize(
+        &G::random(&mut rng),
+        &mut bincode::Serializer::new(&mut bytes, bincode::options()),
+    )
+    .unwrap();
+    let bad_com: Commitment<G> = bincode::deserialize(&bytes).unwrap();
+    // Make sure new commitment isn't accidentally the correct one.
+    assert_ne!(
+        params.commit(&msg, bf),
+        bad_com,
+        "Unfortunate RNG seed: Accidentally generated the correct commitment."
+    );
+
+    // Proof must not verify
+    let verif_challenge = ChallengeBuilder::new()
+        .with(&proof.scalar_commitment())
+        .finish();
+    assert!(
+        !proof.verify_knowledge_of_opening_of_commitment(&params, bad_com, verif_challenge),
+        "Proof verified on totally random commitment."
+    );
+}
+
+#[test]
+fn commitment_proof_fails_on_random_commit_g1() {
+    commitment_proof_fails_on_random_commit::<G1Projective>()
+}
+
+#[test]
+fn commitment_proof_fails_on_random_commit_g2() {
+    commitment_proof_fails_on_random_commit::<G2Projective>()
 }

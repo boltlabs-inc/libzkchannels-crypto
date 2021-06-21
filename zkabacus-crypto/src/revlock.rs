@@ -81,6 +81,7 @@ impl RevocationSecret {
     }
 
     /// Convert a revocation secret to its canonical `Scalar` representation.
+    #[allow(unused)]
     fn to_scalar(&self) -> Scalar {
         self.0
     }

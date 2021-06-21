@@ -1,4 +1,6 @@
 #[macro_export]
+/// This derives `sqlx::Encode`, `sqlx::Decode`, and `sqlx::Type` into a [u8] using bincode for
+/// types that already implement `serde::Deserialize` and `serde::Serialize`.
 macro_rules! impl_sqlx_for_bincode_ty {
     ($type:ty) => {
         impl ::sqlx::Type<::sqlx::Sqlite> for $type {

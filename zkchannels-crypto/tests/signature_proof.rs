@@ -459,6 +459,7 @@ fn signature_proof_from_sig_with_identities() {
     SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
     SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
     let bad_sig: Signature = bincode::deserialize(&bytes).unwrap();
+    assert!(!bad_sig.is_well_formed());
 
     build_proof_on_invalid_signature(&mut rng, bad_sig);
 }
@@ -473,6 +474,7 @@ fn signature_proof_from_sig_with_identity_first() {
     SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
     SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
     let bad_sig: Signature = bincode::deserialize(&bytes).unwrap();
+    assert!(!bad_sig.is_well_formed());
 
     build_proof_on_invalid_signature(&mut rng, bad_sig);
 }

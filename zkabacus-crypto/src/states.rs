@@ -158,8 +158,8 @@ impl CustomerBalance {
 
 /// Describes the complete state of the channel with the given ID.
 #[allow(missing_copy_implementations)]
-#[derive(Debug)]
-pub(crate) struct State {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct State {
     channel_id: ChannelId,
     nonce: Nonce,
     revocation_secret: RevocationSecret,
@@ -425,9 +425,9 @@ impl CloseStateSignature {
 
 /// A `PayToken` allows a customer to initiate a new payment. It is tied to a specific channel
 /// [`State`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct PayToken(pub(crate) Signature);
+pub struct PayToken(pub(crate) Signature);
 
 /// A blinded pay token.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -435,7 +435,7 @@ pub struct BlindedPayToken(BlindedSignature);
 
 /// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
+pub struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
 
 impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].

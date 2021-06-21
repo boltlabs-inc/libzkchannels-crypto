@@ -72,6 +72,9 @@ where
     pub(crate) gs: [G; N],
 }
 
+#[cfg(feature = "sqlite")]
+crate::impl_sqlx_for_bincode_ty!(PedersenParameters<G1Projective, 1>);
+
 impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
     /// Generate a new set of parameters for making commitments to messages of given
     /// length.

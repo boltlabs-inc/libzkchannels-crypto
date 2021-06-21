@@ -113,6 +113,9 @@ pub struct RangeProofParameters {
     public_key: PublicKey<1>,
 }
 
+#[cfg(feature = "sqlite")]
+crate::impl_sqlx_for_bincode_ty!(RangeProofParameters);
+
 impl RangeProofParameters {
     /// Generate new parameters for use in range proofs.
     ///

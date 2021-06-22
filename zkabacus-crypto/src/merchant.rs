@@ -55,7 +55,7 @@ use zkchannels_crypto::{
 ///
 /// Holds keys and parameters used throughout the lifetime of a merchant node, across
 /// all its channels.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 #[allow(missing_copy_implementations)]
 pub struct Config {
     /// KeyPair for signing, blind signing, and proofs.

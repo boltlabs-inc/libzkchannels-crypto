@@ -21,7 +21,7 @@ use std::iter;
 /// Pointcheval-Sanders secret key for multi-message operations.
 ///
 /// Uses Box to avoid stack overflows with large keys.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub(crate) struct SecretKey<const N: usize> {
     #[serde(with = "SerializeElement")]
     pub x: Scalar,
@@ -54,7 +54,7 @@ pub struct PublicKey<const N: usize> {
 }
 
 /// A keypair formed from a `SecretKey` and a [`PublicKey`] for multi-message operations.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct KeyPair<const N: usize> {
     /// Secret key for multi-message operations.
     sk: SecretKey<N>,

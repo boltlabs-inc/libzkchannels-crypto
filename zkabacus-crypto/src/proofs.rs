@@ -712,10 +712,18 @@ mod tests {
         states::{ChannelId, CustomerBalance, MerchantBalance, State},
     };
     use rand::SeedableRng;
+    use zkchannels_crypto::pointcheval_sanders::KeyPair;
 
     fn rng() -> impl Rng {
         let seed: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
         rand::rngs::StdRng::from_seed(seed)
+    }
+
+    fn channel_id(rng: &mut impl Rng) -> ChannelId {
+        let cid_m = MerchantRandomness::new(rng);
+        let cid_c = CustomerRandomness::new(rng);
+        let pk = KeyPair::new(rng).public_key().clone();
+        ChannelId::new(cid_m, cid_c, &pk, &[], &[])
     }
 
     #[test]
@@ -773,7 +781,7 @@ mod tests {
         let params = merchant_params.to_customer_config();
 
         // Create a new state.
-        let channel_id = ChannelId::new(&mut rng);
+        let channel_id = channel_id(&mut rng);
         let state = State::new(
             &mut rng,
             channel_id,
@@ -844,7 +852,7 @@ mod tests {
         let params = merchant_params.to_customer_config();
 
         // Create a state.
-        let channel_id = ChannelId::new(&mut rng);
+        let channel_id = channel_id(&mut rng);
         let old_state = State::new(
             &mut rng,
             channel_id,

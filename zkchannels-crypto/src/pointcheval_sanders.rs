@@ -19,22 +19,29 @@ use serde::*;
 use std::iter;
 
 /// Pointcheval-Sanders secret key for multi-message operations.
-#[derive(Debug)]
+///
+/// Uses Box to avoid stack overflows with large keys.
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct SecretKey<const N: usize> {
+    #[serde(with = "SerializeElement")]
     pub x: Scalar,
-    pub ys: [Scalar; N],
+    #[serde(with = "SerializeElement")]
+    pub ys: Box<[Scalar; N]>,
+    #[serde(with = "SerializeElement")]
     pub x1: G1Affine,
 }
 
 /// A public key for multi-message operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// Uses Box to avoid stack overflows with large keys.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PublicKey<const N: usize> {
     /// G1 generator (g)
     #[serde(with = "SerializeElement")]
     pub g1: G1Affine,
     /// Y_1 ... Y_l
     #[serde(with = "SerializeElement")]
-    pub y1s: [G1Affine; N],
+    pub y1s: Box<[G1Affine; N]>,
     /// G2 generator (g~)
     #[serde(with = "SerializeElement")]
     pub g2: G2Affine,
@@ -43,166 +50,20 @@ pub struct PublicKey<const N: usize> {
     pub x2: G2Affine,
     /// Y~_1 ... Y~_l
     #[serde(with = "SerializeElement")]
-    pub y2s: [G2Affine; N],
-}
-
-#[cfg(all(test, feature = "sqlite"))]
-mod sqlite_tests {
-    use super::*;
-    use sqlx::{
-        encode::{Encode, IsNull},
-        error::BoxDynError,
-        sqlite::SqliteArgumentValue,
-    };
-
-    #[test]
-    fn test_encode_decode() -> Result<(), BoxDynError> {
-        let mut rng = rand::thread_rng();
-        let kp = KeyPair::<3>::new(&mut rng);
-
-        let msg = Message::new([
-            Scalar::random(&mut rng),
-            Scalar::random(&mut rng),
-            Scalar::random(&mut rng),
-        ]);
-
-        let sig = kp.sign(&mut rng, &msg);
-        let pk = kp.public_key();
-
-        // encode and decode the pk
-        let mut buf = Vec::new();
-        let is_null = Encode::encode_by_ref(&pk, &mut buf);
-        assert!(matches!(is_null, IsNull::No));
-        let bytes = match &buf[0] {
-            SqliteArgumentValue::Blob(bytes) => bytes,
-            _ => panic!("did not decode to bytes"),
-        };
-
-        let decoded_pk = sqlite::decode_public_key::<3>(&bytes)?;
-        assert!(
-            decoded_pk.verify(&msg, &sig),
-            "Signature didn't verify!! {:?}, {:?}",
-            kp,
-            msg
-        );
-
-        Ok(())
-    }
-}
-
-#[cfg(feature = "sqlite")]
-mod sqlite {
-    use super::*;
-    use sqlx::{
-        database::HasArguments,
-        decode::Decode,
-        encode::{Encode, IsNull},
-        error::{BoxDynError, UnexpectedNullError},
-        sqlite::{Sqlite, SqliteValueRef},
-        Error, ValueRef,
-    };
-    use std::io::Cursor;
-    use std::io::Read;
-
-    const SIZE_OF_G1AFFINE: usize = 48;
-    const SIZE_OF_G2AFFINE: usize = 96;
-
-    impl<const N: usize> Encode<'_, Sqlite> for PublicKey<N> {
-        fn encode_by_ref(&self, buf: &mut <Sqlite as HasArguments<'_>>::ArgumentBuffer) -> IsNull {
-            let bytes_count = (SIZE_OF_G1AFFINE * (N + 1)) + (SIZE_OF_G2AFFINE * (N + 2));
-            let mut bytes: Vec<u8> = Vec::with_capacity(bytes_count);
-            bytes.extend(&self.g1.to_compressed());
-
-            for y1 in self.y1s.iter().map(|y1| y1.to_compressed()) {
-                bytes.extend(&y1);
-            }
-
-            bytes.extend(&self.g2.to_compressed());
-            bytes.extend(&self.x2.to_compressed());
-
-            for y2 in self.y2s.iter().map(|y2| y2.to_compressed()) {
-                bytes.extend(&y2);
-            }
-
-            bytes.encode_by_ref(buf)
-        }
-    }
-
-    fn decode_g1_affine<T>(cursor: &mut Cursor<T>) -> Result<G1Affine, BoxDynError>
-    where
-        T: AsRef<[u8]>,
-    {
-        let mut g1 = [0u8; SIZE_OF_G1AFFINE];
-        cursor.read_exact(&mut g1)?;
-        let maybe_g1: Option<G1Affine> = G1Affine::from_compressed(&g1).into();
-        Ok(maybe_g1.ok_or_else(|| {
-            Error::Decode(String::from("could not read G1Affine from bytes").into())
-        })?)
-    }
-
-    fn decode_g2_affine<T>(cursor: &mut Cursor<T>) -> Result<G2Affine, BoxDynError>
-    where
-        T: AsRef<[u8]>,
-    {
-        let mut g2 = [0u8; SIZE_OF_G2AFFINE];
-        cursor.read_exact(&mut g2)?;
-        let maybe_g2: Option<G2Affine> = G2Affine::from_compressed(&g2).into();
-        Ok(maybe_g2.ok_or_else(|| {
-            Error::Decode(String::from("could not read G2Affine from bytes").into())
-        })?)
-    }
-
-    /// Get a `PublicKey<N>` from a slice of bytes. Extracted for the sake of tests.
-    pub fn decode_public_key<const N: usize>(bytes: &[u8]) -> Result<PublicKey<N>, BoxDynError> {
-        let mut cursor = Cursor::new(bytes);
-
-        let g1 = decode_g1_affine(&mut cursor)?;
-
-        let mut y1s = [G1Affine::default(); N];
-
-        for y1 in &mut y1s {
-            let g1 = decode_g1_affine(&mut cursor)?;
-            *y1 = g1;
-        }
-
-        let g2 = decode_g2_affine(&mut cursor)?;
-        let x2 = decode_g2_affine(&mut cursor)?;
-
-        let mut y2s = [G2Affine::default(); N];
-        for y2 in &mut y2s {
-            let g2 = decode_g2_affine(&mut cursor)?;
-            *y2 = g2;
-        }
-
-        Ok(PublicKey {
-            g1,
-            y1s,
-            g2,
-            x2,
-            y2s,
-        })
-    }
-
-    impl<const N: usize> Decode<'_, Sqlite> for PublicKey<N> {
-        fn decode(value: SqliteValueRef<'_>) -> Result<Self, BoxDynError> {
-            if value.is_null() {
-                return Err(Box::new(UnexpectedNullError));
-            }
-
-            let bytes: &[u8] = <&[u8] as Decode<Sqlite>>::decode(value)?;
-            decode_public_key(bytes)
-        }
-    }
+    pub y2s: Box<[G2Affine; N]>,
 }
 
 /// A keypair formed from a `SecretKey` and a [`PublicKey`] for multi-message operations.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KeyPair<const N: usize> {
     /// Secret key for multi-message operations.
     sk: SecretKey<N>,
     /// Public key for multi-message operations.
     pk: PublicKey<N>,
 }
+
+#[cfg(feature = "sqlite")]
+crate::impl_sqlx_for_bincode_ty!(KeyPair<5>);
 
 impl<const N: usize> SecretKey<N> {
     /// Generate a new `SecretKey` of a given length, based on [`Scalar`]s chosen uniformly at
@@ -228,7 +89,11 @@ impl<const N: usize> SecretKey<N> {
             .into_inner()
             .unwrap();
         let x1 = (g1 * x).into();
-        SecretKey { x, ys, x1 }
+        SecretKey {
+            x,
+            ys: Box::new(ys),
+            x1,
+        }
     }
 
     pub fn sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Signature {
@@ -286,11 +151,11 @@ impl<const N: usize> PublicKey<N> {
 
         PublicKey {
             g1: g1.into(),
-            y1s,
+            y1s: Box::new(y1s),
             g2: (g2).into(),
             // x2 = g * [x]
             x2: (g2 * sk.x).into(),
-            y2s,
+            y2s: Box::new(y2s),
         }
     }
 
@@ -305,7 +170,7 @@ impl<const N: usize> PublicKey<N> {
             .expect("lengths guaranteed to match");
         PedersenParameters {
             h: self.g2.into(),
-            gs,
+            gs: Box::new(gs),
         }
     }
 
@@ -320,7 +185,7 @@ impl<const N: usize> PublicKey<N> {
             .expect("lengths guaranteed to match");
         PedersenParameters {
             h: self.g1.into(),
-            gs,
+            gs: Box::new(gs),
         }
     }
 
@@ -349,6 +214,21 @@ impl<const N: usize> PublicKey<N> {
     pub fn blind_message(&self, msg: &Message<N>, bf: BlindingFactor) -> BlindedMessage {
         BlindedMessage(self.to_g1_pedersen_parameters().commit(msg, bf))
     }
+
+    /// Convert the public key to a byte representation.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(self.g1.to_bytes().as_ref());
+        for y1 in &*self.y1s {
+            buf.extend_from_slice(y1.to_bytes().as_ref());
+        }
+        buf.extend_from_slice(self.g2.to_bytes().as_ref());
+        buf.extend_from_slice(self.x2.to_bytes().as_ref());
+        for y2 in &*self.y2s {
+            buf.extend_from_slice(y2.to_bytes().as_ref());
+        }
+        buf
+    }
 }
 
 impl<const N: usize> ChallengeInput for PublicKey<N> {
@@ -357,11 +237,11 @@ impl<const N: usize> ChallengeInput for PublicKey<N> {
         builder.consume_bytes(self.g2.to_bytes());
         builder.consume_bytes(self.x2.to_bytes());
 
-        for y1 in &self.y1s {
+        for y1 in &*self.y1s {
             builder.consume_bytes(y1.to_bytes());
         }
 
-        for y2 in &self.y2s {
+        for y2 in &*self.y2s {
             builder.consume_bytes(y2.to_bytes());
         }
     }
@@ -407,7 +287,7 @@ impl<const N: usize> KeyPair<N> {
 }
 
 /// A signature on a message, generated using Pointcheval-Sanders.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Signature {
     /// First part of a signature.
     ///

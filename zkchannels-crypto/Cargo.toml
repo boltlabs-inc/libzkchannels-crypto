@@ -7,11 +7,11 @@ license = "MIT"
 description = "implementation of a randomizable signature scheme with efficient zero knowledge protocols"
 
 [features]
-sqlite = ["sqlx", "sqlx/sqlite"]
+sqlite = ["bincode", "sqlx", "sqlx/sqlite"]
 
 [dependencies]
 arrayvec = "0.7"
-bincode = "1.3"
+bincode = { version = "1.3.3", optional = true }
 bls12_381 = "0.4.0"
 ff = "0.9"
 group = "0.9"

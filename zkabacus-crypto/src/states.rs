@@ -26,22 +26,67 @@ use crate::{
     customer, merchant, revlock::*, types::*, Balance, Error, Nonce, PaymentAmount, Rng,
     Verification, CLOSE_SCALAR,
 };
-use ff::Field;
 use serde::*;
+use sha3::{Digest, Sha3_256};
+use std::convert::{TryFrom, TryInto};
 use zkchannels_crypto::{pointcheval_sanders::*, BlindingFactor, Message};
+
+/// Randomness produced by the customer, used to create the [`ChannelId`].
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct CustomerRandomness([u8; 32]);
+
+impl CustomerRandomness {
+    /// Generates `CustomerRandomness` uniformly at random.
+    pub fn new(rng: &mut impl Rng) -> Self {
+        let mut buf = [0; 32];
+        rng.fill_bytes(&mut buf);
+        Self(buf)
+    }
+}
+
+/// Randomness produced by the merchant, used to create the [`ChannelId`].
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct MerchantRandomness([u8; 32]);
+
+impl MerchantRandomness {
+    /// Generates `MerchantRandomness` uniformly at random.
+    pub fn new(rng: &mut impl Rng) -> Self {
+        let mut buf = [0; 32];
+        rng.fill_bytes(&mut buf);
+        Self(buf)
+    }
+}
 
 /// Channel identifier, binds each payment to a specific channel.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct ChannelId(#[serde(with = "SerializeElement")] Scalar);
+pub struct ChannelId([u8; 32]);
 
 impl ChannelId {
-    /// Generate a new channel ID uniformly at random.
-    pub fn new(rng: &mut impl Rng) -> Self {
-        Self(Scalar::random(&mut *rng))
+    /// Generate a new channel ID from randomness and public key information.
+    pub fn new(
+        merchant_randomness: MerchantRandomness,
+        customer_randomness: CustomerRandomness,
+        public_key: &PublicKey<5>,
+        merchant_account_info: &[u8],
+        customer_account_info: &[u8],
+    ) -> Self {
+        let mut hasher = Sha3_256::new();
+        hasher.update(&merchant_randomness.0);
+        hasher.update(&customer_randomness.0);
+        hasher.update(public_key.to_bytes());
+        hasher.update(merchant_account_info);
+        hasher.update(customer_account_info);
+        let bytes = hasher.finalize().try_into().unwrap();
+        Self(bytes)
     }
 
     pub(crate) fn to_scalar(self) -> Scalar {
-        self.0
+        Scalar::from_raw([
+            u64::from_le_bytes(<[u8; 8]>::try_from(&self.0[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&self.0[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&self.0[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&self.0[24..32]).unwrap()),
+        ])
     }
 }
 
@@ -59,7 +104,7 @@ impl MerchantBalance {
 
     fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
         // The merchant adds, the customer subtracts
-        let new_value = self.0 .0 as i64 + amt.0;
+        let new_value = self.0 .0 as i128 + amt.0 as i128;
         if new_value.is_negative() {
             Err(Error::InsufficientFunds)
         } else {
@@ -92,7 +137,7 @@ impl CustomerBalance {
 
     fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
         // The merchant adds, the customer subtracts
-        let new_value = self.0 .0 as i64 - amt.0;
+        let new_value = self.0 .0 as i128 - amt.0 as i128;
         if new_value.is_negative() {
             Err(Error::InsufficientFunds)
         } else {
@@ -113,8 +158,8 @@ impl CustomerBalance {
 
 /// Describes the complete state of the channel with the given ID.
 #[allow(missing_copy_implementations)]
-#[derive(Debug)]
-pub(crate) struct State {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct State {
     channel_id: ChannelId,
     nonce: Nonce,
     revocation_secret: RevocationSecret,
@@ -336,8 +381,7 @@ pub struct CloseStateSignature(pub(crate) Signature);
 pub struct CloseStateBlindedSignature(pub(crate) BlindedSignature);
 
 /// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
-#[derive(Debug, Clone, Copy)]
-#[allow(missing_copy_implementations)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct CloseStateBlindingFactor(pub(crate) BlindingFactor);
 
 impl CloseStateBlindedSignature {
@@ -380,17 +424,17 @@ impl CloseStateSignature {
 
 /// A `PayToken` allows a customer to initiate a new payment. It is tied to a specific channel
 /// [`State`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub(crate) struct PayToken(pub(crate) Signature);
+pub struct PayToken(pub(crate) Signature);
 
 /// A blinded pay token.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedPayToken(BlindedSignature);
 
 /// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
 
 impl BlindedPayToken {
     /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
@@ -428,16 +472,25 @@ impl PayToken {
 mod test {
     use super::*;
 
+    fn channel_id(rng: &mut impl Rng) -> ChannelId {
+        let cid_m = MerchantRandomness::new(rng);
+        let cid_c = CustomerRandomness::new(rng);
+        let pk = KeyPair::new(rng).public_key().clone();
+        ChannelId::new(cid_m, cid_c, &pk, &[], &[])
+    }
+
     #[test]
     fn apply_positive_payment_works() {
         let mut rng = rand::thread_rng();
-        let channel_id = ChannelId::new(&mut rng);
+        let channel_id = channel_id(&mut rng);
         let s = State::new(
             &mut rng,
             channel_id,
             MerchantBalance::try_new(0).unwrap(),
             CustomerBalance::try_new(1).unwrap(),
         );
+
+        let _s_prev = s.apply_payment(&mut rng, PaymentAmount::pay_merchant(1).unwrap());
         let s_prime = s
             .apply_payment(&mut rng, PaymentAmount::pay_merchant(1).unwrap())
             .unwrap();
@@ -449,7 +502,7 @@ mod test {
     #[test]
     fn apply_negative_payment_works() {
         let mut rng = rand::thread_rng();
-        let channel_id = ChannelId::new(&mut rng);
+        let channel_id = channel_id(&mut rng);
         let s = State::new(
             &mut rng,
             channel_id,
@@ -468,7 +521,7 @@ mod test {
     #[should_panic = "InsufficientFunds"]
     fn apply_payment_fails_for_insufficient_customer_funds() {
         let mut rng = rand::thread_rng();
-        let channel_id = ChannelId::new(&mut rng);
+        let channel_id = channel_id(&mut rng);
         let s = State::new(
             &mut rng,
             channel_id,
@@ -484,7 +537,7 @@ mod test {
     #[should_panic = "InsufficientFunds"]
     fn apply_payment_fails_for_insufficient_merchant_funds() {
         let mut rng = rand::thread_rng();
-        let channel_id = ChannelId::new(&mut rng);
+        let channel_id = channel_id(&mut rng);
         let s = State::new(
             &mut rng,
             channel_id,

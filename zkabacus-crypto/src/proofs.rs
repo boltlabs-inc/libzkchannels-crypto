@@ -313,7 +313,7 @@ pub struct PayProof {
 }
 
 /// Blinding factors for commitments associated with a particular payment.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct BlindingFactors {
     /// The blinding factor for a [`RevocationLockCommitment`] (associated with the previous [`State`])
     pub for_old_revocation_lock: RevocationLockBlindingFactor,
@@ -712,25 +712,81 @@ mod tests {
         states::{ChannelId, CustomerBalance, MerchantBalance, State},
     };
     use rand::SeedableRng;
+    use zkchannels_crypto::pointcheval_sanders::KeyPair;
 
     fn rng() -> impl Rng {
         let seed: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
         rand::rngs::StdRng::from_seed(seed)
     }
 
+    fn channel_id(rng: &mut impl Rng) -> ChannelId {
+        let cid_m = MerchantRandomness::new(rng);
+        let cid_c = CustomerRandomness::new(rng);
+        let pk = KeyPair::new(rng).public_key().clone();
+        ChannelId::new(cid_m, cid_c, &pk, &[], &[])
+    }
+
     #[test]
     fn establish_proof_verifies() {
+        run_establish_proof(0, 100);
+    }
+
+    #[test]
+    fn establish_proof_with_merch_balance_verifies() {
+        run_establish_proof(100, 100);
+    }
+
+    #[test]
+    fn establish_proof_only_merch_balance_verifies() {
+        run_establish_proof(100, 0);
+    }
+
+    #[test]
+    fn establish_proof_with_max_merch_balance_verifies() {
+        run_establish_proof(i64::MAX as u64, 100);
+    }
+
+    #[test]
+    fn establish_proof_with_max_cust_balance_verifies() {
+        run_establish_proof(100, i64::MAX as u64);
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn establish_proof_negative_customer_balance_rejected() {
+        run_establish_proof(100, -5_i64 as u64);
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn establish_proof_overflow_customer_balance_rejected() {
+        run_establish_proof(100, i64::MAX as u64 + 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn establish_proof_negative_merchant_balance_rejected() {
+        run_establish_proof(-5_i64 as u64, 100);
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn establish_proof_overflow_merchant_balance_rejected() {
+        run_establish_proof(i64::MAX as u64 + 1, 100);
+    }
+
+    fn run_establish_proof(merchant_balance: u64, customer_balance: u64) {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);
         let params = merchant_params.to_customer_config();
 
         // Create a new state.
-        let channel_id = ChannelId::new(&mut rng);
+        let channel_id = channel_id(&mut rng);
         let state = State::new(
             &mut rng,
             channel_id,
-            MerchantBalance::try_new(0).unwrap(),
-            CustomerBalance::try_new(100).unwrap(),
+            MerchantBalance::try_new(merchant_balance).unwrap(),
+            CustomerBalance::try_new(customer_balance).unwrap(),
         );
 
         let context = Context::new(b"establish proof verify test");
@@ -753,21 +809,59 @@ mod tests {
 
     #[test]
     fn pay_proof_verifies() {
+        run_pay_proof(0, 100, 10, PaymentAmount::pay_merchant);
+    }
+
+    #[test]
+    fn pay_proof_with_negative_amount_verifies() {
+        run_pay_proof(100, 100, 10, PaymentAmount::pay_customer);
+    }
+
+    #[test]
+    #[should_panic(expected = "InsufficientFunds")]
+    fn pay_proof_with_customer_going_negative() {
+        run_pay_proof(100, 100, 101, PaymentAmount::pay_merchant);
+    }
+
+    #[test]
+    #[should_panic(expected = "InsufficientFunds")]
+    fn pay_proof_with_merchant_going_negative() {
+        run_pay_proof(100, 100, 101, PaymentAmount::pay_customer);
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn pay_proof_with_customer_going_above_max() {
+        run_pay_proof(100, i64::MAX as u64, 100, PaymentAmount::pay_customer);
+    }
+
+    #[test]
+    #[should_panic(expected = "AmountTooLarge")]
+    fn pay_proof_with_merchant_going_above_max() {
+        run_pay_proof(i64::MAX as u64, 100, 100, PaymentAmount::pay_merchant);
+    }
+
+    fn run_pay_proof(
+        merchant_balance: u64,
+        customer_balance: u64,
+        amount: u64,
+        pay: fn(u64) -> Result<PaymentAmount, crate::Error>,
+    ) {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);
         let params = merchant_params.to_customer_config();
 
         // Create a state.
-        let channel_id = ChannelId::new(&mut rng);
+        let channel_id = channel_id(&mut rng);
         let old_state = State::new(
             &mut rng,
             channel_id,
-            MerchantBalance::try_new(0).unwrap(),
-            CustomerBalance::try_new(100).unwrap(),
+            MerchantBalance::try_new(merchant_balance).unwrap(),
+            CustomerBalance::try_new(customer_balance).unwrap(),
         );
 
         // Update state.
-        let amount = PaymentAmount::pay_merchant(10).unwrap();
+        let amount = pay(amount).unwrap();
         let new_state = old_state.apply_payment(&mut rng, amount).unwrap();
 
         // Get a pay token AKA signature on the old state.

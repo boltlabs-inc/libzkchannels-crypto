@@ -60,7 +60,8 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeInput for Commitment<G>
 /// Parameters for Pedersen commitments.
 ///
 /// These are defined over the prime-order pairing groups from BLS12-381.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Uses Box to avoid stack overflows with large parameter sets.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(bound = "G: SerializeG1")]
 pub struct PedersenParameters<G, const N: usize>
 where
@@ -69,8 +70,11 @@ where
     #[serde(with = "SerializeElement")]
     pub(crate) h: G,
     #[serde(with = "SerializeElement")]
-    pub(crate) gs: [G; N],
+    pub(crate) gs: Box<[G; N]>,
 }
+
+#[cfg(feature = "sqlite")]
+crate::impl_sqlx_for_bincode_ty!(PedersenParameters<G1Projective, 1>);
 
 impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
     /// Generate a new set of parameters for making commitments to messages of given
@@ -85,7 +89,10 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
             .collect::<ArrayVec<_, N>>()
             .into_inner()
             .expect("length mismatch impossible");
-        Self { h, gs }
+        Self {
+            h,
+            gs: Box::new(gs),
+        }
     }
 
     /// Commit to a message using the provided blinding factor.
@@ -112,7 +119,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 {
     fn consume(&self, builder: &mut ChallengeBuilder) {
         builder.consume_bytes(self.h.to_bytes());
-        for g in &self.gs {
+        for g in &*self.gs {
             builder.consume_bytes(g.to_bytes());
         }
     }

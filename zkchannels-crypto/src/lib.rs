@@ -15,6 +15,8 @@
 pub mod pedersen;
 pub mod pointcheval_sanders;
 pub mod proofs;
+#[macro_use]
+mod sqlite;
 
 mod serde;
 
@@ -30,8 +32,10 @@ use ff::Field;
 use std::{iter, ops::Deref};
 
 /// Fixed-length message type used across schemes.
-#[derive(Debug, Clone, Copy)]
-pub struct Message<const N: usize>([Scalar; N]);
+///
+/// Uses Box to avoid stack overflows with long messages.
+#[derive(Debug, Clone)]
+pub struct Message<const N: usize>(Box<[Scalar; N]>);
 
 impl<const N: usize> Deref for Message<N> {
     type Target = [Scalar; N];
@@ -44,24 +48,24 @@ impl<const N: usize> Deref for Message<N> {
 impl<const N: usize> Message<N> {
     /// Create a new message from an array of scalars.
     pub fn new(scalars: [Scalar; N]) -> Self {
-        Message(scalars)
+        Message(Box::new(scalars))
     }
 
     /// Create a new message consisting of random scalars. Useful for testing purposes.
     pub fn random(rng: &mut impl Rng) -> Self {
-        Message(
+        Message(Box::new(
             iter::repeat_with(|| Scalar::random(&mut *rng))
                 .take(N)
                 .collect::<ArrayVec<_, N>>()
                 .into_inner()
                 .expect("length mismatch impossible"),
-        )
+        ))
     }
 }
 
 impl From<Scalar> for Message<1> {
     fn from(scalar: Scalar) -> Self {
-        Self([scalar])
+        Self(Box::new([scalar]))
     }
 }
 

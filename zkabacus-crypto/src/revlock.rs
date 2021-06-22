@@ -27,9 +27,9 @@ pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
 
 #[cfg(feature = "sqlite")]
-impl_sqlx_for_scalar_newtype!(RevocationLock, RevocationLock);
+zkchannels_crypto::impl_sqlx_for_bincode_ty!(RevocationLock);
 #[cfg(feature = "sqlite")]
-impl_sqlx_for_scalar_newtype!(RevocationSecret, RevocationSecret);
+zkchannels_crypto::impl_sqlx_for_bincode_ty!(RevocationSecret);
 
 /// A commitment to a [`RevocationLock`].
 ///
@@ -81,6 +81,7 @@ impl RevocationSecret {
     }
 
     /// Convert a revocation secret to its canonical `Scalar` representation.
+    #[allow(unused)]
     fn to_scalar(&self) -> Scalar {
         self.0
     }

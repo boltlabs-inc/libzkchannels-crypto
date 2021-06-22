@@ -46,7 +46,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
     // Use matching commitment scalars for each message item.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
-        msg,
+        msg.clone(),
         sig,
         &[None; N],
         kp.public_key(),
@@ -124,7 +124,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
         .expect("length mismatch impossible");
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
-        msg,
+        msg.clone(),
         sig,
         &ccs,
         kp.public_key(),

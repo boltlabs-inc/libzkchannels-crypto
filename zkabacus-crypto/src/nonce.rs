@@ -23,4 +23,4 @@ impl Nonce {
 }
 
 #[cfg(feature = "sqlite")]
-impl_sqlx_for_scalar_newtype!(Nonce, Nonce);
+zkchannels_crypto::impl_sqlx_for_bincode_ty!(Nonce);

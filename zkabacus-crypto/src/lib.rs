@@ -26,10 +26,6 @@ Ch 3.3: Off-network channel protocol zkAbacus.
 #![warn(unused)]
 #![forbid(broken_intra_doc_links)]
 
-#[cfg(feature = "sqlite")]
-#[macro_use]
-mod sqlite;
-
 #[doc(hidden)]
 pub mod internal;
 
@@ -50,16 +46,24 @@ pub use states::BlindedPayToken as PayToken;
 /// Rename cryptographically correct `CloseStateBlindedSignature` to the semantic `ClosingSignature`.
 pub use states::CloseStateBlindedSignature as ClosingSignature;
 
+/// Range proof parameters, used to construct [`customer::Config`].
+pub use zkchannels_crypto::proofs::RangeProofParameters;
+/// Pointcheval-Sanders public key, used to construct [`customer::Config`].
+pub type PublicKey = zkchannels_crypto::pointcheval_sanders::PublicKey<5>;
+/// Commitment parameters, used to construct [`customer::Config`].
+pub type CommitmentParameters = zkchannels_crypto::pedersen::PedersenParameters<G1Projective, 1>;
+/// Pointcheval-Sanders keypair, used as part of [`merchant::Config`]
+pub type KeyPair = zkchannels_crypto::pointcheval_sanders::KeyPair<5>;
+
 pub use states::{
     ChannelId, CloseState, CloseStateCommitment, CloseStateSignature, CustomerBalance,
-    MerchantBalance, StateCommitment,
+    CustomerRandomness, MerchantBalance, MerchantRandomness, StateCommitment,
 };
 
 mod nonce;
 mod proofs;
 mod states;
 
-#[allow(unused)]
 mod types {
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
     pub use zkchannels_crypto::*;

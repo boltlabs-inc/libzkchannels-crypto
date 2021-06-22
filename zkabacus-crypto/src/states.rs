@@ -61,6 +61,8 @@ impl MerchantRandomness {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ChannelId([u8; 32]);
 
+impl_sqlx_for_bincode_ty!(ChannelId);
+
 impl ChannelId {
     /// Generate a new channel ID from randomness and public key information.
     pub fn new(

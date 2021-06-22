@@ -113,7 +113,7 @@ pub struct Ready {
 
 /// A channel that has been requested but not yet approved.
 /// This is an intermediary state of zkAbacus.Initialize.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Requested {
     config: Config,
     state: State,
@@ -123,7 +123,7 @@ pub struct Requested {
 
 /// Message sent to the merchant to request a new channel.
 /// This is sent as part of zkAbacus.Initialize.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct RequestMessage {
     /// Commitment to the initial close state.
@@ -188,7 +188,7 @@ impl Requested {
 
 /// A channel that has been approved but not yet activated.
 /// This is a channel that has completed zkAbacus.Initialize.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Inactive {
     config: Config,
     state: State,
@@ -275,7 +275,7 @@ impl Ready {
 
 /// A channel that has started a new payment.
 /// This is the first intermediary state in zkAbacus.Pay.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Started {
     config: Config,
     new_state: State,
@@ -365,7 +365,7 @@ impl Started {
 /// A channel that has made a payment but not yet been given permission by the merchant to make
 /// another payment.
 /// This is the second intermediary state of zkAbacus.Pay.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Locked {
     config: Config,
     state: State,

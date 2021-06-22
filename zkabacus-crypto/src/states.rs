@@ -381,8 +381,7 @@ pub struct CloseStateSignature(pub(crate) Signature);
 pub struct CloseStateBlindedSignature(pub(crate) BlindedSignature);
 
 /// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
-#[derive(Debug, Clone, Copy)]
-#[allow(missing_copy_implementations)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct CloseStateBlindingFactor(pub(crate) BlindingFactor);
 
 impl CloseStateBlindedSignature {
@@ -434,7 +433,7 @@ pub struct PayToken(pub(crate) Signature);
 pub struct BlindedPayToken(BlindedSignature);
 
 /// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
 
 impl BlindedPayToken {

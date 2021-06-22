@@ -313,7 +313,7 @@ pub struct PayProof {
 }
 
 /// Blinding factors for commitments associated with a particular payment.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct BlindingFactors {
     /// The blinding factor for a [`RevocationLockCommitment`] (associated with the previous [`State`])
     pub for_old_revocation_lock: RevocationLockBlindingFactor,

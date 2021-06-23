@@ -213,6 +213,12 @@ impl Inactive {
             Failed => Err(self),
         }
     }
+
+    /// Extract data used to close the channel.
+    /// This is called as part of zkAbacus.Close.
+    pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
+        ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
+    }
 }
 
 /// Message sent to the merchant after starting a payment.

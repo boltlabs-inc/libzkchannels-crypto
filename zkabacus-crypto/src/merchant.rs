@@ -91,12 +91,28 @@ impl Config {
     }
 
     /// Extract public configuration for customers.
-    pub fn to_customer_config(&self) -> customer::Config {
+    pub(crate) fn to_customer_config(&self) -> customer::Config {
         customer::Config {
             merchant_public_key: self.signing_keypair.public_key().clone(),
             revocation_commitment_parameters: self.revocation_commitment_parameters.clone(),
             range_proof_parameters: self.range_proof_parameters.clone(),
         }
+    }
+
+    /// Extract public configuration for customers.
+    #[allow(unused_qualifications)]
+    pub fn extract_customer_config_parts(
+        &self,
+    ) -> (
+        crate::PublicKey,
+        crate::CommitmentParameters,
+        crate::RangeProofParameters,
+    ) {
+        (
+            self.signing_keypair.public_key().clone(),
+            self.revocation_commitment_parameters.clone(),
+            self.range_proof_parameters.clone(),
+        )
     }
 
     /// Extract Pointcheval-Sanders [`KeyPair`].

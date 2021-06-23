@@ -85,17 +85,18 @@ impl Config {
     }
 
     /// The merchant public key for blind signing and proofs.
-    pub fn merchant_public_key(&self) -> &PublicKey<5> {
+    pub fn merchant_public_key(&self) -> &crate::PublicKey {
         &self.merchant_public_key
     }
 
     /// The parameters for committing to revocation locks.
-    pub fn revocation_commitment_parameters(&self) -> &PedersenParameters<G1Projective, 1> {
+    pub fn revocation_commitment_parameters(&self) -> &crate::CommitmentParameters {
         &self.revocation_commitment_parameters
     }
 
     /// The parameters for constructing range proofs.
-    pub fn range_proof_parameters(&self) -> &RangeProofParameters {
+    #[allow(unused_qualifications)]
+    pub fn range_proof_parameters(&self) -> &crate::RangeProofParameters {
         &self.range_proof_parameters
     }
 }

@@ -19,20 +19,20 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
 
 /// Prove knowledge of a signature and knowledge of opening of a commitment that are on the same
 /// message. This test constructs the signataure proof first.
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_commitment_proof_linear_relation() {
     try_join!(
-        run_signature_commitment_proof_linear_relation::<1>(),
-        run_signature_commitment_proof_linear_relation::<2>(),
-        run_signature_commitment_proof_linear_relation::<3>(),
-        run_signature_commitment_proof_linear_relation::<5>(),
-        run_signature_commitment_proof_linear_relation::<8>(),
-        run_signature_commitment_proof_linear_relation::<13>()
+        tokio::spawn(run_signature_commitment_proof_linear_relation::<1>()),
+        tokio::spawn(run_signature_commitment_proof_linear_relation::<2>()),
+        tokio::spawn(run_signature_commitment_proof_linear_relation::<3>()),
+        tokio::spawn(run_signature_commitment_proof_linear_relation::<5>()),
+        tokio::spawn(run_signature_commitment_proof_linear_relation::<8>()),
+        tokio::spawn(run_signature_commitment_proof_linear_relation::<13>())
     )
     .unwrap();
 }
 
-async fn run_signature_commitment_proof_linear_relation<const N: usize>() -> Result<(), ()> {
+async fn run_signature_commitment_proof_linear_relation<const N: usize>() {
     let mut rng = rng();
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
@@ -88,25 +88,24 @@ async fn run_signature_commitment_proof_linear_relation<const N: usize>() -> Res
         com_proof.conjunction_response_scalars(),
         sig_proof.conjunction_response_scalars()
     );
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 /// Prove knowledge of a signature and knowledge of opening of a commitment that are on the same
 /// message. This test constructs the commitment proof first.
 async fn commitment_signature_proof_linear_relation() {
     try_join!(
-        run_commitment_signature_proof_linear_relation::<1>(),
-        run_commitment_signature_proof_linear_relation::<2>(),
-        run_commitment_signature_proof_linear_relation::<3>(),
-        run_commitment_signature_proof_linear_relation::<5>(),
-        run_commitment_signature_proof_linear_relation::<8>(),
-        run_commitment_signature_proof_linear_relation::<13>()
+        tokio::spawn(run_commitment_signature_proof_linear_relation::<1>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation::<2>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation::<3>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation::<5>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation::<8>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation::<13>())
     )
     .unwrap();
 }
 
-async fn run_commitment_signature_proof_linear_relation<const N: usize>() -> Result<(), ()> {
+async fn run_commitment_signature_proof_linear_relation<const N: usize>() {
     let mut rng = rng();
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
@@ -161,27 +160,25 @@ async fn run_commitment_signature_proof_linear_relation<const N: usize>() -> Res
         com_proof.conjunction_response_scalars(),
         sig_proof.conjunction_response_scalars()
     );
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 /// Prove knowledge of a signature and of opening of a commitment that have a linear relationship
 /// with each other and a public value:
 /// Sig( a ); Com( a + public_value )
 async fn commitment_signature_proof_linear_relation_public_addition() {
     try_join!(
-        run_commitment_signature_proof_linear_relation_public_addition::<1>(),
-        run_commitment_signature_proof_linear_relation_public_addition::<2>(),
-        run_commitment_signature_proof_linear_relation_public_addition::<3>(),
-        run_commitment_signature_proof_linear_relation_public_addition::<5>(),
-        run_commitment_signature_proof_linear_relation_public_addition::<8>(),
-        run_commitment_signature_proof_linear_relation_public_addition::<13>()
+        tokio::spawn(run_commitment_signature_proof_linear_relation_public_addition::<1>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation_public_addition::<2>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation_public_addition::<3>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation_public_addition::<5>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation_public_addition::<8>()),
+        tokio::spawn(run_commitment_signature_proof_linear_relation_public_addition::<13>())
     )
     .unwrap();
 }
 
-async fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize>(
-) -> Result<(), ()> {
+async fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize>() {
     let mut rng = rng();
     // Form message [a]; [a + public_value]
     let public_value = Scalar::random(&mut rng);
@@ -242,5 +239,4 @@ async fn run_commitment_signature_proof_linear_relation_public_addition<const N:
             + verif_challenge.to_scalar() * public_value,
         com_proof.conjunction_response_scalars()[second_pos],
     );
-    Ok(())
 }

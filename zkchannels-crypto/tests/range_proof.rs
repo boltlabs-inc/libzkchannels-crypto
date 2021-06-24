@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
+use futures::try_join;
 use rand::{CryptoRng, Rng, RngCore, SeedableRng};
 use std::iter;
 use zkchannels_crypto::{
@@ -12,7 +13,6 @@ use zkchannels_crypto::{
     },
     BlindingFactor, Message,
 };
-use futures::try_join;
 
 // Seeded rng for replicable tests.
 fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
@@ -20,19 +20,20 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
     rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn range_proof_with_commitment_verifies() {
-try_join!(
-    run_range_proof_with_commitment_verifies::<1>(),
-    run_range_proof_with_commitment_verifies::<2>(),
-    run_range_proof_with_commitment_verifies::<3>(),
-    run_range_proof_with_commitment_verifies::<5>(),
-    run_range_proof_with_commitment_verifies::<8>(),
-    run_range_proof_with_commitment_verifies::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_range_proof_with_commitment_verifies::<1>()),
+        tokio::spawn(run_range_proof_with_commitment_verifies::<2>()),
+        tokio::spawn(run_range_proof_with_commitment_verifies::<3>()),
+        tokio::spawn(run_range_proof_with_commitment_verifies::<5>()),
+        tokio::spawn(run_range_proof_with_commitment_verifies::<8>()),
+        tokio::spawn(run_range_proof_with_commitment_verifies::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_range_proof_with_commitment_verifies<const N: usize>()  -> Result<(),()> {
+async fn run_range_proof_with_commitment_verifies<const N: usize>() {
     let mut rng = rng();
     let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
 
@@ -89,22 +90,22 @@ async fn run_range_proof_with_commitment_verifies<const N: usize>()  -> Result<(
             ));
         }
     }
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn range_proof_with_signature_verifies() {
-try_join!(
-    run_range_proof_with_signature_verifies::<1>(),
-    run_range_proof_with_signature_verifies::<2>(),
-    run_range_proof_with_signature_verifies::<3>(),
-    run_range_proof_with_signature_verifies::<5>(),
-    run_range_proof_with_signature_verifies::<8>(),
-    run_range_proof_with_signature_verifies::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_range_proof_with_signature_verifies::<1>()),
+        tokio::spawn(run_range_proof_with_signature_verifies::<2>()),
+        tokio::spawn(run_range_proof_with_signature_verifies::<3>()),
+        tokio::spawn(run_range_proof_with_signature_verifies::<5>()),
+        tokio::spawn(run_range_proof_with_signature_verifies::<8>()),
+        tokio::spawn(run_range_proof_with_signature_verifies::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_range_proof_with_signature_verifies<const N: usize>()  -> Result<(),()> {
+async fn run_range_proof_with_signature_verifies<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and signature.
@@ -165,7 +166,6 @@ async fn run_range_proof_with_signature_verifies<const N: usize>()  -> Result<()
             ));
         }
     }
-    Ok(())
 }
 
 #[test]
@@ -249,19 +249,20 @@ fn range_proof_test_extremes() {
     assert!(zero_verifies && max_verifies && com_verifies);
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn range_proof_fails_with_wrong_input() {
-try_join!(
-    run_range_proof_fails_with_wrong_input::<1>(),
-    run_range_proof_fails_with_wrong_input::<2>(),
-    run_range_proof_fails_with_wrong_input::<3>(),
-    run_range_proof_fails_with_wrong_input::<5>(),
-    run_range_proof_fails_with_wrong_input::<8>(),
-    run_range_proof_fails_with_wrong_input::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_range_proof_fails_with_wrong_input::<1>()),
+        tokio::spawn(run_range_proof_fails_with_wrong_input::<2>()),
+        tokio::spawn(run_range_proof_fails_with_wrong_input::<3>()),
+        tokio::spawn(run_range_proof_fails_with_wrong_input::<5>()),
+        tokio::spawn(run_range_proof_fails_with_wrong_input::<8>()),
+        tokio::spawn(run_range_proof_fails_with_wrong_input::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_range_proof_fails_with_wrong_input<const N: usize>()  -> Result<(),()> {
+async fn run_range_proof_fails_with_wrong_input<const N: usize>() {
     let mut rng = rng();
 
     // Generate a value to range-test and a *random* (unrelated) message.
@@ -319,22 +320,22 @@ async fn run_range_proof_fails_with_wrong_input<const N: usize>()  -> Result<(),
         verif_challenge,
         proof.conjunction_response_scalars()[pos]
     ));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn range_proof_fails_if_unlinked() {
-try_join!(
-    run_range_proof_fails_if_unlinked::<1>(),
-    run_range_proof_fails_if_unlinked::<2>(),
-    run_range_proof_fails_if_unlinked::<3>(),
-    run_range_proof_fails_if_unlinked::<5>(),
-    run_range_proof_fails_if_unlinked::<8>(),
-    run_range_proof_fails_if_unlinked::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_range_proof_fails_if_unlinked::<1>()),
+        tokio::spawn(run_range_proof_fails_if_unlinked::<2>()),
+        tokio::spawn(run_range_proof_fails_if_unlinked::<3>()),
+        tokio::spawn(run_range_proof_fails_if_unlinked::<5>()),
+        tokio::spawn(run_range_proof_fails_if_unlinked::<8>()),
+        tokio::spawn(run_range_proof_fails_if_unlinked::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_range_proof_fails_if_unlinked<const N: usize>()  -> Result<(),()> {
+async fn run_range_proof_fails_if_unlinked<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
@@ -380,22 +381,22 @@ async fn run_range_proof_fails_if_unlinked<const N: usize>()  -> Result<(),()> {
         verif_challenge,
         range_value_response_scalar
     ));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn range_proof_value_revealed() {
-try_join!(
-    run_range_proof_value_revealed::<1>(),
-    run_range_proof_value_revealed::<2>(),
-    run_range_proof_value_revealed::<3>(),
-    run_range_proof_value_revealed::<5>(),
-    run_range_proof_value_revealed::<8>(),
-    run_range_proof_value_revealed::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_range_proof_value_revealed::<1>()),
+        tokio::spawn(run_range_proof_value_revealed::<2>()),
+        tokio::spawn(run_range_proof_value_revealed::<3>()),
+        tokio::spawn(run_range_proof_value_revealed::<5>()),
+        tokio::spawn(run_range_proof_value_revealed::<8>()),
+        tokio::spawn(run_range_proof_value_revealed::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_range_proof_value_revealed<const N: usize>()  -> Result<(),()> {
+async fn run_range_proof_value_revealed<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
@@ -450,7 +451,6 @@ async fn run_range_proof_value_revealed<const N: usize>()  -> Result<(),()> {
         range_value_response_scalar,
         verif_challenge.to_scalar() * msg[pos] + range_value_commitment_scalar
     );
-    Ok(())
 }
 
 fn message_with_value_in_range<const N: usize>(

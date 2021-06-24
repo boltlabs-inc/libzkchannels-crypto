@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
+use futures::try_join;
 use group::Group;
 use rand::{Rng, SeedableRng};
 use std::iter;
@@ -9,7 +10,6 @@ use zkchannels_crypto::{
     proofs::{ChallengeBuilder, SignatureProofBuilder},
     Message, SerializeElement,
 };
-use futures::try_join;
 
 // Seeded rng for replicable tests.
 fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
@@ -17,19 +17,20 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
     rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_verifies() {
-try_join!(
-    run_signature_proof_verifies::<1>(),
-    run_signature_proof_verifies::<2>(),
-    run_signature_proof_verifies::<3>(),
-    run_signature_proof_verifies::<5>(),
-    run_signature_proof_verifies::<8>(),
-    run_signature_proof_verifies::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_verifies::<1>()),
+        tokio::spawn(run_signature_proof_verifies::<2>()),
+        tokio::spawn(run_signature_proof_verifies::<3>()),
+        tokio::spawn(run_signature_proof_verifies::<5>()),
+        tokio::spawn(run_signature_proof_verifies::<8>()),
+        tokio::spawn(run_signature_proof_verifies::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_verifies<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_verifies<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
@@ -51,22 +52,22 @@ async fn run_signature_proof_verifies<const N: usize>()  -> Result<(),()> {
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must verify with the same challenge and keypair.
     assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_fails_with_wrong_message() {
-try_join!(
-    run_signature_proof_fails_with_wrong_message::<1>(),
-    run_signature_proof_fails_with_wrong_message::<2>(),
-    run_signature_proof_fails_with_wrong_message::<3>(),
-    run_signature_proof_fails_with_wrong_message::<5>(),
-    run_signature_proof_fails_with_wrong_message::<8>(),
-    run_signature_proof_fails_with_wrong_message::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_fails_with_wrong_message::<1>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_message::<2>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_message::<3>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_message::<5>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_message::<8>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_message::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_fails_with_wrong_message<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_fails_with_wrong_message<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
@@ -89,22 +90,22 @@ async fn run_signature_proof_fails_with_wrong_message<const N: usize>()  -> Resu
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_fails_with_wrong_parameters_for_signature() {
-try_join!(
-    run_signature_proof_fails_with_wrong_parameters_for_signature::<1>(),
-    run_signature_proof_fails_with_wrong_parameters_for_signature::<2>(),
-    run_signature_proof_fails_with_wrong_parameters_for_signature::<3>(),
-    run_signature_proof_fails_with_wrong_parameters_for_signature::<5>(),
-    run_signature_proof_fails_with_wrong_parameters_for_signature::<8>(),
-    run_signature_proof_fails_with_wrong_parameters_for_signature::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_signature::<1>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_signature::<2>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_signature::<3>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_signature::<5>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_signature::<8>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_signature::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_fails_with_wrong_parameters_for_signature<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_fails_with_wrong_parameters_for_signature<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
@@ -129,22 +130,24 @@ async fn run_signature_proof_fails_with_wrong_parameters_for_signature<const N: 
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_fails_with_wrong_parameters_for_proof() {
-try_join!(
-    run_signature_proof_fails_with_wrong_parameters_for_proof::<1>(),
-    run_signature_proof_fails_with_wrong_parameters_for_proof::<2>(),
-    run_signature_proof_fails_with_wrong_parameters_for_proof::<3>(),
-    run_signature_proof_fails_with_wrong_parameters_for_proof::<5>(),
-    run_signature_proof_fails_with_wrong_parameters_for_proof::<8>(),
-    run_signature_proof_fails_with_wrong_parameters_for_proof::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_proof::<1>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_proof::<2>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_proof::<3>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_proof::<5>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_proof::<8>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_proof::<
+            13,
+        >())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_fails_with_wrong_parameters_for_proof<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_fails_with_wrong_parameters_for_proof<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
@@ -169,22 +172,22 @@ async fn run_signature_proof_fails_with_wrong_parameters_for_proof<const N: usiz
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_fails_with_wrong_parameters_for_verification() {
-try_join!(
-    run_signature_proof_fails_with_wrong_parameters_for_verification::<1>(),
-    run_signature_proof_fails_with_wrong_parameters_for_verification::<2>(),
-    run_signature_proof_fails_with_wrong_parameters_for_verification::<3>(),
-    run_signature_proof_fails_with_wrong_parameters_for_verification::<5>(),
-    run_signature_proof_fails_with_wrong_parameters_for_verification::<8>(),
-    run_signature_proof_fails_with_wrong_parameters_for_verification::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_verification::<1>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_verification::<2>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_verification::<3>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_verification::<5>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_verification::<8>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_parameters_for_verification::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_fails_with_wrong_parameters_for_verification<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_fails_with_wrong_parameters_for_verification<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
@@ -209,22 +212,22 @@ async fn run_signature_proof_fails_with_wrong_parameters_for_verification<const 
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     // Proof must not verify against the wrong parameters.
     assert!(!proof.verify_knowledge_of_signature(bad_kp.public_key(), verif_challenge));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_fails_with_wrong_challenge() {
-try_join!(
-    run_signature_proof_fails_with_wrong_challenge::<1>(),
-    run_signature_proof_fails_with_wrong_challenge::<2>(),
-    run_signature_proof_fails_with_wrong_challenge::<3>(),
-    run_signature_proof_fails_with_wrong_challenge::<5>(),
-    run_signature_proof_fails_with_wrong_challenge::<8>(),
-    run_signature_proof_fails_with_wrong_challenge::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_fails_with_wrong_challenge::<1>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_challenge::<2>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_challenge::<3>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_challenge::<5>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_challenge::<8>()),
+        tokio::spawn(run_signature_proof_fails_with_wrong_challenge::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_fails_with_wrong_challenge<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_fails_with_wrong_challenge<const N: usize>() {
     let mut rng = rng();
 
     // Generate message and form signature.
@@ -251,22 +254,22 @@ async fn run_signature_proof_fails_with_wrong_challenge<const N: usize>()  -> Re
 
     // Proof must not verify against the wrong challenge.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), bad_challenge));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_equality_relation() {
-try_join!(
-    run_signature_proof_equality_relation::<1>(),
-    run_signature_proof_equality_relation::<2>(),
-    run_signature_proof_equality_relation::<3>(),
-    run_signature_proof_equality_relation::<5>(),
-    run_signature_proof_equality_relation::<8>(),
-    run_signature_proof_equality_relation::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_equality_relation::<1>()),
+        tokio::spawn(run_signature_proof_equality_relation::<2>()),
+        tokio::spawn(run_signature_proof_equality_relation::<3>()),
+        tokio::spawn(run_signature_proof_equality_relation::<5>()),
+        tokio::spawn(run_signature_proof_equality_relation::<8>()),
+        tokio::spawn(run_signature_proof_equality_relation::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_equality_relation<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_equality_relation<const N: usize>() {
     let mut rng = rng();
     // Construct messages of the form [a, ., .]; [., ., a]
     // e.g. where the first and last elements of the two messages must match.
@@ -337,22 +340,22 @@ async fn run_signature_proof_equality_relation<const N: usize>()  -> Result<(),(
             }
         }
     }
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_public_value() {
-try_join!(
-    run_signature_proof_public_value::<1>(),
-    run_signature_proof_public_value::<2>(),
-    run_signature_proof_public_value::<3>(),
-    run_signature_proof_public_value::<5>(),
-    run_signature_proof_public_value::<8>(),
-    run_signature_proof_public_value::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_public_value::<1>()),
+        tokio::spawn(run_signature_proof_public_value::<2>()),
+        tokio::spawn(run_signature_proof_public_value::<3>()),
+        tokio::spawn(run_signature_proof_public_value::<5>()),
+        tokio::spawn(run_signature_proof_public_value::<8>()),
+        tokio::spawn(run_signature_proof_public_value::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_public_value<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_public_value<const N: usize>() {
     let mut rng = rng();
 
     // Form message and signature.
@@ -385,22 +388,22 @@ async fn run_signature_proof_public_value<const N: usize>()  -> Result<(),()> {
         public_value * verif_challenge.to_scalar() + commitment_scalars[pos],
         response_scalars[pos]
     );
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn signature_proof_linear_relation_public_addition() {
-try_join!(
-    run_signature_proof_linear_relation_public_addition::<1>(),
-    run_signature_proof_linear_relation_public_addition::<2>(),
-    run_signature_proof_linear_relation_public_addition::<3>(),
-    run_signature_proof_linear_relation_public_addition::<5>(),
-    run_signature_proof_linear_relation_public_addition::<8>(),
-    run_signature_proof_linear_relation_public_addition::<13>()
-).unwrap();
- }
+    try_join!(
+        tokio::spawn(run_signature_proof_linear_relation_public_addition::<1>()),
+        tokio::spawn(run_signature_proof_linear_relation_public_addition::<2>()),
+        tokio::spawn(run_signature_proof_linear_relation_public_addition::<3>()),
+        tokio::spawn(run_signature_proof_linear_relation_public_addition::<5>()),
+        tokio::spawn(run_signature_proof_linear_relation_public_addition::<8>()),
+        tokio::spawn(run_signature_proof_linear_relation_public_addition::<13>())
+    )
+    .unwrap();
+}
 
-async fn run_signature_proof_linear_relation_public_addition<const N: usize>()  -> Result<(),()> {
+async fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
     let mut rng = rng();
     // Create messages of the form [a], [a + public_value].
     let public_value = Scalar::random(&mut rng);
@@ -460,7 +463,6 @@ async fn run_signature_proof_linear_relation_public_addition<const N: usize>()  
             + verif_challenge.to_scalar() * public_value,
         proof2.conjunction_response_scalars()[second_pos]
     );
-    Ok(())
 }
 
 #[test]

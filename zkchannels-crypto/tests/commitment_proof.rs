@@ -1,6 +1,7 @@
 use arrayvec::ArrayVec;
 use bls12_381::*;
 use ff::Field;
+use futures::try_join;
 use group::{Group, GroupEncoding};
 use rand::{Rng, SeedableRng};
 use std::iter;
@@ -10,7 +11,6 @@ use zkchannels_crypto::{
     proofs::{ChallengeBuilder, CommitmentProofBuilder},
     BlindingFactor, Message, SerializeElement,
 };
-use futures::try_join;
 
 // Seeded rng for replicable tests.
 fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
@@ -18,19 +18,20 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
     rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn commitment_proof_verifies() {
     try_join!(
-    run_commitment_proof_verifies::<1>(),
-    run_commitment_proof_verifies::<2>(),
-    run_commitment_proof_verifies::<3>(),
-    run_commitment_proof_verifies::<5>(),
-    run_commitment_proof_verifies::<8>(),
-    run_commitment_proof_verifies::<13>()
-).unwrap();
+        tokio::spawn(run_commitment_proof_verifies::<1>()),
+        tokio::spawn(run_commitment_proof_verifies::<2>()),
+        tokio::spawn(run_commitment_proof_verifies::<3>()),
+        tokio::spawn(run_commitment_proof_verifies::<5>()),
+        tokio::spawn(run_commitment_proof_verifies::<8>()),
+        tokio::spawn(run_commitment_proof_verifies::<13>())
+    )
+    .unwrap();
 }
 
-async fn run_commitment_proof_verifies<const N: usize>() -> Result<(), ()> {
+async fn run_commitment_proof_verifies<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
@@ -50,22 +51,22 @@ async fn run_commitment_proof_verifies<const N: usize>() -> Result<(), ()> {
     // Proof must verify with the original commit.
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn commitment_proof_fails_on_wrong_commit() {
     try_join!(
-    run_commitment_proof_fails_on_wrong_commit::<1>(),
-    run_commitment_proof_fails_on_wrong_commit::<2>(),
-    run_commitment_proof_fails_on_wrong_commit::<3>(),
-    run_commitment_proof_fails_on_wrong_commit::<5>(),
-    run_commitment_proof_fails_on_wrong_commit::<8>(),
-    run_commitment_proof_fails_on_wrong_commit::<13>()
-).unwrap();
+        tokio::spawn(run_commitment_proof_fails_on_wrong_commit::<1>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_commit::<2>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_commit::<3>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_commit::<5>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_commit::<8>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_commit::<13>())
+    )
+    .unwrap();
 }
 
-async fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() -> Result<(), ()> {
+async fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
@@ -116,22 +117,22 @@ async fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() -> Result<
         !proof.verify_knowledge_of_opening_of_commitment(&params, bad_msg_com, verif_challenge),
         "Proof verified on commitment with wrong message."
     );
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn commitment_proof_fails_on_bad_response_phase() {
     try_join!(
-    run_commitment_proof_fails_on_bad_response_phase::<1>(),
-    run_commitment_proof_fails_on_bad_response_phase::<2>(),
-    run_commitment_proof_fails_on_bad_response_phase::<3>(),
-    run_commitment_proof_fails_on_bad_response_phase::<5>(),
-    run_commitment_proof_fails_on_bad_response_phase::<8>(),
-    run_commitment_proof_fails_on_bad_response_phase::<13>()
-).unwrap();
+        tokio::spawn(run_commitment_proof_fails_on_bad_response_phase::<1>()),
+        tokio::spawn(run_commitment_proof_fails_on_bad_response_phase::<2>()),
+        tokio::spawn(run_commitment_proof_fails_on_bad_response_phase::<3>()),
+        tokio::spawn(run_commitment_proof_fails_on_bad_response_phase::<5>()),
+        tokio::spawn(run_commitment_proof_fails_on_bad_response_phase::<8>()),
+        tokio::spawn(run_commitment_proof_fails_on_bad_response_phase::<13>())
+    )
+    .unwrap();
 }
 
-async fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() -> Result<(), ()> {
+async fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
@@ -170,22 +171,22 @@ async fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() -> R
         !bad_bf_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge),
         "Proof verified with bad blinding factor in response phase."
     );
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn commitment_proof_fails_on_wrong_challenge() {
     try_join!(
-    run_commitment_proof_fails_on_wrong_challenge::<1>(),
-    run_commitment_proof_fails_on_wrong_challenge::<2>(),
-    run_commitment_proof_fails_on_wrong_challenge::<3>(),
-    run_commitment_proof_fails_on_wrong_challenge::<5>(),
-    run_commitment_proof_fails_on_wrong_challenge::<8>(),
-    run_commitment_proof_fails_on_wrong_challenge::<13>()
-).unwrap();
+        tokio::spawn(run_commitment_proof_fails_on_wrong_challenge::<1>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_challenge::<2>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_challenge::<3>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_challenge::<5>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_challenge::<8>()),
+        tokio::spawn(run_commitment_proof_fails_on_wrong_challenge::<13>())
+    )
+    .unwrap();
 }
 
-async fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() -> Result<(), ()> {
+async fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
     let mut rng = rng();
 
     // Generate message.
@@ -211,22 +212,22 @@ async fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() -> Resu
         "Accidentally generated matching challenge."
     );
     assert!(!proof.verify_knowledge_of_opening_of_commitment(&params, com, bad_challenge));
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn commitment_proof_with_equality_relation() {
     try_join!(
-    run_commitment_proof_with_equality_relation::<1>(),
-    run_commitment_proof_with_equality_relation::<2>(),
-    run_commitment_proof_with_equality_relation::<3>(),
-    run_commitment_proof_with_equality_relation::<5>(),
-    run_commitment_proof_with_equality_relation::<8>(),
-    run_commitment_proof_with_equality_relation::<13>()
-).unwrap();
+        tokio::spawn(run_commitment_proof_with_equality_relation::<1>()),
+        tokio::spawn(run_commitment_proof_with_equality_relation::<2>()),
+        tokio::spawn(run_commitment_proof_with_equality_relation::<3>()),
+        tokio::spawn(run_commitment_proof_with_equality_relation::<5>()),
+        tokio::spawn(run_commitment_proof_with_equality_relation::<8>()),
+        tokio::spawn(run_commitment_proof_with_equality_relation::<13>())
+    )
+    .unwrap();
 }
 
-async fn run_commitment_proof_with_equality_relation<const N: usize>() -> Result<(), ()> {
+async fn run_commitment_proof_with_equality_relation<const N: usize>() {
     let mut rng = rng();
 
     // Construct messages of the form [a, ., .]; [., ., a]
@@ -297,22 +298,22 @@ async fn run_commitment_proof_with_equality_relation<const N: usize>() -> Result
             }
         }
     }
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn commitment_proof_with_public_value() {
     try_join!(
-    run_commitment_proof_with_public_value::<1>(),
-    run_commitment_proof_with_public_value::<2>(),
-    run_commitment_proof_with_public_value::<3>(),
-    run_commitment_proof_with_public_value::<5>(),
-    run_commitment_proof_with_public_value::<8>(),
-    run_commitment_proof_with_public_value::<13>()
-).unwrap();
+        tokio::spawn(run_commitment_proof_with_public_value::<1>()),
+        tokio::spawn(run_commitment_proof_with_public_value::<2>()),
+        tokio::spawn(run_commitment_proof_with_public_value::<3>()),
+        tokio::spawn(run_commitment_proof_with_public_value::<5>()),
+        tokio::spawn(run_commitment_proof_with_public_value::<8>()),
+        tokio::spawn(run_commitment_proof_with_public_value::<13>())
+    )
+    .unwrap();
 }
 
-async fn run_commitment_proof_with_public_value<const N: usize>() -> Result<(), ()> {
+async fn run_commitment_proof_with_public_value<const N: usize>() {
     let mut rng = rng();
 
     // Construct message and commitment.
@@ -341,22 +342,24 @@ async fn run_commitment_proof_with_public_value<const N: usize>() -> Result<(), 
         public_value * verif_challenge.to_scalar() + commitment_scalars[public_pos],
         response_scalars[public_pos]
     );
-    Ok(())
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn commitment_proof_with_linear_relation_public_addition() {
     try_join!(
-    run_commitment_proof_with_linear_relation_public_addition::<1>(),
-    run_commitment_proof_with_linear_relation_public_addition::<2>(),
-    run_commitment_proof_with_linear_relation_public_addition::<3>(),
-    run_commitment_proof_with_linear_relation_public_addition::<5>(),
-    run_commitment_proof_with_linear_relation_public_addition::<8>(),
-    run_commitment_proof_with_linear_relation_public_addition::<13>()
-).unwrap();
+        tokio::spawn(run_commitment_proof_with_linear_relation_public_addition::<1>()),
+        tokio::spawn(run_commitment_proof_with_linear_relation_public_addition::<2>()),
+        tokio::spawn(run_commitment_proof_with_linear_relation_public_addition::<3>()),
+        tokio::spawn(run_commitment_proof_with_linear_relation_public_addition::<5>()),
+        tokio::spawn(run_commitment_proof_with_linear_relation_public_addition::<8>()),
+        tokio::spawn(run_commitment_proof_with_linear_relation_public_addition::<
+            13,
+        >())
+    )
+    .unwrap();
 }
 
-async fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() -> Result<(), ()> {
+async fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     let mut rng = rng();
 
     // Construct messages of the form [a]; [a + public_value]
@@ -428,11 +431,10 @@ async fn run_commitment_proof_with_linear_relation_public_addition<const N: usiz
             }
         }
     }
-    Ok(())
 }
 
 fn commitment_proof_fails_on_random_commit<
-    G: Group<Scalar=Scalar> + GroupEncoding + SerializeElement,
+    G: Group<Scalar = Scalar> + GroupEncoding + SerializeElement,
 >() {
     let mut rng = rng();
 
@@ -455,7 +457,7 @@ fn commitment_proof_fails_on_random_commit<
         &G::random(&mut rng),
         &mut bincode::Serializer::new(&mut bytes, bincode::options()),
     )
-        .unwrap();
+    .unwrap();
     let bad_com: Commitment<G> = bincode::deserialize(&bytes).unwrap();
     // Make sure new commitment isn't accidentally the correct one.
     assert_ne!(

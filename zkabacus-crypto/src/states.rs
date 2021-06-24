@@ -61,6 +61,7 @@ impl MerchantRandomness {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ChannelId([u8; 32]);
 
+#[cfg(feature = "sqlite")]
 impl_sqlx_for_bincode_ty!(ChannelId);
 
 impl ChannelId {

@@ -16,8 +16,8 @@ use crate::{
 use zkchannels_crypto::{
     pedersen::Commitment,
     proofs::{
-        ChallengeBuilder, CommitmentProof, CommitmentProofBuilder, RangeProof, RangeProofBuilder,
-        SignatureProof, SignatureProofBuilder,
+        ChallengeBuilder, CommitmentProof, CommitmentProofBuilder, RangeConstraint,
+        RangeConstraintBuilder, SignatureProof, SignatureProofBuilder,
     },
     Message, SerializeElement,
 };
@@ -303,8 +303,8 @@ pub struct PayProof {
     old_revocation_lock_proof: CommitmentProof<G1Projective, 1>,
     state_proof: CommitmentProof<G1Projective, 5>,
     close_state_proof: CommitmentProof<G1Projective, 5>,
-    customer_balance_proof: RangeProof,
-    merchant_balance_proof: RangeProof,
+    customer_balance_proof: RangeConstraint,
+    merchant_balance_proof: RangeConstraint,
 
     // Commitments for the commitment proofs.
     old_revocation_lock_commitment: RevocationLockCommitment,
@@ -397,23 +397,25 @@ impl PayProof {
         };
 
         // Start range proof on customer balance in the new state.
-        let customer_range_proof_builder = RangeProofBuilder::generate_proof_commitments(
+        let customer_range_constraint_builder = RangeConstraintBuilder::generate_proof_commitments(
             state.customer_balance().into_inner() as i64,
-            &params.range_proof_parameters,
+            &params.range_constraint_parameters,
             rng,
         )
         .unwrap();
 
         // Start range proof on merchant balance in the new state.
-        let merchant_range_proof_builder = RangeProofBuilder::generate_proof_commitments(
+        let merchant_range_constraint_builder = RangeConstraintBuilder::generate_proof_commitments(
             state.merchant_balance().into_inner() as i64,
-            &params.range_proof_parameters,
+            &params.range_constraint_parameters,
             rng,
         )
         .unwrap();
 
-        let customer_balance_commitment_scalar = customer_range_proof_builder.commitment_scalar();
-        let merchant_balance_commitment_scalar = merchant_range_proof_builder.commitment_scalar();
+        let customer_balance_commitment_scalar =
+            customer_range_constraint_builder.commitment_scalar();
+        let merchant_balance_commitment_scalar =
+            merchant_range_constraint_builder.commitment_scalar();
 
         // Start commitment proof to old revocation lock.
         let old_revocation_lock_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
@@ -480,7 +482,7 @@ impl PayProof {
         let challenge = ChallengeBuilder::new()
             // integrate keys and constants
             .with(&params.merchant_public_key)
-            .with(params.range_proof_parameters.public_key())
+            .with(params.range_constraint_parameters.public_key())
             .with(&old_state.nonce().as_scalar())
             .with(&CLOSE_SCALAR)
             // integrate commitments from commitment proofs
@@ -493,8 +495,8 @@ impl PayProof {
             .with(&close_state_proof_builder)
             // integrate signature and range proofs
             .with(&old_pay_token_proof_builder)
-            .with(&customer_range_proof_builder)
-            .with(&merchant_range_proof_builder)
+            .with(&customer_range_constraint_builder)
+            .with(&merchant_range_constraint_builder)
             // integrate context
             .with_bytes(context.as_bytes())
             .finish();
@@ -528,9 +530,9 @@ impl PayProof {
                     challenge,
                 ),
                 // Complete the range proofs.
-                customer_balance_proof: customer_range_proof_builder
+                customer_balance_proof: customer_range_constraint_builder
                     .generate_proof_response(challenge),
-                merchant_balance_proof: merchant_range_proof_builder
+                merchant_balance_proof: merchant_range_constraint_builder
                     .generate_proof_response(challenge),
 
                 // Add commitments.
@@ -557,7 +559,7 @@ impl PayProof {
         let challenge = ChallengeBuilder::new()
             // integrate keys and constants
             .with(&params.signing_keypair.public_key())
-            .with(params.range_proof_parameters.public_key())
+            .with(params.range_constraint_parameters.public_key())
             .with(&public_values.old_nonce.as_scalar())
             .with(&CLOSE_SCALAR)
             // integrate commitments from commitment proofs
@@ -616,13 +618,13 @@ impl PayProof {
             self.old_pay_token_proof.conjunction_response_scalars();
 
         // Check that range proofs verify against the updated balances in the state.
-        let customer_balance_proof_verifies = self.customer_balance_proof.verify_range_proof(
-            &params.range_proof_parameters,
+        let customer_balance_proof_verifies = self.customer_balance_proof.verify_range_constraint(
+            &params.range_constraint_parameters,
             challenge,
             state_response_scalars[3],
         );
-        let merchant_balance_proof_verifies = self.merchant_balance_proof.verify_range_proof(
-            &params.range_proof_parameters,
+        let merchant_balance_proof_verifies = self.merchant_balance_proof.verify_range_constraint(
+            &params.range_constraint_parameters,
             challenge,
             state_response_scalars[4],
         );

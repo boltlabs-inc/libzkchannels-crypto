@@ -47,7 +47,7 @@ use crate::{
     Verification::{self, Failed, Verified},
 };
 use zkchannels_crypto::{
-    pedersen::PedersenParameters, pointcheval_sanders::KeyPair, proofs::RangeProofParameters,
+    pedersen::PedersenParameters, pointcheval_sanders::KeyPair, proofs::RangeConstraintParameters,
 };
 
 /// A merchant that is ready to establish channels and process payments.
@@ -63,7 +63,7 @@ pub struct Config {
     /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
     /// Parameters for generating and verifying range proofs.
-    pub(crate) range_proof_parameters: RangeProofParameters,
+    pub(crate) range_constraint_parameters: RangeConstraintParameters,
 }
 
 impl Config {
@@ -73,7 +73,7 @@ impl Config {
         Self {
             signing_keypair: KeyPair::new(rng),
             revocation_commitment_parameters: PedersenParameters::new(rng),
-            range_proof_parameters: RangeProofParameters::new(rng),
+            range_constraint_parameters: RangeConstraintParameters::new(rng),
         }
     }
 
@@ -81,12 +81,12 @@ impl Config {
     pub fn from_parts(
         signing_keypair: crate::KeyPair,
         revocation_commitment_parameters: crate::CommitmentParameters,
-        range_proof_parameters: RangeProofParameters,
+        range_constraint_parameters: RangeConstraintParameters,
     ) -> Self {
         Self {
             signing_keypair,
             revocation_commitment_parameters,
-            range_proof_parameters,
+            range_constraint_parameters,
         }
     }
 
@@ -95,7 +95,7 @@ impl Config {
         customer::Config {
             merchant_public_key: self.signing_keypair.public_key().clone(),
             revocation_commitment_parameters: self.revocation_commitment_parameters.clone(),
-            range_proof_parameters: self.range_proof_parameters.clone(),
+            range_constraint_parameters: self.range_constraint_parameters.clone(),
         }
     }
 
@@ -106,12 +106,12 @@ impl Config {
     ) -> (
         crate::PublicKey,
         crate::CommitmentParameters,
-        crate::RangeProofParameters,
+        crate::RangeConstraintParameters,
     ) {
         (
             self.signing_keypair.public_key().clone(),
             self.revocation_commitment_parameters.clone(),
-            self.range_proof_parameters.clone(),
+            self.range_constraint_parameters.clone(),
         )
     }
 
@@ -125,9 +125,9 @@ impl Config {
         &self.revocation_commitment_parameters
     }
 
-    /// Extract [`RangeProofParameters`].
-    pub fn range_proof_parameters(&self) -> &RangeProofParameters {
-        &self.range_proof_parameters
+    /// Extract [`RangeConstraintParameters`].
+    pub fn range_constraint_parameters(&self) -> &RangeConstraintParameters {
+        &self.range_constraint_parameters
     }
 
     /**

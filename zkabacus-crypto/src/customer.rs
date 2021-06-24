@@ -55,7 +55,7 @@ use crate::{
 };
 use serde::*;
 use zkchannels_crypto::{
-    pedersen::PedersenParameters, pointcheval_sanders::PublicKey, proofs::RangeProofParameters,
+    pedersen::PedersenParameters, pointcheval_sanders::PublicKey, proofs::RangeConstraintParameters,
 };
 
 /// Keys and parameters used throughout the lifetime of a channel.
@@ -67,7 +67,7 @@ pub struct Config {
     /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
     /// Parameters for building and verifying range proofs.
-    pub(crate) range_proof_parameters: RangeProofParameters,
+    pub(crate) range_constraint_parameters: RangeConstraintParameters,
 }
 
 impl Config {
@@ -75,12 +75,12 @@ impl Config {
     pub fn from_parts(
         merchant_public_key: PublicKey<5>,
         revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
-        range_proof_parameters: RangeProofParameters,
+        range_constraint_parameters: RangeConstraintParameters,
     ) -> Self {
         Self {
             merchant_public_key,
             revocation_commitment_parameters,
-            range_proof_parameters,
+            range_constraint_parameters,
         }
     }
 
@@ -96,8 +96,8 @@ impl Config {
 
     /// The parameters for constructing range proofs.
     #[allow(unused_qualifications)]
-    pub fn range_proof_parameters(&self) -> &crate::RangeProofParameters {
-        &self.range_proof_parameters
+    pub fn range_constraint_parameters(&self) -> &crate::RangeConstraintParameters {
+        &self.range_constraint_parameters
     }
 }
 

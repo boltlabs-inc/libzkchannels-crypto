@@ -49,7 +49,7 @@ pub use states::BlindedPayToken as PayToken;
 pub use states::CloseStateBlindedSignature as ClosingSignature;
 
 /// Range proof parameters, used to construct [`customer::Config`].
-pub use zkchannels_crypto::proofs::RangeProofParameters;
+pub use zkchannels_crypto::proofs::RangeConstraintParameters;
 /// Pointcheval-Sanders public key, used to construct [`customer::Config`].
 pub type PublicKey = zkchannels_crypto::pointcheval_sanders::PublicKey<5>;
 /// Commitment parameters, used to construct [`customer::Config`].

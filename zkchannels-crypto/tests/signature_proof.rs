@@ -1,20 +1,16 @@
+mod test_utils;
+
 use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
 use group::Group;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
     pointcheval_sanders::{KeyPair, Signature},
     proofs::{ChallengeBuilder, SignatureProofBuilder},
     Message, SerializeElement,
 };
-
-// Seeded rng for replicable tests.
-fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
-    const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
-    rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
-}
 
 #[test]
 fn signature_proof_verifies() {
@@ -27,7 +23,7 @@ fn signature_proof_verifies() {
 }
 
 fn run_signature_proof_verifies<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message and form signature.
     let msg = Message::<N>::random(&mut rng);
@@ -61,7 +57,7 @@ fn signature_proof_fails_with_wrong_message() {
 }
 
 fn run_signature_proof_fails_with_wrong_message<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message and form signature.
     let msg = Message::<N>::random(&mut rng);
@@ -96,7 +92,7 @@ fn signature_proof_fails_with_wrong_parameters_for_signature() {
 }
 
 fn run_signature_proof_fails_with_wrong_parameters_for_signature<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message and form signature.
     let msg = Message::<N>::random(&mut rng);
@@ -133,7 +129,7 @@ fn signature_proof_fails_with_wrong_parameters_for_proof() {
 }
 
 fn run_signature_proof_fails_with_wrong_parameters_for_proof<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message and form signature.
     let msg = Message::<N>::random(&mut rng);
@@ -170,7 +166,7 @@ fn signature_proof_fails_with_wrong_parameters_for_verification() {
 }
 
 fn run_signature_proof_fails_with_wrong_parameters_for_verification<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message and form signature.
     let msg = Message::<N>::random(&mut rng);
@@ -207,7 +203,7 @@ fn signature_proof_fails_with_wrong_challenge() {
 }
 
 fn run_signature_proof_fails_with_wrong_challenge<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message and form signature.
     let msg = Message::<N>::random(&mut rng);
@@ -246,7 +242,7 @@ fn signature_proof_equality_relation() {
 }
 
 fn run_signature_proof_equality_relation<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
     // Construct messages of the form [a, ., .]; [., ., a]
     // e.g. where the first and last elements of the two messages must match.
     let msg = Message::<N>::random(&mut rng);
@@ -329,7 +325,7 @@ fn signature_proof_public_value() {
 }
 
 fn run_signature_proof_public_value<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Form message and signature.
     let msg = Message::<N>::random(&mut rng);
@@ -374,7 +370,7 @@ fn signature_proof_linear_relation_public_addition() {
 }
 
 fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
     // Create messages of the form [a], [a + public_value].
     let public_value = Scalar::random(&mut rng);
     let msg = Message::<N>::random(&mut rng);
@@ -437,7 +433,7 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
 
 #[test]
 fn signature_proof_from_random_sig() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Deserialize a bad signature (x, y)
     let mut bytes = Vec::<u8>::new();
@@ -451,7 +447,7 @@ fn signature_proof_from_random_sig() {
 
 #[test]
 fn signature_proof_from_sig_with_identities() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Deserialize bad signature (1, 1)
     let mut bytes = Vec::<u8>::new();
@@ -466,7 +462,7 @@ fn signature_proof_from_sig_with_identities() {
 
 #[test]
 fn signature_proof_from_sig_with_identity_first() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Form bad signature (1, x)
     let mut bytes = Vec::<u8>::new();
@@ -481,7 +477,7 @@ fn signature_proof_from_sig_with_identity_first() {
 
 #[test]
 fn signature_proof_from_sig_with_identity_second() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Form bad signature (x, 1)
     let mut bytes = Vec::<u8>::new();

@@ -1,7 +1,9 @@
+mod test_utils;
+
 use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
-use rand::{Rng, SeedableRng};
+use rand::{thread_rng, Rng};
 use std::iter;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
@@ -9,12 +11,6 @@ use zkchannels_crypto::{
     proofs::{ChallengeBuilder, CommitmentProofBuilder, SignatureProofBuilder},
     BlindingFactor, Message,
 };
-
-// Seeded rng for replicable tests.
-fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
-    const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
-    rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
-}
 
 #[test]
 /// Prove knowledge of a signature and knowledge of opening of a commitment that are on the same
@@ -29,7 +25,7 @@ fn signature_commitment_proof_linear_relation() {
 }
 
 fn run_signature_commitment_proof_linear_relation<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
 
@@ -99,7 +95,7 @@ fn commitment_signature_proof_linear_relation() {
 }
 
 fn run_commitment_signature_proof_linear_relation<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
     // Form signature on message
@@ -169,12 +165,13 @@ fn commitment_signature_proof_linear_relation_public_addition() {
 }
 
 fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = thread_rng();
     // Form message [a]; [a + public_value]
     let public_value = Scalar::random(&mut rng);
     let msg = Message::<N>::random(&mut rng);
-    let first_pos = rng.gen_range(0..N);
-    let second_pos = rng.gen_range(0..N);
+    let first_pos = real_rng.gen_range(0..N);
+    let second_pos = real_rng.gen_range(0..N);
     let mut msg2_vec = iter::repeat_with(|| Scalar::random(&mut rng))
         .take(N)
         .collect::<ArrayVec<_, N>>()

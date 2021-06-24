@@ -158,7 +158,7 @@ pub struct RangeConstraintBuilder {
     commitment_scalar: Scalar,
 }
 
-/// Proof of knowledge that a `u`-ary representation of a value falls within the given range.
+/// Constraint on knowledge of a value that its `u`-ary representation falls within the given range.
 /// This is **not** a complete range proof unless supplied in conjunction with a
 /// [`CommitmentProof`](crate::proofs::CommitmentProof) or a [`SignatureProof`].
 #[derive(Debug, Serialize, Deserialize)]

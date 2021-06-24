@@ -10,6 +10,7 @@ use zkchannels_crypto::{
     proofs::{ChallengeBuilder, CommitmentProofBuilder},
     BlindingFactor, Message, SerializeElement,
 };
+use futures::try_join;
 
 // Seeded rng for replicable tests.
 fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
@@ -17,17 +18,19 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
     rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }
 
-#[test]
-fn commitment_proof_verifies() {
-    run_commitment_proof_verifies::<1>();
-    run_commitment_proof_verifies::<2>();
-    run_commitment_proof_verifies::<3>();
-    run_commitment_proof_verifies::<5>();
-    run_commitment_proof_verifies::<8>();
-    run_commitment_proof_verifies::<13>();
+#[tokio::test]
+async fn commitment_proof_verifies() {
+    try_join!(
+    run_commitment_proof_verifies::<1>(),
+    run_commitment_proof_verifies::<2>(),
+    run_commitment_proof_verifies::<3>(),
+    run_commitment_proof_verifies::<5>(),
+    run_commitment_proof_verifies::<8>(),
+    run_commitment_proof_verifies::<13>()
+).unwrap();
 }
 
-fn run_commitment_proof_verifies<const N: usize>() {
+async fn run_commitment_proof_verifies<const N: usize>() -> Result<(), ()> {
     let mut rng = rng();
 
     // Generate message.
@@ -47,19 +50,22 @@ fn run_commitment_proof_verifies<const N: usize>() {
     // Proof must verify with the original commit.
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    Ok(())
 }
 
-#[test]
-fn commitment_proof_fails_on_wrong_commit() {
-    run_commitment_proof_fails_on_wrong_commit::<1>();
-    run_commitment_proof_fails_on_wrong_commit::<2>();
-    run_commitment_proof_fails_on_wrong_commit::<3>();
-    run_commitment_proof_fails_on_wrong_commit::<5>();
-    run_commitment_proof_fails_on_wrong_commit::<8>();
-    run_commitment_proof_fails_on_wrong_commit::<13>();
+#[tokio::test]
+async fn commitment_proof_fails_on_wrong_commit() {
+    try_join!(
+    run_commitment_proof_fails_on_wrong_commit::<1>(),
+    run_commitment_proof_fails_on_wrong_commit::<2>(),
+    run_commitment_proof_fails_on_wrong_commit::<3>(),
+    run_commitment_proof_fails_on_wrong_commit::<5>(),
+    run_commitment_proof_fails_on_wrong_commit::<8>(),
+    run_commitment_proof_fails_on_wrong_commit::<13>()
+).unwrap();
 }
 
-fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
+async fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() -> Result<(), ()> {
     let mut rng = rng();
 
     // Generate message.
@@ -110,19 +116,22 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
         !proof.verify_knowledge_of_opening_of_commitment(&params, bad_msg_com, verif_challenge),
         "Proof verified on commitment with wrong message."
     );
+    Ok(())
 }
 
-#[test]
-fn commitment_proof_fails_on_bad_response_phase() {
-    run_commitment_proof_fails_on_bad_response_phase::<1>();
-    run_commitment_proof_fails_on_bad_response_phase::<2>();
-    run_commitment_proof_fails_on_bad_response_phase::<3>();
-    run_commitment_proof_fails_on_bad_response_phase::<5>();
-    run_commitment_proof_fails_on_bad_response_phase::<8>();
-    run_commitment_proof_fails_on_bad_response_phase::<13>();
+#[tokio::test]
+async fn commitment_proof_fails_on_bad_response_phase() {
+    try_join!(
+    run_commitment_proof_fails_on_bad_response_phase::<1>(),
+    run_commitment_proof_fails_on_bad_response_phase::<2>(),
+    run_commitment_proof_fails_on_bad_response_phase::<3>(),
+    run_commitment_proof_fails_on_bad_response_phase::<5>(),
+    run_commitment_proof_fails_on_bad_response_phase::<8>(),
+    run_commitment_proof_fails_on_bad_response_phase::<13>()
+).unwrap();
 }
 
-fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() {
+async fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() -> Result<(), ()> {
     let mut rng = rng();
 
     // Generate message.
@@ -161,19 +170,22 @@ fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() {
         !bad_bf_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge),
         "Proof verified with bad blinding factor in response phase."
     );
+    Ok(())
 }
 
-#[test]
-fn commitment_proof_fails_on_wrong_challenge() {
-    run_commitment_proof_fails_on_wrong_challenge::<1>();
-    run_commitment_proof_fails_on_wrong_challenge::<2>();
-    run_commitment_proof_fails_on_wrong_challenge::<3>();
-    run_commitment_proof_fails_on_wrong_challenge::<5>();
-    run_commitment_proof_fails_on_wrong_challenge::<8>();
-    run_commitment_proof_fails_on_wrong_challenge::<13>();
+#[tokio::test]
+async fn commitment_proof_fails_on_wrong_challenge() {
+    try_join!(
+    run_commitment_proof_fails_on_wrong_challenge::<1>(),
+    run_commitment_proof_fails_on_wrong_challenge::<2>(),
+    run_commitment_proof_fails_on_wrong_challenge::<3>(),
+    run_commitment_proof_fails_on_wrong_challenge::<5>(),
+    run_commitment_proof_fails_on_wrong_challenge::<8>(),
+    run_commitment_proof_fails_on_wrong_challenge::<13>()
+).unwrap();
 }
 
-fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
+async fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() -> Result<(), ()> {
     let mut rng = rng();
 
     // Generate message.
@@ -199,19 +211,22 @@ fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
         "Accidentally generated matching challenge."
     );
     assert!(!proof.verify_knowledge_of_opening_of_commitment(&params, com, bad_challenge));
+    Ok(())
 }
 
-#[test]
-fn commitment_proof_with_equality_relation() {
-    run_commitment_proof_with_equality_relation::<1>();
-    run_commitment_proof_with_equality_relation::<2>();
-    run_commitment_proof_with_equality_relation::<3>();
-    run_commitment_proof_with_equality_relation::<5>();
-    run_commitment_proof_with_equality_relation::<8>();
-    run_commitment_proof_with_equality_relation::<13>();
+#[tokio::test]
+async fn commitment_proof_with_equality_relation() {
+    try_join!(
+    run_commitment_proof_with_equality_relation::<1>(),
+    run_commitment_proof_with_equality_relation::<2>(),
+    run_commitment_proof_with_equality_relation::<3>(),
+    run_commitment_proof_with_equality_relation::<5>(),
+    run_commitment_proof_with_equality_relation::<8>(),
+    run_commitment_proof_with_equality_relation::<13>()
+).unwrap();
 }
 
-fn run_commitment_proof_with_equality_relation<const N: usize>() {
+async fn run_commitment_proof_with_equality_relation<const N: usize>() -> Result<(), ()> {
     let mut rng = rng();
 
     // Construct messages of the form [a, ., .]; [., ., a]
@@ -282,19 +297,22 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
             }
         }
     }
+    Ok(())
 }
 
-#[test]
-fn commitment_proof_with_public_value() {
-    run_commitment_proof_with_public_value::<1>();
-    run_commitment_proof_with_public_value::<2>();
-    run_commitment_proof_with_public_value::<3>();
-    run_commitment_proof_with_public_value::<5>();
-    run_commitment_proof_with_public_value::<8>();
-    run_commitment_proof_with_public_value::<13>();
+#[tokio::test]
+async fn commitment_proof_with_public_value() {
+    try_join!(
+    run_commitment_proof_with_public_value::<1>(),
+    run_commitment_proof_with_public_value::<2>(),
+    run_commitment_proof_with_public_value::<3>(),
+    run_commitment_proof_with_public_value::<5>(),
+    run_commitment_proof_with_public_value::<8>(),
+    run_commitment_proof_with_public_value::<13>()
+).unwrap();
 }
 
-fn run_commitment_proof_with_public_value<const N: usize>() {
+async fn run_commitment_proof_with_public_value<const N: usize>() -> Result<(), ()> {
     let mut rng = rng();
 
     // Construct message and commitment.
@@ -323,19 +341,22 @@ fn run_commitment_proof_with_public_value<const N: usize>() {
         public_value * verif_challenge.to_scalar() + commitment_scalars[public_pos],
         response_scalars[public_pos]
     );
+    Ok(())
 }
 
-#[test]
-fn commitment_proof_with_linear_relation_public_addition() {
-    run_commitment_proof_with_linear_relation_public_addition::<1>();
-    run_commitment_proof_with_linear_relation_public_addition::<2>();
-    run_commitment_proof_with_linear_relation_public_addition::<3>();
-    run_commitment_proof_with_linear_relation_public_addition::<5>();
-    run_commitment_proof_with_linear_relation_public_addition::<8>();
-    run_commitment_proof_with_linear_relation_public_addition::<13>();
+#[tokio::test]
+async fn commitment_proof_with_linear_relation_public_addition() {
+    try_join!(
+    run_commitment_proof_with_linear_relation_public_addition::<1>(),
+    run_commitment_proof_with_linear_relation_public_addition::<2>(),
+    run_commitment_proof_with_linear_relation_public_addition::<3>(),
+    run_commitment_proof_with_linear_relation_public_addition::<5>(),
+    run_commitment_proof_with_linear_relation_public_addition::<8>(),
+    run_commitment_proof_with_linear_relation_public_addition::<13>()
+).unwrap();
 }
 
-fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
+async fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() -> Result<(), ()> {
     let mut rng = rng();
 
     // Construct messages of the form [a]; [a + public_value]
@@ -407,10 +428,11 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
             }
         }
     }
+    Ok(())
 }
 
 fn commitment_proof_fails_on_random_commit<
-    G: Group<Scalar = Scalar> + GroupEncoding + SerializeElement,
+    G: Group<Scalar=Scalar> + GroupEncoding + SerializeElement,
 >() {
     let mut rng = rng();
 
@@ -433,7 +455,7 @@ fn commitment_proof_fails_on_random_commit<
         &G::random(&mut rng),
         &mut bincode::Serializer::new(&mut bytes, bincode::options()),
     )
-    .unwrap();
+        .unwrap();
     let bad_com: Commitment<G> = bincode::deserialize(&bytes).unwrap();
     // Make sure new commitment isn't accidentally the correct one.
     assert_ne!(

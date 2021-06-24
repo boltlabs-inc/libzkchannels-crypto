@@ -12,6 +12,7 @@ use zkchannels_crypto::{
     },
     BlindingFactor, Message,
 };
+use futures::try_join;
 
 // Seeded rng for replicable tests.
 fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
@@ -19,17 +20,19 @@ fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
     rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
 }
 
-#[test]
-fn range_proof_with_commitment_verifies() {
-    run_range_proof_with_commitment_verifies::<1>();
-    run_range_proof_with_commitment_verifies::<2>();
-    run_range_proof_with_commitment_verifies::<3>();
-    run_range_proof_with_commitment_verifies::<5>();
-    run_range_proof_with_commitment_verifies::<8>();
-    run_range_proof_with_commitment_verifies::<13>();
-}
+#[tokio::test]
+async fn range_proof_with_commitment_verifies() {
+try_join!(
+    run_range_proof_with_commitment_verifies::<1>(),
+    run_range_proof_with_commitment_verifies::<2>(),
+    run_range_proof_with_commitment_verifies::<3>(),
+    run_range_proof_with_commitment_verifies::<5>(),
+    run_range_proof_with_commitment_verifies::<8>(),
+    run_range_proof_with_commitment_verifies::<13>()
+).unwrap();
+ }
 
-fn run_range_proof_with_commitment_verifies<const N: usize>() {
+async fn run_range_proof_with_commitment_verifies<const N: usize>()  -> Result<(),()> {
     let mut rng = rng();
     let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
 
@@ -86,19 +89,22 @@ fn run_range_proof_with_commitment_verifies<const N: usize>() {
             ));
         }
     }
+    Ok(())
 }
 
-#[test]
-fn range_proof_with_signature_verifies() {
-    run_range_proof_with_signature_verifies::<1>();
-    run_range_proof_with_signature_verifies::<2>();
-    run_range_proof_with_signature_verifies::<3>();
-    run_range_proof_with_signature_verifies::<5>();
-    run_range_proof_with_signature_verifies::<8>();
-    run_range_proof_with_signature_verifies::<13>();
-}
+#[tokio::test]
+async fn range_proof_with_signature_verifies() {
+try_join!(
+    run_range_proof_with_signature_verifies::<1>(),
+    run_range_proof_with_signature_verifies::<2>(),
+    run_range_proof_with_signature_verifies::<3>(),
+    run_range_proof_with_signature_verifies::<5>(),
+    run_range_proof_with_signature_verifies::<8>(),
+    run_range_proof_with_signature_verifies::<13>()
+).unwrap();
+ }
 
-fn run_range_proof_with_signature_verifies<const N: usize>() {
+async fn run_range_proof_with_signature_verifies<const N: usize>()  -> Result<(),()> {
     let mut rng = rng();
 
     // Generate message and signature.
@@ -159,6 +165,7 @@ fn run_range_proof_with_signature_verifies<const N: usize>() {
             ));
         }
     }
+    Ok(())
 }
 
 #[test]
@@ -242,17 +249,19 @@ fn range_proof_test_extremes() {
     assert!(zero_verifies && max_verifies && com_verifies);
 }
 
-#[test]
-fn range_proof_fails_with_wrong_input() {
-    run_range_proof_fails_with_wrong_input::<1>();
-    run_range_proof_fails_with_wrong_input::<2>();
-    run_range_proof_fails_with_wrong_input::<3>();
-    run_range_proof_fails_with_wrong_input::<5>();
-    run_range_proof_fails_with_wrong_input::<8>();
-    run_range_proof_fails_with_wrong_input::<13>();
-}
+#[tokio::test]
+async fn range_proof_fails_with_wrong_input() {
+try_join!(
+    run_range_proof_fails_with_wrong_input::<1>(),
+    run_range_proof_fails_with_wrong_input::<2>(),
+    run_range_proof_fails_with_wrong_input::<3>(),
+    run_range_proof_fails_with_wrong_input::<5>(),
+    run_range_proof_fails_with_wrong_input::<8>(),
+    run_range_proof_fails_with_wrong_input::<13>()
+).unwrap();
+ }
 
-fn run_range_proof_fails_with_wrong_input<const N: usize>() {
+async fn run_range_proof_fails_with_wrong_input<const N: usize>()  -> Result<(),()> {
     let mut rng = rng();
 
     // Generate a value to range-test and a *random* (unrelated) message.
@@ -310,19 +319,22 @@ fn run_range_proof_fails_with_wrong_input<const N: usize>() {
         verif_challenge,
         proof.conjunction_response_scalars()[pos]
     ));
+    Ok(())
 }
 
-#[test]
-fn range_proof_fails_if_unlinked() {
-    run_range_proof_fails_if_unlinked::<1>();
-    run_range_proof_fails_if_unlinked::<2>();
-    run_range_proof_fails_if_unlinked::<3>();
-    run_range_proof_fails_if_unlinked::<5>();
-    run_range_proof_fails_if_unlinked::<8>();
-    run_range_proof_fails_if_unlinked::<13>();
-}
+#[tokio::test]
+async fn range_proof_fails_if_unlinked() {
+try_join!(
+    run_range_proof_fails_if_unlinked::<1>(),
+    run_range_proof_fails_if_unlinked::<2>(),
+    run_range_proof_fails_if_unlinked::<3>(),
+    run_range_proof_fails_if_unlinked::<5>(),
+    run_range_proof_fails_if_unlinked::<8>(),
+    run_range_proof_fails_if_unlinked::<13>()
+).unwrap();
+ }
 
-fn run_range_proof_fails_if_unlinked<const N: usize>() {
+async fn run_range_proof_fails_if_unlinked<const N: usize>()  -> Result<(),()> {
     let mut rng = rng();
 
     // Generate message.
@@ -368,19 +380,22 @@ fn run_range_proof_fails_if_unlinked<const N: usize>() {
         verif_challenge,
         range_value_response_scalar
     ));
+    Ok(())
 }
 
-#[test]
-fn range_proof_value_revealed() {
-    run_range_proof_value_revealed::<1>();
-    run_range_proof_value_revealed::<2>();
-    run_range_proof_value_revealed::<3>();
-    run_range_proof_value_revealed::<5>();
-    run_range_proof_value_revealed::<8>();
-    run_range_proof_value_revealed::<13>();
-}
+#[tokio::test]
+async fn range_proof_value_revealed() {
+try_join!(
+    run_range_proof_value_revealed::<1>(),
+    run_range_proof_value_revealed::<2>(),
+    run_range_proof_value_revealed::<3>(),
+    run_range_proof_value_revealed::<5>(),
+    run_range_proof_value_revealed::<8>(),
+    run_range_proof_value_revealed::<13>()
+).unwrap();
+ }
 
-fn run_range_proof_value_revealed<const N: usize>() {
+async fn run_range_proof_value_revealed<const N: usize>()  -> Result<(),()> {
     let mut rng = rng();
 
     // Generate message.
@@ -435,6 +450,7 @@ fn run_range_proof_value_revealed<const N: usize>() {
         range_value_response_scalar,
         verif_challenge.to_scalar() * msg[pos] + range_value_commitment_scalar
     );
+    Ok(())
 }
 
 fn message_with_value_in_range<const N: usize>(

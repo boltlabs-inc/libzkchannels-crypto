@@ -309,7 +309,7 @@ impl State {
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
             self.channel_id.to_scalar(),
-            self.nonce.to_scalar(),
+            self.nonce.as_scalar(),
             self.revocation_secret.revocation_lock().to_scalar(),
             self.customer_balance.to_scalar(),
             self.merchant_balance.to_scalar(),

@@ -97,7 +97,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
 
     /// Commit to a message using the provided blinding factor.
     pub fn commit(&self, msg: &Message<N>, bf: BlindingFactor) -> Commitment<G> {
-        let com: G = self.h * bf.to_scalar()
+        let com: G = self.h * bf.as_scalar()
             + self
                 .gs
                 .iter()

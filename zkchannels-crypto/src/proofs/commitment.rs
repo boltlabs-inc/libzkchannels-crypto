@@ -176,7 +176,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         challenge: Challenge,
     ) -> CommitmentProof<G, N> {
         // Generate response scalars.
-        let blinding_factor_response_scalar = challenge.to_scalar() * blinding_factor.to_scalar()
+        let blinding_factor_response_scalar = challenge.to_scalar() * blinding_factor.as_scalar()
             + self.blinding_factor_commitment_scalar;
         let message_response_scalars = Box::new(
             msg.iter()

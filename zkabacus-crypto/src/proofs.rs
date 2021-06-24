@@ -39,7 +39,7 @@ impl Context {
     }
 
     /// Convert context to a byte string.
-    pub fn to_bytes(&self) -> [u8; 32] {
+    pub fn as_bytes(&self) -> [u8; 32] {
         self.0
     }
 }
@@ -137,7 +137,7 @@ impl EstablishProof {
             .with(&close_state_commitment.0)
             .with(&state_proof_builder)
             .with(&close_state_proof_builder)
-            .with_bytes(&context.to_bytes())
+            .with_bytes(&context.as_bytes())
             .finish();
 
         // Retrieve commitment scalars from the close state proof for public values:
@@ -196,7 +196,7 @@ impl EstablishProof {
             .with(&self.close_state_commitment.0)
             .with(&self.state_proof)
             .with(&self.close_state_proof)
-            .with_bytes(context.to_bytes())
+            .with_bytes(context.as_bytes())
             .finish();
 
         let pedersen_parameters = params
@@ -481,7 +481,7 @@ impl PayProof {
             // integrate keys and constants
             .with(&params.merchant_public_key)
             .with(params.range_proof_parameters.public_key())
-            .with(&old_state.nonce().to_scalar())
+            .with(&old_state.nonce().as_scalar())
             .with(&CLOSE_SCALAR)
             // integrate commitments from commitment proofs
             .with(&old_revocation_lock_commitment.0)
@@ -496,7 +496,7 @@ impl PayProof {
             .with(&customer_range_proof_builder)
             .with(&merchant_range_proof_builder)
             // integrate context
-            .with_bytes(context.to_bytes())
+            .with_bytes(context.as_bytes())
             .finish();
 
         (
@@ -558,7 +558,7 @@ impl PayProof {
             // integrate keys and constants
             .with(&params.signing_keypair.public_key())
             .with(params.range_proof_parameters.public_key())
-            .with(&public_values.old_nonce.to_scalar())
+            .with(&public_values.old_nonce.as_scalar())
             .with(&CLOSE_SCALAR)
             // integrate commitments from commitment proofs
             .with(&self.old_revocation_lock_commitment.0)
@@ -573,7 +573,7 @@ impl PayProof {
             .with(&self.customer_balance_proof)
             .with(&self.merchant_balance_proof)
             // integrate context
-            .with_bytes(context.to_bytes())
+            .with_bytes(context.as_bytes())
             .finish();
 
         let pedersen_parameters = params
@@ -647,7 +647,7 @@ impl PayProof {
 
         // check pay token nonce matches the passed in nonce
         let pay_token_nonce_matches_expected = old_pay_token_response_scalars[1]
-            == challenge.to_scalar() * public_values.old_nonce.to_scalar()
+            == challenge.to_scalar() * public_values.old_nonce.as_scalar()
                 + self.old_nonce_commitment_scalar;
 
         // check new balances match between state and close state

@@ -235,13 +235,13 @@ impl Config {
 
     /// Validate closing information: make sure the [`CloseStateSignature`] is on the given
     /// [`CloseState`]. This is called as part of zkAbacus.Close.
-    ///
-    /// **Usage**: The [`CloseState`] *must* be fresh; this should only be run if the revocation
-    /// lock in the given `close_state` has never been seen before.
+    ///    
+    /// **Usage**: The [`CloseState`] *must* be fresh; this should always be accompanied by a
+    /// check that revocation lock in the given `close_state` has never been seen before.
     pub fn check_close_signature(
         &self,
         close_signature: CloseStateSignature,
-        close_state: CloseState,
+        close_state: &CloseState,
     ) -> Verification {
         // Verify the signature is on the message
         close_signature.verify(&self.to_customer_config(), close_state)

@@ -174,7 +174,7 @@ impl Requested {
     ) -> Result<Inactive, Requested> {
         // Unblind close signature and verify it is correct.
         let close_state_signature = closing_signature.unblind(self.close_state_blinding_factor);
-        match close_state_signature.verify(&self.config, self.state.close_state()) {
+        match close_state_signature.verify(&self.config, &self.state.close_state()) {
             // If so, save it and enter the `Inactive` state.
             Verified => Ok(Inactive {
                 config: self.config,
@@ -345,7 +345,7 @@ impl Started {
         // Unblind close signature and verify it is correct.
         let close_state_signature =
             closing_signature.unblind(self.blinding_factors.for_close_state);
-        match close_state_signature.verify(&self.config, self.new_state.close_state()) {
+        match close_state_signature.verify(&self.config, &self.new_state.close_state()) {
             // If so, save it, reveal the revocation information for the old close signature and
             // enter the `Locked` state.
             Verified => Ok((

@@ -412,7 +412,11 @@ impl CloseStateSignature {
     /// Verify the merchant signature against the given [`CloseState`].
     ///
     /// This is typically called by the customer.
-    pub(crate) fn verify(&self, param: &customer::Config, close_state: CloseState) -> Verification {
+    pub(crate) fn verify(
+        &self,
+        param: &customer::Config,
+        close_state: &CloseState,
+    ) -> Verification {
         param
             .merchant_public_key
             .verify(&close_state.to_message(), &self.0)

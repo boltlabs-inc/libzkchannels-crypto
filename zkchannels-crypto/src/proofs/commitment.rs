@@ -46,6 +46,8 @@ use serde::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: SerializeElement")]
 pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
+    /// The actual commitment.
+    commitment: Commitment<G>,
     /// The commitment to the commitment scalars.
     scalar_commitment: Commitment<G>,
     /// The response scalar for the blinding factor, conceptually prepended to the tuple of response
@@ -64,7 +66,6 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     pub fn verify_knowledge_of_opening_of_commitment(
         &self,
         params: &PedersenParameters<G, N>,
-        commitment: Commitment<G>,
         challenge: Challenge,
     ) -> bool {
         // Construct commitment to response scalars.
@@ -73,8 +74,8 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
             BlindingFactor::from_scalar(self.blinding_factor_response_scalar),
         );
 
-        let expected_commitment =
-            self.scalar_commitment.to_element() + (commitment.to_element() * challenge.to_scalar());
+        let expected_commitment = self.scalar_commitment.to_element()
+            + (self.commitment.to_element() * challenge.to_scalar());
 
         // Compare to challenge, commitments to message, scalars
         rhs.to_element() == expected_commitment
@@ -91,12 +92,18 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     pub fn scalar_commitment(&self) -> Commitment<G> {
         self.scalar_commitment
     }
+
+    /// Get the commitment
+    pub fn commitment(&self) -> Commitment<G> {
+        self.commitment
+    }
 }
 
 impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
     for CommitmentProof<G, N>
 {
     fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.commitment());
         builder.consume(&self.scalar_commitment());
     }
 }
@@ -106,6 +113,8 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 /// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
+    /// The actual commitment.
+    commitment: Commitment<G>,
     /// Commitment to the commitment scalars.
     scalar_commitment: Commitment<G>,
     /// The commitment scalar for the blinding factor.
@@ -128,6 +137,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     /// commitment scalar for `c` to the sum of the commitment scalars for `a` and `b`.
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
+        commitment: Commitment<G>,
         conjunction_commitment_scalars: &[Option<Scalar>; N],
         params: &PedersenParameters<G, N>,
     ) -> Self {
@@ -149,6 +159,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         );
 
         Self {
+            commitment,
             scalar_commitment,
             blinding_factor_commitment_scalar,
             message_commitment_scalars,
@@ -166,6 +177,11 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     /// Get the commitment to the response scalars.
     pub fn scalar_commitment(&self) -> Commitment<G> {
         self.scalar_commitment
+    }
+
+    /// Get the commitment.
+    pub fn commitment(&self) -> Commitment<G> {
+        self.commitment
     }
 
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
@@ -188,6 +204,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         );
 
         CommitmentProof {
+            commitment: self.commitment,
             scalar_commitment: self.scalar_commitment,
             blinding_factor_response_scalar,
             message_response_scalars,
@@ -199,6 +216,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
     for CommitmentProofBuilder<G, N>
 {
     fn consume(&self, builder: &mut ChallengeBuilder) {
+        builder.consume(&self.commitment());
         builder.consume(&self.scalar_commitment());
     }
 }

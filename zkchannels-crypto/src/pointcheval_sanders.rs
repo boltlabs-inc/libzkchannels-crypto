@@ -352,7 +352,7 @@ impl ChallengeInput for Signature {
 /// programmatically, a `BlindedMessage` can be constructed using
 /// [`PublicKey::blind_message`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindedMessage(pub(crate) Commitment<G1Projective>);
+pub struct BlindedMessage(pub Commitment<G1Projective>);
 
 impl BlindedMessage {
     /// Extract the internal commitment object.

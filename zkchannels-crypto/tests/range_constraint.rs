@@ -46,6 +46,7 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_constraint_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
+        com,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -71,7 +72,7 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
         proof.conjunction_response_scalars()[pos]
     ));
     // Verify commitment proof is valid.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
 
     // Verify that the range constraint *doesn't* pass with a different response scalar.
     for i in 0..N {
@@ -205,6 +206,7 @@ fn range_constraint_test_extremes() {
             .unwrap();
     let com_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
+        com,
         &[
             Some(zero_builder.commitment_scalar()),
             Some(max_builder.commitment_scalar()),
@@ -239,7 +241,7 @@ fn range_constraint_test_extremes() {
         com_proof.conjunction_response_scalars()[1],
     );
     let com_verifies =
-        com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge);
+        com_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge);
 
     assert!(zero_verifies && max_verifies && com_verifies);
 }
@@ -285,6 +287,7 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_constraint_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
+        com,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -304,7 +307,7 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
         .with(&proof)
         .finish();
     // Verify commitment proof is valid.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
 
     // Failure expected: verify range constraint is *not* valid with respect to the response scalar
     // from the commitment proof.
@@ -347,7 +350,7 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
     .unwrap();
     // Failure case: *don't* use the range commitment scalar in the commitment proof.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, com, &[None; N], &params);
 
     // Form challenge using both proofs.
     let challenge = ChallengeBuilder::new()
@@ -364,7 +367,7 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
         .with(&proof)
         .finish();
     // Commitment proof should still verify.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
     // Range constraint should fail, since the commitment proof isn't built correctly w.r.t it.
     let range_value_response_scalar = proof.conjunction_response_scalars()[pos];
     assert!(!range_constraint.verify_range_constraint(
@@ -409,6 +412,7 @@ fn run_range_constraint_value_revealed<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_value_commitment_scalar);
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
+        com,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -428,7 +432,7 @@ fn run_range_constraint_value_revealed<const N: usize>() {
         .with(&proof)
         .finish();
     // Range constraint and commitment proof must verify.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
     let range_value_response_scalar = proof.conjunction_response_scalars()[pos];
     assert!(range_constraint.verify_range_constraint(
         &rp_params,

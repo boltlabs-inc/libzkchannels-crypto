@@ -55,7 +55,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
         .into_inner()
         .expect("length mismatch impossible");
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &ccs, &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, com, &ccs, &params);
 
     // Form challenge from both proofs.
     let challenge = ChallengeBuilder::new()
@@ -72,7 +72,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
         .with(&com_proof)
         .finish();
     // Verify commitment proof is valid.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
     // Verify signature proof is valid.
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Verify they are on the same message - response scalars must match.
@@ -110,7 +110,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
     // Construct proof - commitment phase.
     // Use matching commitment scalars for each message item.
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, com, &[None; N], &params);
     let ccs = com_proof_builder
         .conjunction_commitment_scalars()
         .iter()
@@ -141,7 +141,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
         .with(&sig_proof)
         .finish();
     // Commitment proof must be valid.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
     // Signature proof must be valid.
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Proofs must be on the same message - e.g. have matching response scalars.
@@ -191,7 +191,7 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
 
     // Proof commitment phase: use the same commitment scalar for both messages.
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, com, &[None; N], &params);
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[first_pos] =
         Some(com_proof_builder.conjunction_commitment_scalars()[second_pos]);
@@ -218,7 +218,7 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
         .with(&com_proof)
         .finish();
     // Both proofs must verify.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // The response scalars must have the expected relationship.
     assert_eq!(

@@ -443,7 +443,7 @@ impl CloseState {
 /// used to generate [`BlindedPayToken`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct StateCommitment(pub(crate) BlindedMessage);
+pub struct StateCommitment(pub BlindedMessage);
 
 /// Commitment to a CloseState and a constant, fixed close tag.
 ///
@@ -451,7 +451,7 @@ pub struct StateCommitment(pub(crate) BlindedMessage);
 /// used to generate [`CloseStateBlindedSignature`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateCommitment(pub(crate) BlindedMessage);
+pub struct CloseStateCommitment(pub BlindedMessage);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone, Serialize, Deserialize)]

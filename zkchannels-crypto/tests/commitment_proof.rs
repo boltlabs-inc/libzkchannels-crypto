@@ -4,7 +4,7 @@ use arrayvec::ArrayVec;
 use bls12_381::*;
 use ff::Field;
 use group::{Group, GroupEncoding};
-use rand::{thread_rng, Rng};
+use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
     pedersen::Commitment,
@@ -209,7 +209,7 @@ fn commitment_proof_with_equality_relation() {
 
 fn run_commitment_proof_with_equality_relation<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Construct messages of the form [a, ., .]; [., ., a]
     // e.g. the last element of the second equals the first element of the first.
@@ -293,7 +293,7 @@ fn commitment_proof_with_public_value() {
 
 fn run_commitment_proof_with_public_value<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Construct message and commitment.
     let msg = Message::<N>::random(&mut rng);
@@ -335,7 +335,7 @@ fn commitment_proof_with_linear_relation_public_addition() {
 
 fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Construct messages of the form [a]; [a + public_value]
     // e.g. the last element of the second equals the first element of the first.

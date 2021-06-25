@@ -3,7 +3,7 @@ mod test_utils;
 use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
-use rand::{thread_rng, CryptoRng, Rng, RngCore};
+use rand::{CryptoRng, Rng, RngCore};
 use std::iter;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
@@ -27,7 +27,7 @@ fn range_proof_with_commitment_verifies() {
 
 fn run_range_proof_with_commitment_verifies<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
     let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
 
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
@@ -97,7 +97,7 @@ fn range_proof_with_signature_verifies() {
 
 fn run_range_proof_with_signature_verifies<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Generate message and signature.
     let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
@@ -252,7 +252,7 @@ fn range_proof_fails_with_wrong_input() {
 
 fn run_range_proof_fails_with_wrong_input<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Generate a value to range-test and a *random* (unrelated) message.
     let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
@@ -323,7 +323,7 @@ fn range_proof_fails_if_unlinked() {
 
 fn run_range_proof_fails_if_unlinked<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Generate message.
     let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
@@ -382,7 +382,7 @@ fn range_proof_value_revealed() {
 
 fn run_range_proof_value_revealed<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Generate message.
     let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);

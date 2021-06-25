@@ -3,7 +3,7 @@ mod test_utils;
 use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
@@ -166,7 +166,7 @@ fn commitment_signature_proof_linear_relation_public_addition() {
 
 fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
-    let mut real_rng = thread_rng();
+    let mut real_rng = test_utils::real_rng();
     // Form message [a]; [a + public_value]
     let public_value = Scalar::random(&mut rng);
     let msg = Message::<N>::random(&mut rng);

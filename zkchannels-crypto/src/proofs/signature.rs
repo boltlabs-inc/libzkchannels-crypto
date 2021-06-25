@@ -50,7 +50,6 @@
 
 use crate::{
     common::*,
-    pedersen::Commitment,
     pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
     proofs::{
         Challenge, ChallengeBuilder, ChallengeInput, CommitmentProof, CommitmentProofBuilder,

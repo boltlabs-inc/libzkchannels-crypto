@@ -17,7 +17,7 @@ impl Nonce {
     }
 
     /// Convert a nonce to its canonical `Scalar` representation.
-    pub(crate) fn to_scalar(&self) -> Scalar {
+    pub(crate) fn as_scalar(&self) -> Scalar {
         self.0
     }
 }

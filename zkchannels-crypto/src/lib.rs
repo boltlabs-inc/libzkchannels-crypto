@@ -87,7 +87,7 @@ impl BlindingFactor {
     }
 
     /// Convert to the inner scalar representing this blinding factor.
-    pub fn to_scalar(&self) -> Scalar {
+    pub fn as_scalar(&self) -> Scalar {
         self.0
     }
 }

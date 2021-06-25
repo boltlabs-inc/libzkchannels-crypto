@@ -1,8 +1,10 @@
+mod test_utils;
+
 use arrayvec::ArrayVec;
 use bls12_381::*;
 use ff::Field;
 use group::{Group, GroupEncoding};
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
     pedersen::Commitment,
@@ -10,12 +12,6 @@ use zkchannels_crypto::{
     proofs::{ChallengeBuilder, CommitmentProofBuilder},
     BlindingFactor, Message, SerializeElement,
 };
-
-// Seeded rng for replicable tests.
-fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
-    const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
-    rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
-}
 
 #[test]
 fn commitment_proof_verifies() {
@@ -28,7 +24,7 @@ fn commitment_proof_verifies() {
 }
 
 fn run_commitment_proof_verifies<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
@@ -60,7 +56,7 @@ fn commitment_proof_fails_on_wrong_commit() {
 }
 
 fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
@@ -123,7 +119,7 @@ fn commitment_proof_fails_on_bad_response_phase() {
 }
 
 fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
@@ -174,7 +170,7 @@ fn commitment_proof_fails_on_wrong_challenge() {
 }
 
 fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
@@ -212,13 +208,14 @@ fn commitment_proof_with_equality_relation() {
 }
 
 fn run_commitment_proof_with_equality_relation<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Construct messages of the form [a, ., .]; [., ., a]
     // e.g. the last element of the second equals the first element of the first.
     let msg1 = Message::<N>::random(&mut rng);
-    let first_pos = rng.gen_range(0..N);
-    let second_pos = rng.gen_range(0..N);
+    let first_pos = real_rng.gen_range(0..N);
+    let second_pos = real_rng.gen_range(0..N);
     let mut msg2_vec = iter::repeat_with(|| Scalar::random(&mut rng))
         .take(N)
         .collect::<ArrayVec<_, N>>()
@@ -295,11 +292,12 @@ fn commitment_proof_with_public_value() {
 }
 
 fn run_commitment_proof_with_public_value<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Construct message and commitment.
     let msg = Message::<N>::random(&mut rng);
-    let public_pos = rng.gen_range(0..N);
+    let public_pos = real_rng.gen_range(0..N);
     let public_value = msg[public_pos];
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
@@ -336,15 +334,16 @@ fn commitment_proof_with_linear_relation_public_addition() {
 }
 
 fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Construct messages of the form [a]; [a + public_value]
     // e.g. the last element of the second equals the first element of the first.
     let public_value = Scalar::random(&mut rng);
 
     let msg1 = Message::<N>::random(&mut rng);
-    let first_pos = rng.gen_range(0..N);
-    let second_pos = rng.gen_range(0..N);
+    let first_pos = real_rng.gen_range(0..N);
+    let second_pos = real_rng.gen_range(0..N);
     let mut msg2_vec = iter::repeat_with(|| Scalar::random(&mut rng))
         .take(N)
         .collect::<ArrayVec<_, N>>()
@@ -412,7 +411,7 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
 fn commitment_proof_fails_on_random_commit<
     G: Group<Scalar = Scalar> + GroupEncoding + SerializeElement,
 >() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Generate message.
     let msg = Message::<3>::random(&mut rng);

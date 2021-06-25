@@ -1,7 +1,9 @@
+mod test_utils;
+
 use arrayvec::ArrayVec;
 use bls12_381::{G1Projective, Scalar};
 use ff::Field;
-use rand::{CryptoRng, Rng, RngCore, SeedableRng};
+use rand::{CryptoRng, Rng, RngCore};
 use std::iter;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
@@ -12,12 +14,6 @@ use zkchannels_crypto::{
     },
     BlindingFactor, Message,
 };
-
-// Seeded rng for replicable tests.
-fn rng() -> (impl rand::CryptoRng + rand::RngCore) {
-    const TEST_RNG_SEED: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";
-    rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
-}
 
 #[test]
 fn range_proof_with_commitment_verifies() {
@@ -30,8 +26,9 @@ fn range_proof_with_commitment_verifies() {
 }
 
 fn run_range_proof_with_commitment_verifies<const N: usize>() {
-    let mut rng = rng();
-    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = test_utils::real_rng();
+    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
 
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
     let bf = BlindingFactor::new(&mut rng);
@@ -99,10 +96,11 @@ fn range_proof_with_signature_verifies() {
 }
 
 fn run_range_proof_with_signature_verifies<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Generate message and signature.
-    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
+    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
 
     let kp = KeyPair::new(&mut rng);
     let sig = kp.sign(&mut rng, &msg);
@@ -164,7 +162,7 @@ fn run_range_proof_with_signature_verifies<const N: usize>() {
 #[test]
 #[should_panic(expected = "OutsideRange")]
 fn range_proof_no_negative_value() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
     let rp_params = RangeProofParameters::new(&mut rng);
     // Construct proof on a negative number (e.g. outside the range (0, 2^63)).
     let _range_proof_builder =
@@ -174,7 +172,7 @@ fn range_proof_no_negative_value() {
 #[test]
 #[should_panic(expected = "OutsideRange")]
 fn range_proof_test_upper_bound() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
     let rp_params = RangeProofParameters::new(&mut rng);
 
     // Test value is 2^63. This will wrap around when we convert it to an i64.
@@ -187,7 +185,7 @@ fn range_proof_test_upper_bound() {
 
 #[test]
 fn range_proof_test_extremes() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
 
     // Form commitment to (0, 2^63 - 1).
     let params = PedersenParameters::<G1Projective, 2>::new(&mut rng);
@@ -253,12 +251,13 @@ fn range_proof_fails_with_wrong_input() {
 }
 
 fn run_range_proof_fails_with_wrong_input<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Generate a value to range-test and a *random* (unrelated) message.
     let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
     let msg = Message::<N>::random(&mut rng);
-    let pos = rng.gen_range(0..N);
+    let pos = real_rng.gen_range(0..N);
     assert_ne!(
         Scalar::from(u64::from(range_tested_value)),
         msg[pos],
@@ -323,10 +322,11 @@ fn range_proof_fails_if_unlinked() {
 }
 
 fn run_range_proof_fails_if_unlinked<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Generate message.
-    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
+    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
 
     // Form commitment to message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
@@ -381,10 +381,11 @@ fn range_proof_value_revealed() {
 }
 
 fn run_range_proof_value_revealed<const N: usize>() {
-    let mut rng = rng();
+    let mut rng = test_utils::seeded_rng();
+    let mut real_rng = test_utils::real_rng();
 
     // Generate message.
-    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng);
+    let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
 
     // Form commitment to message
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
@@ -439,15 +440,16 @@ fn run_range_proof_value_revealed<const N: usize>() {
 
 fn message_with_value_in_range<const N: usize>(
     mut rng: &mut (impl CryptoRng + RngCore),
+    real_rng: &mut (impl CryptoRng + RngCore),
 ) -> (u32, usize, Message<N>) {
-    let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
+    let range_tested_value = real_rng.gen_range(0..i64::MAX) as u32;
     // Generate message and form commitment.
     let mut msg_vec = iter::repeat_with(|| Scalar::random(&mut rng))
         .take(N)
         .collect::<ArrayVec<_, N>>()
         .into_inner()
         .expect("length mismatch impossible");
-    let pos = rng.gen_range(0..N);
+    let pos = real_rng.gen_range(0..N);
     msg_vec[pos] = Scalar::from(u64::from(range_tested_value));
     let msg = Message::new(msg_vec);
     (range_tested_value, pos, msg)

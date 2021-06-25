@@ -61,6 +61,7 @@ impl MerchantRandomness {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ChannelId([u8; 32]);
 
+#[cfg(feature = "sqlite")]
 impl_sqlx_for_bincode_ty!(ChannelId);
 
 impl ChannelId {
@@ -309,7 +310,7 @@ impl State {
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
             self.channel_id.to_scalar(),
-            self.nonce.to_scalar(),
+            self.nonce.as_scalar(),
             self.revocation_secret.revocation_lock().to_scalar(),
             self.customer_balance.to_scalar(),
             self.merchant_balance.to_scalar(),

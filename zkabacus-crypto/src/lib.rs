@@ -40,6 +40,8 @@ pub use proofs::Context;
 pub use proofs::EstablishProof;
 pub use proofs::PayProof;
 
+pub use zkchannels_crypto::impl_sqlx_for_bincode_ty;
+
 /// Rename cryptographically correct `BlindedPayToken` to the semantic `PayToken`.
 pub use states::BlindedPayToken as PayToken;
 

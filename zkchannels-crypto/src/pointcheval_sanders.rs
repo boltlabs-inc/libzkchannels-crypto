@@ -312,7 +312,7 @@ impl Signature {
     }
 
     /// Convert to a bytewise representation
-    pub fn to_bytes(&self) -> [u8; 96] {
+    pub fn as_bytes(&self) -> [u8; 96] {
         let mut buf: [u8; 96] = [0; 96];
         buf[..48].copy_from_slice(&self.sigma1.to_compressed());
         buf[48..].copy_from_slice(&self.sigma2.to_compressed());
@@ -385,7 +385,7 @@ impl BlindedSignature {
         let Signature { sigma1, sigma2 } = sig;
         Self(Signature {
             sigma1,
-            sigma2: (sigma2 + (sigma1 * bf.to_scalar())).into(),
+            sigma2: (sigma2 + (sigma1 * bf.as_scalar())).into(),
         })
     }
 
@@ -396,7 +396,7 @@ impl BlindedSignature {
         let Self(Signature { sigma1, sigma2 }) = self;
         Signature {
             sigma1,
-            sigma2: (sigma2 - (sigma1 * bf.to_scalar())).into(),
+            sigma2: (sigma2 - (sigma1 * bf.as_scalar())).into(),
         }
     }
 
@@ -414,8 +414,8 @@ impl BlindedSignature {
     }
 
     /// Convert to a bytewise representation.
-    pub fn to_bytes(&self) -> [u8; 96] {
-        self.0.to_bytes()
+    pub fn as_bytes(&self) -> [u8; 96] {
+        self.0.as_bytes()
     }
 }
 

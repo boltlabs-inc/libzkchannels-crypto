@@ -62,8 +62,6 @@ use serde::{Deserialize, Serialize};
 /// Fully constructed proof of knowledge of a signature.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureProof<const N: usize> {
-    /// Commitment to the signed message.
-    message_commitment: Commitment<G2Projective>,
     /// Blinded, randomized version of the signature.
     blinded_signature: BlindedSignature,
     /// Proof of knowledge of opening of the `message_commitment`.
@@ -77,8 +75,6 @@ pub struct SignatureProof<const N: usize> {
 pub struct SignatureProofBuilder<const N: usize> {
     /// Underlying message in the signature.
     message: Message<N>,
-    /// Commitment to the message.
-    message_commitment: Commitment<G2Projective>,
     /// Blinding factor for the `message_commitment`.
     message_blinding_factor: BlindingFactor,
     /// Randomized and blinded version of the original signature.
@@ -102,11 +98,6 @@ impl<const N: usize> SignatureProofBuilder<N> {
     ) -> Self {
         // Run commitment phase for PoK of opening of commitment to message.
         let params = params.to_g2_pedersen_parameters();
-        let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-            rng,
-            conjunction_commitment_scalars,
-            &params,
-        );
 
         // Run signature proof setup phase:
         // Blind and randomize signature
@@ -116,10 +107,15 @@ impl<const N: usize> SignatureProofBuilder<N> {
 
         // Form commitment to blinding factor + message
         let message_commitment = params.commit(&message, message_blinding_factor);
+        let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            rng,
+            message_commitment,
+            conjunction_commitment_scalars,
+            &params,
+        );
 
         Self {
             message,
-            message_commitment,
             message_blinding_factor,
             blinded_signature,
             commitment_proof_builder,
@@ -145,7 +141,6 @@ impl<const N: usize> SignatureProofBuilder<N> {
         );
 
         SignatureProof {
-            message_commitment: self.message_commitment,
             blinded_signature: self.blinded_signature,
             commitment_proof,
         }
@@ -154,7 +149,6 @@ impl<const N: usize> SignatureProofBuilder<N> {
 
 impl<const N: usize> ChallengeInput for SignatureProofBuilder<N> {
     fn consume(&self, builder: &mut ChallengeBuilder) {
-        builder.consume(&self.message_commitment);
         builder.consume(&self.blinded_signature);
         builder.consume(&self.commitment_proof_builder);
     }
@@ -181,7 +175,6 @@ impl<const N: usize> SignatureProof<N> {
             .commitment_proof
             .verify_knowledge_of_opening_of_commitment(
                 &params.to_g2_pedersen_parameters(),
-                self.message_commitment,
                 challenge,
             );
 
@@ -189,7 +182,7 @@ impl<const N: usize> SignatureProof<N> {
         let sig = self.blinded_signature.0;
         let commitment_proof_matches_signature = pairing(
             &sig.sigma1(),
-            &(params.x2 + self.message_commitment.to_element()).into(),
+            &(params.x2 + self.commitment_proof.commitment().to_element()).into(),
         ) == pairing(&sig.sigma2(), &params.g2);
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
@@ -205,7 +198,6 @@ impl<const N: usize> SignatureProof<N> {
 
 impl<const N: usize> ChallengeInput for SignatureProof<N> {
     fn consume(&self, builder: &mut ChallengeBuilder) {
-        builder.consume(&self.message_commitment);
         builder.consume(&self.blinded_signature);
         builder.consume(&self.commitment_proof);
     }

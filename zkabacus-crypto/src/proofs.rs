@@ -13,6 +13,7 @@ use crate::{
     customer, merchant, revlock::*, states::*, types::*, Nonce, PaymentAmount, Rng, Verification,
     CLOSE_SCALAR,
 };
+use zkchannels_crypto::pointcheval_sanders::BlindedMessage;
 use zkchannels_crypto::{
     pedersen::Commitment,
     proofs::{
@@ -69,17 +70,16 @@ pub struct EstablishProof {
     // Proof objects.
     state_proof: CommitmentProof<G1Projective, 5>,
     close_state_proof: CommitmentProof<G1Projective, 5>,
-
-    // Commitments for proof objects.
-    state_commitment: StateCommitment,
-    close_state_commitment: CloseStateCommitment,
 }
 
 #[allow(unused)]
 impl EstablishProof {
     /// Retrieve the state commitment for the proof.
     pub(crate) fn extract_commitments(self) -> (StateCommitment, CloseStateCommitment) {
-        (self.state_commitment, self.close_state_commitment)
+        (
+            StateCommitment(BlindedMessage(self.state_proof.commitment())),
+            CloseStateCommitment(BlindedMessage(self.close_state_proof.commitment())),
+        )
     }
 
     /**
@@ -106,6 +106,7 @@ impl EstablishProof {
         // Start commitment proof to the new state.
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
+            state_commitment.0.to_commitment(),
             &[None; 5],
             &pedersen_parameters,
         );
@@ -122,6 +123,7 @@ impl EstablishProof {
         // blinding factor.
         let close_state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
+            close_state_commitment.0.to_commitment(),
             &[Some(cs[0]), None, Some(cs[2]), Some(cs[3]), Some(cs[4])],
             &pedersen_parameters,
         );
@@ -133,8 +135,6 @@ impl EstablishProof {
             .with(&CLOSE_SCALAR)
             .with(&state.customer_balance().to_scalar())
             .with(&state.merchant_balance().to_scalar())
-            .with(&state_commitment.0)
-            .with(&close_state_commitment.0)
             .with(&state_proof_builder)
             .with(&close_state_proof_builder)
             .with_bytes(&context.as_bytes())
@@ -165,10 +165,6 @@ impl EstablishProof {
                     close_state_blinding_factor.0,
                     challenge,
                 ),
-
-                // Save commitments
-                state_commitment,
-                close_state_commitment,
             },
             // Return blinding factors from newly-generated commitments.
             close_state_blinding_factor,
@@ -192,8 +188,6 @@ impl EstablishProof {
             .with(&CLOSE_SCALAR)
             .with(&public_values.customer_balance.to_scalar())
             .with(&public_values.merchant_balance.to_scalar())
-            .with(&self.state_commitment.0)
-            .with(&self.close_state_commitment.0)
             .with(&self.state_proof)
             .with(&self.close_state_proof)
             .with_bytes(context.as_bytes())
@@ -205,20 +199,14 @@ impl EstablishProof {
             .to_g1_pedersen_parameters();
 
         // Check that the state proof verifies.
-        let state_proof_verifies = self.state_proof.verify_knowledge_of_opening_of_commitment(
-            &pedersen_parameters,
-            self.state_commitment.0.to_commitment(),
-            challenge,
-        );
+        let state_proof_verifies = self
+            .state_proof
+            .verify_knowledge_of_opening_of_commitment(&pedersen_parameters, challenge);
 
         // Check that the close state proof verifies.
         let close_state_proof_verifies = self
             .close_state_proof
-            .verify_knowledge_of_opening_of_commitment(
-                &pedersen_parameters,
-                self.close_state_commitment.0.to_commitment(),
-                challenge,
-            );
+            .verify_knowledge_of_opening_of_commitment(&pedersen_parameters, challenge);
 
         // Retrieve response scalars for the message tuples in the new state and new close state.
         let state_response_scalars = self.state_proof.conjunction_response_scalars();
@@ -305,11 +293,6 @@ pub struct PayProof {
     close_state_proof: CommitmentProof<G1Projective, 5>,
     customer_balance_proof: RangeConstraint,
     merchant_balance_proof: RangeConstraint,
-
-    // Commitments for the commitment proofs.
-    old_revocation_lock_commitment: RevocationLockCommitment,
-    state_commitment: StateCommitment,
-    close_state_commitment: CloseStateCommitment,
 }
 
 /// Blinding factors for commitments associated with a particular payment.
@@ -326,18 +309,18 @@ pub(crate) struct BlindingFactors {
 #[allow(unused)]
 impl PayProof {
     /// Get the revocation lock commitment out of the proof.
-    pub(crate) fn old_revocation_lock_commitment(&self) -> &RevocationLockCommitment {
-        &self.old_revocation_lock_commitment
+    pub(crate) fn old_revocation_lock_commitment(&self) -> RevocationLockCommitment {
+        RevocationLockCommitment(self.old_revocation_lock_proof.commitment())
     }
 
     /// Get the state commitment out of the proof.
-    pub(crate) fn state_commitment(&self) -> &StateCommitment {
-        &self.state_commitment
+    pub(crate) fn state_commitment(&self) -> StateCommitment {
+        StateCommitment(BlindedMessage(self.state_proof.commitment()))
     }
 
     /// Get the close state commitment out of the proof.
-    pub(crate) fn close_state_commitment(&self) -> &CloseStateCommitment {
-        &self.close_state_commitment
+    pub(crate) fn close_state_commitment(&self) -> CloseStateCommitment {
+        CloseStateCommitment(BlindedMessage(self.close_state_proof.commitment()))
     }
 
     pub(crate) fn extract_commitments(
@@ -348,9 +331,9 @@ impl PayProof {
         CloseStateCommitment,
     ) {
         (
-            self.old_revocation_lock_commitment,
-            self.state_commitment,
-            self.close_state_commitment,
+            RevocationLockCommitment(self.old_revocation_lock_proof.commitment()),
+            StateCommitment(BlindedMessage(self.state_proof.commitment())),
+            CloseStateCommitment(BlindedMessage(self.close_state_proof.commitment())),
         )
     }
 
@@ -422,6 +405,7 @@ impl PayProof {
         // Start commitment proof to old revocation lock.
         let old_revocation_lock_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
+            old_revocation_lock_commitment.0,
             &[None],
             &params.revocation_commitment_parameters,
         );
@@ -456,6 +440,7 @@ impl PayProof {
         // - equality: balances must match the values from the range constraint.
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
+            state_commitment.0.to_commitment(),
             &[
                 Some(channel_id_commitment_scalar),
                 None,
@@ -476,6 +461,7 @@ impl PayProof {
         // - equality: balances must match the ones in the state (this also implies the addition constraint)
         let close_state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
+            close_state_commitment.0.to_commitment(),
             &[Some(cs[0]), None, Some(cs[2]), Some(cs[3]), Some(cs[4])],
             &pedersen_parameters,
         );
@@ -487,10 +473,6 @@ impl PayProof {
             .with(params.range_constraint_parameters.public_key())
             .with(&old_state.nonce().as_scalar())
             .with(&CLOSE_SCALAR)
-            // integrate commitments from commitment proofs
-            .with(&old_revocation_lock_commitment.0)
-            .with(&state_commitment.0)
-            .with(&close_state_commitment.0)
             // integrate commitment scalars from commitment proofs
             .with(&old_revocation_lock_proof_builder)
             .with(&state_proof_builder)
@@ -536,11 +518,6 @@ impl PayProof {
                     .generate_constraint_response(challenge),
                 merchant_balance_proof: merchant_range_constraint_builder
                     .generate_constraint_response(challenge),
-
-                // Add commitments.
-                old_revocation_lock_commitment,
-                state_commitment,
-                close_state_commitment,
             },
             blinding_factors,
         )
@@ -564,10 +541,6 @@ impl PayProof {
             .with(params.range_constraint_parameters.public_key())
             .with(&public_values.old_nonce.as_scalar())
             .with(&CLOSE_SCALAR)
-            // integrate commitments from commitment proofs
-            .with(&self.old_revocation_lock_commitment.0)
-            .with(&self.state_commitment.0)
-            .with(&self.close_state_commitment.0)
             // integrate commitment scalars from commitment proofs
             .with(&self.old_revocation_lock_proof)
             .with(&self.state_proof)
@@ -594,23 +567,16 @@ impl PayProof {
             .old_revocation_lock_proof
             .verify_knowledge_of_opening_of_commitment(
                 &params.revocation_commitment_parameters,
-                self.old_revocation_lock_commitment.0,
                 challenge,
             );
 
-        let state_proof_verifies = self.state_proof.verify_knowledge_of_opening_of_commitment(
-            &pedersen_parameters,
-            self.state_commitment.0.to_commitment(),
-            challenge,
-        );
+        let state_proof_verifies = self
+            .state_proof
+            .verify_knowledge_of_opening_of_commitment(&pedersen_parameters, challenge);
 
         let close_state_proof_verifies = self
             .close_state_proof
-            .verify_knowledge_of_opening_of_commitment(
-                &pedersen_parameters,
-                self.close_state_commitment.0.to_commitment(),
-                challenge,
-            );
+            .verify_knowledge_of_opening_of_commitment(&pedersen_parameters, challenge);
 
         // Retrieve response scalars for the message tuples in the state, close state, and old pay
         // token (old state). These are used to check constraints.

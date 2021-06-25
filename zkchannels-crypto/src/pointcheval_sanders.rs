@@ -23,6 +23,7 @@ use std::{iter, ops::Neg};
 ///
 /// Uses Box to avoid stack overflows with large keys.
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "SecretKeyShadow<N>")]
 pub(crate) struct SecretKey<const N: usize> {
     #[serde(with = "SerializeElement")]
     pub x: Scalar,
@@ -32,10 +33,38 @@ pub(crate) struct SecretKey<const N: usize> {
     pub x1: G1Affine,
 }
 
+#[derive(Debug, Deserialize)]
+struct SecretKeyShadow<const N: usize> {
+    #[serde(with = "SerializeElement")]
+    pub x: Scalar,
+    #[serde(with = "SerializeElement")]
+    pub ys: Box<[Scalar; N]>,
+    #[serde(with = "SerializeElement")]
+    pub x1: G1Affine,
+}
+
+impl<const N: usize> std::convert::TryFrom<SecretKeyShadow<N>> for SecretKey<N> {
+    type Error = String;
+    fn try_from(shadow: SecretKeyShadow<N>) -> Result<Self, Self::Error> {
+        let SecretKeyShadow { x, ys, x1 } = shadow;
+        if x.is_zero() || bool::from(x1.is_identity()) {
+            return Err("Invalid secret key".to_string());
+        }
+        for i in 0..N {
+            if ys[i].is_zero() {
+                return Err("Invalid secret key".to_string());
+            }
+        }
+        // Any other validations
+        Ok(SecretKey { x, ys, x1 })
+    }
+}
+
 /// A public key for multi-message operations.
 ///
 /// Uses Box to avoid stack overflows with large keys.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "PublicKeyShadow<N>")]
 pub struct PublicKey<const N: usize> {
     /// G1 generator (g)
     #[serde(with = "SerializeElement")]
@@ -52,6 +81,57 @@ pub struct PublicKey<const N: usize> {
     /// Y~_1 ... Y~_l
     #[serde(with = "SerializeElement")]
     pub y2s: Box<[G2Affine; N]>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PublicKeyShadow<const N: usize> {
+    /// G1 generator (g)
+    #[serde(with = "SerializeElement")]
+    pub g1: G1Affine,
+    /// Y_1 ... Y_l
+    #[serde(with = "SerializeElement")]
+    pub y1s: Box<[G1Affine; N]>,
+    /// G2 generator (g~)
+    #[serde(with = "SerializeElement")]
+    pub g2: G2Affine,
+    /// X~
+    #[serde(with = "SerializeElement")]
+    pub x2: G2Affine,
+    /// Y~_1 ... Y~_l
+    #[serde(with = "SerializeElement")]
+    pub y2s: Box<[G2Affine; N]>,
+}
+
+impl<const N: usize> std::convert::TryFrom<PublicKeyShadow<N>> for PublicKey<N> {
+    type Error = String;
+    fn try_from(shadow: PublicKeyShadow<N>) -> Result<Self, Self::Error> {
+        let PublicKeyShadow {
+            g1,
+            y1s,
+            g2,
+            x2,
+            y2s,
+        } = shadow;
+        if bool::from(g1.is_identity())
+            || bool::from(g2.is_identity())
+            || bool::from(x2.is_identity())
+        {
+            return Err("Invalid public key".to_string());
+        }
+        for i in 0..N {
+            if bool::from(y1s[i].is_identity()) || bool::from(y2s[i].is_identity()) {
+                return Err("Invalid public key".to_string());
+            }
+        }
+        // Any other validations
+        Ok(PublicKey {
+            g1,
+            y1s,
+            g2,
+            x2,
+            y2s,
+        })
+    }
 }
 
 /// A keypair formed from a `SecretKey` and a [`PublicKey`] for multi-message operations.
@@ -570,5 +650,71 @@ mod test {
             sig.verify(kp.public_key(), &msg),
             "Signature didn't verify!!"
         );
+    }
+
+    #[test]
+    fn serialize_deserialize_public_key() {
+        let mut rng = rng();
+        let kp = KeyPair::<5>::new(&mut rng);
+
+        let ser_pk = bincode::serialize(&kp.public_key()).unwrap();
+        let new_pk = bincode::deserialize::<PublicKey<5>>(&ser_pk).unwrap();
+        assert_eq!(kp.pk, new_pk);
+
+        let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        wrong_kp.pk.g1 = G1Affine::identity();
+        let ser_pk = bincode::serialize(&wrong_kp.public_key()).unwrap();
+        assert!(bincode::deserialize::<PublicKey<5>>(&ser_pk).is_err());
+
+        let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        wrong_kp.pk.g2 = G2Affine::identity();
+        let ser_pk = bincode::serialize(&wrong_kp.public_key()).unwrap();
+        assert!(bincode::deserialize::<PublicKey<5>>(&ser_pk).is_err());
+
+        let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        wrong_kp.pk.x2 = G2Affine::identity();
+        let ser_pk = bincode::serialize(&wrong_kp.public_key()).unwrap();
+        assert!(bincode::deserialize::<PublicKey<5>>(&ser_pk).is_err());
+
+        let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        for i in 0..5 {
+            wrong_kp.pk.y1s[i] = G1Affine::identity();
+        }
+        let ser_pk = bincode::serialize(&wrong_kp.public_key()).unwrap();
+        assert!(bincode::deserialize::<PublicKey<5>>(&ser_pk).is_err());
+
+        let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        for i in 0..5 {
+            wrong_kp.pk.y2s[i] = G2Affine::identity();
+        }
+        let ser_pk = bincode::serialize(&wrong_kp.public_key()).unwrap();
+        assert!(bincode::deserialize::<PublicKey<5>>(&ser_pk).is_err());
+    }
+
+    #[test]
+    fn serialize_deserialize_secret_key() {
+        let mut rng = rng();
+        let kp = KeyPair::<5>::new(&mut rng);
+
+        let ser_sk = bincode::serialize(&kp.sk).unwrap();
+        let new_sk = bincode::deserialize::<SecretKey<5>>(&ser_sk).unwrap();
+        assert_eq!(kp.sk, new_sk);
+
+        let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        wrong_kp.sk.x = Scalar::zero();
+        let ser_sk = bincode::serialize(&wrong_kp.sk).unwrap();
+        assert!(bincode::deserialize::<SecretKey<5>>(&ser_sk).is_err());
+
+        let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        wrong_kp.sk.x1 = G1Affine::identity();
+        let ser_sk = bincode::serialize(&wrong_kp.sk).unwrap();
+        assert!(bincode::deserialize::<SecretKey<5>>(&ser_sk).is_err());
+
+        let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        for i in 0..5 {
+            wrong_kp.sk.ys[i] = Scalar::zero();
+        }
+        let ser_sk = bincode::serialize(&wrong_kp.sk).unwrap();
+        assert!(bincode::deserialize::<SecretKey<5>>(&ser_sk).is_err());
     }
 }

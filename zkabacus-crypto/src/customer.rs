@@ -306,7 +306,7 @@ pub struct LockMessage {
 
 /// The information necessary to perform a close for a state.
 /// This is sent as part of zkAbacus.Close.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct ClosingMessage {
     close_signature: CloseStateSignature,

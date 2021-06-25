@@ -17,7 +17,7 @@ use std::convert::TryFrom;
 use zkchannels_crypto::{pedersen::Commitment, BlindingFactor, Message, SerializeElement};
 
 /// A revocation lock.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 

@@ -175,7 +175,7 @@ pub struct State {
 /// When signed by the merchant, this can be used by the customer to close the channel.
 /// It removes the nonce from the associated `State` to maintain privacy during closing, even in the case of
 /// merchant abort during payment.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloseState {
     channel_id: ChannelId,
     revocation_lock: RevocationLock,

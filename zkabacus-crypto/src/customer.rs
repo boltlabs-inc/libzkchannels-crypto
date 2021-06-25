@@ -328,6 +328,13 @@ impl ClosingMessage {
     }
 }
 
+impl ClosingMessage {
+    /// Consume and decompose a `ClosingMessage` into its constituent parts.
+    pub fn into_parts(self) -> (CloseStateSignature, CloseState) {
+        (self.close_signature, self.close_state)
+    }
+}
+
 impl Started {
     /// Revoke the ability to close the channel on the outdated balances.
     /// This is part of zkAbacus.Pay.

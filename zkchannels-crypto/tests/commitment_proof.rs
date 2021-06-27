@@ -6,11 +6,10 @@ use ff::Field;
 use group::{Group, GroupEncoding};
 use rand::Rng;
 use std::iter;
-use zkchannels_crypto::proofs::CommitmentProof;
 use zkchannels_crypto::{
     pedersen::Commitment,
     pedersen::PedersenParameters,
-    proofs::{ChallengeBuilder, CommitmentProofBuilder},
+    proofs::{ChallengeBuilder, CommitmentProof, CommitmentProofBuilder},
     BlindingFactor, Message, SerializeElement,
 };
 

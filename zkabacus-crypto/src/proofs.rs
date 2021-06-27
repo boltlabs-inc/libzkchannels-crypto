@@ -13,9 +13,10 @@ use crate::{
     customer, merchant, revlock::*, states::*, types::*, Nonce, PaymentAmount, Rng, Verification,
     CLOSE_SCALAR,
 };
-use zkchannels_crypto::pointcheval_sanders::BlindedMessage;
+
 use zkchannels_crypto::{
     pedersen::Commitment,
+    pointcheval_sanders::BlindedMessage,
     proofs::{
         ChallengeBuilder, CommitmentProof, CommitmentProofBuilder, RangeConstraint,
         RangeConstraintBuilder, SignatureProof, SignatureProofBuilder,

@@ -185,6 +185,20 @@ impl Requested {
             Failed => Err(self),
         }
     }
+
+    /// Get the current [`CustomerBalance`] for this state.
+    ///
+    /// This represents the proposed customer contribution to the yet-to-be-established channel.
+    pub fn customer_balance(&self) -> &CustomerBalance {
+        self.state.customer_balance()
+    }
+
+    /// Get the current [`MerchantBalance`] for this state.
+    ///
+    /// This represents the proposed merchant contribution to the yet-to-be-established channel.
+    pub fn merchant_balance(&self) -> &MerchantBalance {
+        self.state.merchant_balance()
+    }
 }
 
 /// A channel that has been approved but not yet activated.
@@ -219,6 +233,20 @@ impl Inactive {
     /// This is called as part of zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
+    }
+
+    /// Get the current [`CustomerBalance`] for this state.
+    ///
+    /// This represents the customer contribution to the yet-to-be-activated channel.
+    pub fn customer_balance(&self) -> &CustomerBalance {
+        self.state.customer_balance()
+    }
+
+    /// Get the current [`MerchantBalance`] for this state.
+    ///
+    /// This represents the merchant contribution to the yet-to-be-activated channel.
+    pub fn merchant_balance(&self) -> &MerchantBalance {
+        self.state.merchant_balance()
     }
 }
 
@@ -280,6 +308,16 @@ impl Ready {
     /// This is called as part of zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
+    }
+
+    /// Get the current [`CustomerBalance`] for this state, prior to starting a payment.
+    pub fn customer_balance(&self) -> &CustomerBalance {
+        self.state.customer_balance()
+    }
+
+    /// Get the current [`MerchantBalance`] for this state, prior to starting a payment.
+    pub fn merchant_balance(&self) -> &MerchantBalance {
+        self.state.merchant_balance()
     }
 }
 
@@ -377,10 +415,27 @@ impl Started {
             self.old_state.close_state(),
         )
     }
+
+    /// Get the [`CustomerBalance`] for this state prior to the current payment in progress.
+    ///
+    /// Note that although the payment has been started, this is the *old* balance, because this is
+    /// what would be closed on if the [`Started::close`] method was called from this state.
+    pub fn customer_balance(&self) -> &CustomerBalance {
+        self.old_state.customer_balance()
+    }
+
+    /// Get the [`MerchantBalance`] for this state prior to the current payment in progress.
+    ///
+    /// Note that although the payment has been started, this is the *old* balance, because this is
+    /// what would be closed on if the [`Started::close`] method was called from this state.
+    pub fn merchant_balance(&self) -> &MerchantBalance {
+        self.old_state.merchant_balance()
+    }
 }
 
 /// A channel that has made a payment but not yet been given permission by the merchant to make
 /// another payment.
+///
 /// This is the second intermediary state of zkAbacus.Pay.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Locked {
@@ -412,5 +467,25 @@ impl Locked {
     /// This is called as part of zkAbacus.Close.
     pub fn close(self, rng: &mut impl Rng) -> ClosingMessage {
         ClosingMessage::new(rng, self.close_state_signature, self.state.close_state())
+    }
+
+    /// Get the [`CustomerBalance`] for this state that will result from completing the payment in
+    /// progress or closing the channel.
+    ///
+    /// Note that although the payment has not yet been completed, this is the *new* balance,
+    /// because this is what would be closed on if the [`Locked::close`] method was called from this
+    /// state.
+    pub fn customer_balance(&self) -> &CustomerBalance {
+        self.state.customer_balance()
+    }
+
+    /// Get the [`MerchantBalance`] for this state that will result from completing the payment in
+    /// progress or closing the channel.
+    ///
+    /// Note that although the payment has not yet been completed, this is the *new* balance,
+    /// because this is what would be closed on if the [`Locked::close`] method was called from this
+    /// state.
+    pub fn merchant_balance(&self) -> &MerchantBalance {
+        self.state.merchant_balance()
     }
 }

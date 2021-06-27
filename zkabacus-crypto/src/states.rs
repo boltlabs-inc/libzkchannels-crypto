@@ -201,19 +201,16 @@ impl State {
     }
 
     /// Get the channel ID for this state.
-    #[allow(unused)]
     pub fn channel_id(&self) -> &ChannelId {
         &self.channel_id
     }
 
     /// Get the merchant's current [`MerchantBalance`] for this state.
-    #[allow(unused)]
     pub fn merchant_balance(&self) -> &MerchantBalance {
         &self.merchant_balance
     }
 
     /// Get the customer's current [`CustomerBalance`] for this state.
-    #[allow(unused)]
     pub fn customer_balance(&self) -> &CustomerBalance {
         &self.customer_balance
     }
@@ -351,9 +348,19 @@ impl CloseState {
         ])
     }
 
-    /// Get the revocation lock for the CloseState.
+    /// Get the revocation lock for the [`CloseState`].
     pub fn revocation_lock(&self) -> &RevocationLock {
         &self.revocation_lock
+    }
+
+    /// Get the merchant's current [`MerchantBalance`] for this [`CloseState`].
+    pub fn merchant_balance(&self) -> &MerchantBalance {
+        &self.merchant_balance
+    }
+
+    /// Get the customer's current [`CustomerBalance`] for this [`CloseState`].
+    pub fn customer_balance(&self) -> &CustomerBalance {
+        &self.customer_balance
     }
 }
 

@@ -269,9 +269,12 @@ impl Ready {
         rng: &mut impl Rng,
         amount: PaymentAmount,
         context: &Context,
-    ) -> Result<(Started, StartMessage), Error> {
+    ) -> Result<(Started, StartMessage), (Ready, Error)> {
         // Generate correctly-updated state.
-        let new_state = self.state.apply_payment(rng, amount)?;
+        let new_state = match self.state.apply_payment(rng, amount) {
+            Ok(new_state) => new_state,
+            Err(error) => return Err((self, error)),
+        };
 
         // Form proof that the payment correctly updates a valid state.
         let (pay_proof, blinding_factors) = PayProof::new(

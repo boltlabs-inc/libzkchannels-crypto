@@ -10,6 +10,7 @@ sqlite = ["bincode", "sqlx", "sqlx/sqlite", "zkchannels-crypto/sqlite"]
 
 [dependencies]
 zkchannels-crypto = { version = "0.1.0", path = "../zkchannels-crypto" }
+base64 = "0.13.0"
 bincode = { version = "1.3.3", optional = true }
 bls12_381 = "0.4.0"
 ff = "0.9"

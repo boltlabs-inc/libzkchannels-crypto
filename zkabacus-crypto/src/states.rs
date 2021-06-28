@@ -64,6 +64,12 @@ pub struct ChannelId([u8; 32]);
 #[cfg(feature = "sqlite")]
 impl_sqlx_for_bincode_ty!(ChannelId);
 
+impl std::fmt::Display for ChannelId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        base64::encode(self.0).fmt(f)
+    }
+}
+
 impl ChannelId {
     /// Generate a new channel ID from randomness and public key information.
     pub fn new(

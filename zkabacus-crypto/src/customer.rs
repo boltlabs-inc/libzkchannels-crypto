@@ -367,9 +367,27 @@ impl ClosingMessage {
             close_state,
         }
     }
-}
 
-impl ClosingMessage {
+    /// Get the closing [`CustomerBalance`] for this [`ClosingMessage`].
+    pub fn customer_balance(&self) -> &CustomerBalance {
+        self.close_state.customer_balance()
+    }
+
+    /// Get the closing [`MerchantBalance`] for this [`ClosingMessage`].
+    pub fn merchant_balance(&self) -> &MerchantBalance {
+        self.close_state.merchant_balance()
+    }
+
+    /// Get a reference to the [`CloseState`] contained in this [`ClosingMessage`].
+    pub fn close_state(&self) -> &CloseState {
+        &self.close_state
+    }
+
+    /// Get a reference to the [`CloseStateSignature`] contained in this [`ClosingMessage`].
+    pub fn closing_signature(&self) -> &CloseStateSignature {
+        &self.close_signature
+    }
+
     /// Consume and decompose a `ClosingMessage` into its constituent parts.
     pub fn into_parts(self) -> (CloseStateSignature, CloseState) {
         (self.close_signature, self.close_state)

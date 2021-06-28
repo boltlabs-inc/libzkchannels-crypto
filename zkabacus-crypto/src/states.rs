@@ -64,6 +64,34 @@ pub struct ChannelId([u8; 32]);
 #[cfg(feature = "sqlite")]
 impl_sqlx_for_bincode_ty!(ChannelId);
 
+impl std::fmt::Display for ChannelId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        base64::encode(self.0).fmt(f)
+    }
+}
+
+#[derive(Debug, Clone, Error)]
+pub enum ChannelIdParseError {
+    /// Submitted a channel id of incorrect length.
+    #[error("expected 32-byte channel id (received {0} bytes)")]
+    IncorrectLength(usize),
+
+    /// Could not parse base64.
+    #[error(transparent)]
+    DecodeError(#[from] base64::DecodeError),
+}
+
+impl std::str::FromStr for ChannelId {
+    type Err = ChannelIdParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes: [u8; 32] = base64::decode(s)?
+            .try_into()
+            .map_err(|vec: Vec<u8>| Self::Err::IncorrectLength(vec.len()))?;
+        Ok(Self(bytes))
+    }
+}
+
 impl ChannelId {
     /// Generate a new channel ID from randomness and public key information.
     pub fn new(

@@ -348,6 +348,11 @@ impl CloseState {
         ])
     }
 
+    /// Get the [`ChannelId`] for this [`CloseState`].
+    pub fn channel_id(&self) -> &ChannelId {
+        &self.channel_id
+    }
+
     /// Get the revocation lock for the [`CloseState`].
     pub fn revocation_lock(&self) -> &RevocationLock {
         &self.revocation_lock

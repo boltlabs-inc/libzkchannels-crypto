@@ -125,6 +125,9 @@ impl ChannelId {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct MerchantBalance(Balance);
 
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_bincode_ty!(MerchantBalance);
+
 impl MerchantBalance {
     /// Create a new merchant balance.
     ///
@@ -157,6 +160,9 @@ impl MerchantBalance {
 /// Channel balance for customer.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct CustomerBalance(Balance);
+
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_bincode_ty!(CustomerBalance);
 
 impl CustomerBalance {
     /// Create a new customer balance.

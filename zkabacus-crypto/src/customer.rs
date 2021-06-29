@@ -398,9 +398,9 @@ impl ClosingMessage {
         self.close_state.channel_id()
     }
 
-    /// Get a reference to the [`CloseState`] contained in this [`ClosingMessage`].
-    pub fn close_state(&self) -> &CloseState {
-        &self.close_state
+    /// Get a reference to the [`RevocationLock`] contained in this [`ClosingMessage`].
+    pub fn revocation_lock(&self) -> &RevocationLock {
+        self.close_state.revocation_lock()
     }
 
     /// Get a reference to the [`CloseStateSignature`] contained in this [`ClosingMessage`].

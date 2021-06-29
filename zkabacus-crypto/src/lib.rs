@@ -62,6 +62,8 @@ pub use states::{
     CustomerRandomness, MerchantBalance, MerchantRandomness, StateCommitment,
 };
 
+pub use revlock::RevocationLock;
+
 mod nonce;
 mod proofs;
 mod states;

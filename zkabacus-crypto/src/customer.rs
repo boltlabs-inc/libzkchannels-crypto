@@ -199,6 +199,11 @@ impl Requested {
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.state.merchant_balance()
     }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.state.channel_id()
+    }
 }
 
 /// A channel that has been approved but not yet activated.
@@ -247,6 +252,11 @@ impl Inactive {
     /// This represents the merchant contribution to the yet-to-be-activated channel.
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.state.merchant_balance()
+    }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.state.channel_id()
     }
 }
 
@@ -318,6 +328,11 @@ impl Ready {
     /// Get the current [`MerchantBalance`] for this state, prior to starting a payment.
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.state.merchant_balance()
+    }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.state.channel_id()
     }
 }
 
@@ -454,6 +469,11 @@ impl Started {
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.old_state.merchant_balance()
     }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.old_state.channel_id()
+    }
 }
 
 /// A channel that has made a payment but not yet been given permission by the merchant to make
@@ -510,5 +530,10 @@ impl Locked {
     /// state.
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.state.merchant_balance()
+    }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.state.channel_id()
     }
 }

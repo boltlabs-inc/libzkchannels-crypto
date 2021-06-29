@@ -111,6 +111,11 @@ impl ChannelId {
         Self(bytes)
     }
 
+    /// Extract the byte representation of this [`ChannelId`].
+    pub fn to_bytes(self) -> [u8; 32] {
+        self.0
+    }
+
     pub(crate) fn to_scalar(self) -> Scalar {
         Scalar::from_raw([
             u64::from_le_bytes(<[u8; 8]>::try_from(&self.0[0..8]).unwrap()),

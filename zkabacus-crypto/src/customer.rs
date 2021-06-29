@@ -199,6 +199,11 @@ impl Requested {
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.state.merchant_balance()
     }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.state.channel_id()
+    }
 }
 
 /// A channel that has been approved but not yet activated.
@@ -247,6 +252,11 @@ impl Inactive {
     /// This represents the merchant contribution to the yet-to-be-activated channel.
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.state.merchant_balance()
+    }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.state.channel_id()
     }
 }
 
@@ -319,6 +329,11 @@ impl Ready {
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.state.merchant_balance()
     }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.state.channel_id()
+    }
 }
 
 /// A channel that has started a new payment.
@@ -378,9 +393,14 @@ impl ClosingMessage {
         self.close_state.merchant_balance()
     }
 
-    /// Get a reference to the [`CloseState`] contained in this [`ClosingMessage`].
-    pub fn close_state(&self) -> &CloseState {
-        &self.close_state
+    /// Get the [`ChannelId`] for this [`ClosingMessage`].
+    pub fn channel_id(&self) -> &ChannelId {
+        self.close_state.channel_id()
+    }
+
+    /// Get a reference to the [`RevocationLock`] contained in this [`ClosingMessage`].
+    pub fn revocation_lock(&self) -> &RevocationLock {
+        self.close_state.revocation_lock()
     }
 
     /// Get a reference to the [`CloseStateSignature`] contained in this [`ClosingMessage`].
@@ -449,6 +469,11 @@ impl Started {
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.old_state.merchant_balance()
     }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.old_state.channel_id()
+    }
 }
 
 /// A channel that has made a payment but not yet been given permission by the merchant to make
@@ -505,5 +530,10 @@ impl Locked {
     /// state.
     pub fn merchant_balance(&self) -> &MerchantBalance {
         self.state.merchant_balance()
+    }
+
+    /// Get the [`ChannelId`] for this state.
+    pub fn channel_id(&self) -> &ChannelId {
+        self.state.channel_id()
     }
 }

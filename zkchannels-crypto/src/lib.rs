@@ -29,6 +29,7 @@ use crate::common::*;
 use ::serde::*;
 use arrayvec::ArrayVec;
 use ff::Field;
+use hex::encode;
 use std::{iter, ops::Deref};
 
 /// Fixed-length message type used across schemes.

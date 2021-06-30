@@ -15,6 +15,7 @@ use crate::{
 };
 use arrayvec::ArrayVec;
 use ff::Field;
+use group::UncompressedEncoding;
 use serde::*;
 use std::iter;
 
@@ -194,6 +195,26 @@ impl<const N: usize> PublicKey<N> {
         if !sig.is_well_formed() {
             return false;
         }
+    
+        println!("===== verify =====");
+        // debug the message
+        let mut c = 0;
+        println!("the message: ");
+        for m in msg.into_iter() {
+            println!("m[{}] -> {}", c, hex::encode(m.to_bytes()));
+            c += 1;
+        }
+        println!("the pubkey: ");
+        c = 0;
+        for p in self.y2s.into_iter() {
+            let mut _b = Vec::new();
+            _b.extend_from_slice(&p.to_uncompressed());
+            println!("y2s[{}] -> {}", c, hex::encode(&_b));
+            c += 1;
+        }
+        let mut _b = Vec::new();
+        _b.extend_from_slice(&self.x2.to_uncompressed());
+        println!("x2 -> {}", hex::encode(&_b));
 
         // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
         let lhs = self.x2
@@ -203,6 +224,12 @@ impl<const N: usize> PublicKey<N> {
                 .zip(msg.iter())
                 .map(|(yi, mi)| yi * mi)
                 .sum::<G2Projective>();
+
+        let mut buf = Vec::new();
+        let _lhs: G2Affine = lhs.into();
+        buf.extend_from_slice(&_lhs.to_uncompressed());
+        println!("lhs prod = {}", hex::encode(&buf));
+        println!("===== verify =====");
 
         let verify_pairing = pairing(&sig.sigma1, &lhs.into());
         let signature_pairing = pairing(&sig.sigma2, &self.g2);

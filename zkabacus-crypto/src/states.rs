@@ -29,6 +29,7 @@ use crate::{
 use serde::*;
 use sha3::{Digest, Sha3_256};
 use std::convert::{TryFrom, TryInto};
+use std::str::FromStr;
 use zkchannels_crypto::{pointcheval_sanders::*, BlindingFactor, Message};
 
 /// Randomness produced by the customer, used to create the [`ChannelId`].
@@ -62,7 +63,35 @@ impl MerchantRandomness {
 pub struct ChannelId([u8; 32]);
 
 #[cfg(feature = "sqlite")]
-impl_sqlx_for_bincode_ty!(ChannelId);
+impl sqlx::Type<sqlx::Sqlite> for ChannelId {
+    fn type_info() -> sqlx::sqlite::SqliteTypeInfo {
+        <String as sqlx::Type<sqlx::Sqlite>>::type_info()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl sqlx::Encode<'_, sqlx::Sqlite> for ChannelId {
+    fn encode_by_ref(
+        &self,
+        buf: &mut <sqlx::Sqlite as sqlx::database::HasArguments<'_>>::ArgumentBuffer,
+    ) -> sqlx::encode::IsNull {
+        <String as sqlx::Encode<'_, sqlx::Sqlite>>::encode_by_ref(&self.to_string(), buf)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl sqlx::Decode<'_, sqlx::Sqlite> for ChannelId {
+    fn decode(value: sqlx::sqlite::SqliteValueRef<'_>) -> Result<Self, sqlx::error::BoxDynError> {
+        let text = <String as sqlx::Decode<sqlx::Sqlite>>::decode(value)?;
+
+        let result = ChannelId::from_str(&text).map_err(|_err| {
+            sqlx::Error::Decode(
+                format!("could not decode `ChannelId` from base64 `{}`", text).into(),
+            )
+        })?;
+        Ok(result)
+    }
+}
 
 impl std::fmt::Display for ChannelId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -81,7 +110,7 @@ pub enum ChannelIdParseError {
     DecodeError(#[from] base64::DecodeError),
 }
 
-impl std::str::FromStr for ChannelId {
+impl FromStr for ChannelId {
     type Err = ChannelIdParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {

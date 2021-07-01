@@ -1,12 +1,12 @@
-//! Schnorr-style proofs of knowledge that a value lies within the range `[0, 2^63)`.
+//! Schnorr-style constraints that a value lies within the range `[0, 2^63)`.
 //!
-//! **This range proof cannot be used alone!** It is only meaningful when used in conjunction with a
+//! **This range constraint cannot be used alone!** It is only meaningful when used in conjunction with a
 //! [`CommitmentProof`](crate::proofs::CommitmentProof) or [`SignatureProof`], to show that the
 //! message _in that proof_ lies within the given range.
 //!
-//! These are Camenish, Chaabouni, and shelat-style range proofs \[1\] built using standard Schnorr.
+//! These are Camenish, Chaabouni, and shelat-style range constraints \[1\] built using standard Schnorr.
 //! They prove a value is in range `[0, u^l)`, for some parameters `u` and `l`. This implementation
-//! selects `u`, `l` to produce proofs for the range `[0, 2^63)` It also uses single-message
+//! selects `u`, `l` to produce constraints for the range `[0, 2^63)` It also uses single-message
 //! Pointcheval-Sanders signatures \[2\] instead of the signature scheme in \[1\]. It uses the
 //! pairing group defined in BLS12-381 \[3\]. Note that this implementation only supports the range
 //! `[0, 2^63]`; \[1\] provides a technique to show a value lies in an arbitrary interval `[a,b]`,
@@ -18,25 +18,25 @@
 //!
 //! The prover shows they know a signature on each digit and that the digits are a correct `u`-ary
 //! representation of the corresponding value. Signatures on each possible digit are provided by the
-//! verifier: they use a one-time-use range proof key to sign the values 0 to `u` and publish them.
+//! verifier: they use a one-time-use range constraint key to sign the values 0 to `u` and publish them.
 //!
 //! This module provides tools to produce a PoK over the digit signatures for a given value.
 //! However, it alone *does not* show that the `u`-ary representation matches a meaningful value!
 //! This step requires a conjunction with a [`CommitmentProof`](crate::proofs::CommitmentProof) or
 //! [`SignatureProof`].
 //!
-//! This type of proof requires additional parameters (a range proof public key) and a more
+//! This type of constraint requires additional parameters (a range constraint public key) and a more
 //! computationally intensive setup phase by the verifier (to generate `u` signatures). Luckily,
-//! this only has to be done once over the lifetime of _all_ range proofs. It is important that the
-//! verifier does not reuse the range proof key for any other operations, especially signing
-//! operations: the security of the proof depends on the fact that the digit signatures can _only_
+//! this only has to be done once over the lifetime of _all_ range constraints. It is important that the
+//! verifier does not reuse the range constraint key for any other operations, especially signing
+//! operations: the security of the constraint depends on the fact that the digit signatures can _only_
 //! be on valid `u`-ary digits.
 //!
 //! ## Expected use
 //! Suppose you wish to show that the `j`th message element in a
 //! [`CommitmentProof`](crate::proofs::CommitmentProof) is within the given range.
 //!
-//! 1. *Initiate the range proof.* Call [`RangeConstraintBuilder::generate_proof_commitments()`], passing
+//! 1. *Initiate the range constraint.* Call [`RangeConstraintBuilder::generate_constraint_commitments()`], passing
 //!     the value you wish to show is in a range.
 //!
 //! 2. *Link to the commitment proof*. The resulting [`RangeConstraintBuilder`] contains a field called
@@ -48,15 +48,15 @@
 //!     the verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform
 //!     an interactive proof into a non-interactive proof; see [`Challenge`] for details.
 //!
-//! 4. *Complete the proofs*. Call the `generate_proof_response()` function for the [commitment
+//! 4. *Complete the constraint and the proof*. Call the `generate_proof_response()` function for the [commitment
 //!     proof](crate::proofs::CommitmentProofBuilder::generate_proof_response()) and the [range
-//!     proof](RangeConstraintBuilder::generate_proof_response()).
+//!     constraint](RangeConstraintBuilder::generate_constraint_response()).
 //!
 //! To verify a range proof, the verifier must check the following:
 //!
 //! 1. The commitment proof is correctly constructed.
-//! 2. The range proof digits are correctly constructed.
-//! 3. The value in the commitment proof corresponds to the digits in the range proof.
+//! 2. The range constraint digits are correctly constructed.
+//! 3. The value in the commitment proof corresponds to the digits in the range constraint.
 //!
 //! To do so, the verifier should first reconstruct the challenge. Verify 1 using the standard
 //! commitment proof [verification
@@ -90,15 +90,15 @@ use arrayvec::ArrayVec;
 use serde::*;
 use thiserror::Error;
 
-/// The error type returned when attempting to form a range proof for a value outside the range.
+/// The error type returned when attempting to form a range constraint for a value outside the range.
 #[derive(Debug, Clone, Copy, Error)]
-#[error("cannot form a range proof for a value outside the range of [0, 2^63) (received {0})")]
+#[error("cannot form a range constraint for a value outside the range of [0, 2^63) (received {0})")]
 pub struct ValueOutsideRange(pub i64);
 
-/// The arity of our digits used in the range proof.
+/// The arity of our digits used in the range constraint.
 const RP_PARAMETER_U: u64 = 128;
 
-/// Number of digits used in the range proof.
+/// Number of digits used in the range constraint.
 const RP_PARAMETER_L: usize = 9;
 
 /// Parameters for use in a [`RangeConstraint`].
@@ -119,7 +119,7 @@ pub struct RangeConstraintParameters {
 crate::impl_sqlx_for_bincode_ty!(RangeConstraintParameters);
 
 impl RangeConstraintParameters {
-    /// Generate new parameters for use in range proofs.
+    /// Generate new parameters for use in range constraints.
     ///
     /// Note that this generates a [`KeyPair`](crate::pointcheval_sanders::KeyPair) to produce the
     /// `digit_signatures`, but discards the secret half after use. This is to prevent misuse; it
@@ -170,9 +170,9 @@ pub struct RangeConstraint {
 }
 
 impl RangeConstraintBuilder {
-    /// Run the commitment phase of a Schnorr-style range proof on the value, to show that
+    /// Run the commitment phase of a Schnorr-style range constraint on the value, to show that
     /// `0 <= value < 2^63`.
-    pub fn generate_proof_commitments(
+    pub fn generate_constraint_commitments(
         value: i64,
         params: &RangeConstraintParameters,
         rng: &mut impl Rng,
@@ -229,8 +229,8 @@ impl RangeConstraintBuilder {
         })
     }
 
-    /// Run the response phase of a Schnorr-style proof of knowledge that a value is in a range.
-    pub fn generate_proof_response(self, challenge: Challenge) -> RangeConstraint {
+    /// Run the response phase of a Schnorr-style constraint that a value is in a range.
+    pub fn generate_constraint_response(self, challenge: Challenge) -> RangeConstraint {
         let digit_proofs = Box::new(
             ArrayVec::from(*self.digit_proof_builders)
                 .into_iter()
@@ -243,7 +243,7 @@ impl RangeConstraintBuilder {
         RangeConstraint { digit_proofs }
     }
 
-    /// Get the commitment scalar to the cumulative sum of the commitment scalars of the range proof
+    /// Get the commitment scalar to the cumulative sum of the commitment scalars of the range constraint
     /// digits.
     pub fn commitment_scalar(&self) -> Scalar {
         self.commitment_scalar
@@ -275,7 +275,7 @@ impl RangeConstraint {
     }
 
     /// Verify that the response scalar for a given value is correctly constructed from the range
-    /// proof digits.
+    /// constraint digits.
     pub fn verify_range_constraint(
         &self,
         params: &RangeConstraintParameters,

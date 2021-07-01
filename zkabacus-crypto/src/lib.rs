@@ -48,7 +48,7 @@ pub use states::BlindedPayToken as PayToken;
 /// Rename cryptographically correct `CloseStateBlindedSignature` to the semantic `ClosingSignature`.
 pub use states::CloseStateBlindedSignature as ClosingSignature;
 
-/// Range proof parameters, used to construct [`customer::Config`].
+/// Range constraint parameters, used to construct [`customer::Config`].
 pub use zkchannels_crypto::proofs::RangeConstraintParameters;
 /// Pointcheval-Sanders public key, used to construct [`customer::Config`].
 pub type PublicKey = zkchannels_crypto::pointcheval_sanders::PublicKey<5>;

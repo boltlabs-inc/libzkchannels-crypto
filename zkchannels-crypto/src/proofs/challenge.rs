@@ -1,7 +1,7 @@
 //! Functionality for building challenge scalars.
 //!
 //! Supports challenges on proofs of knowledge of the opening of commitments, the opening of
-//! signatures, and range proofs, both individually and in conjunctions. There is also support for
+//! signatures, and range constraints, both individually and in conjunctions. There is also support for
 //! incorporating other public information into the challenge.
 
 use crate::common::*;

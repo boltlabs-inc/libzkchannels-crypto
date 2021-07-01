@@ -66,7 +66,7 @@ pub struct Config {
     pub(crate) merchant_public_key: PublicKey<5>,
     /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
-    /// Parameters for building and verifying range proofs.
+    /// Parameters for building and verifying range constraints.
     pub(crate) range_constraint_parameters: RangeConstraintParameters,
 }
 
@@ -94,7 +94,7 @@ impl Config {
         &self.revocation_commitment_parameters
     }
 
-    /// The parameters for constructing range proofs.
+    /// The parameters for constructing range constraints.
     #[allow(unused_qualifications)]
     pub fn range_constraint_parameters(&self) -> &crate::RangeConstraintParameters {
         &self.range_constraint_parameters

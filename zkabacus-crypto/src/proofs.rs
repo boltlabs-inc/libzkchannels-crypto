@@ -396,21 +396,23 @@ impl PayProof {
             for_close_state: close_state_bf,
         };
 
-        // Start range proof on customer balance in the new state.
-        let customer_range_constraint_builder = RangeConstraintBuilder::generate_proof_commitments(
-            state.customer_balance().into_inner() as i64,
-            &params.range_constraint_parameters,
-            rng,
-        )
-        .unwrap();
+        // Start range constraint on customer balance in the new state.
+        let customer_range_constraint_builder =
+            RangeConstraintBuilder::generate_constraint_commitments(
+                state.customer_balance().into_inner() as i64,
+                &params.range_constraint_parameters,
+                rng,
+            )
+            .unwrap();
 
-        // Start range proof on merchant balance in the new state.
-        let merchant_range_constraint_builder = RangeConstraintBuilder::generate_proof_commitments(
-            state.merchant_balance().into_inner() as i64,
-            &params.range_constraint_parameters,
-            rng,
-        )
-        .unwrap();
+        // Start range constraint on merchant balance in the new state.
+        let merchant_range_constraint_builder =
+            RangeConstraintBuilder::generate_constraint_commitments(
+                state.merchant_balance().into_inner() as i64,
+                &params.range_constraint_parameters,
+                rng,
+            )
+            .unwrap();
 
         let customer_balance_commitment_scalar =
             customer_range_constraint_builder.commitment_scalar();
@@ -430,7 +432,7 @@ impl PayProof {
 
         // Start signature proof on old pay token. Add constraints:
         // - equality: revocation lock must match the one in the commitment to the old revocation lock;
-        // - addition with public value: balances must be correlated with the values from the range proofs.
+        // - addition with public value: balances must be correlated with the values from the range constraints.
         let old_pay_token_proof_builder = SignatureProofBuilder::generate_proof_commitments(
             rng,
             old_state.to_message(),
@@ -451,7 +453,7 @@ impl PayProof {
 
         // Start commitment proof on new state. Add constraints:
         // - equality: channel id must match the one in the pay token;
-        // - equality: balances must match the values from the range proofs.
+        // - equality: balances must match the values from the range constraint.
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &[
@@ -493,7 +495,7 @@ impl PayProof {
             .with(&old_revocation_lock_proof_builder)
             .with(&state_proof_builder)
             .with(&close_state_proof_builder)
-            // integrate signature and range proofs
+            // integrate signature and range constraints
             .with(&old_pay_token_proof_builder)
             .with(&customer_range_constraint_builder)
             .with(&merchant_range_constraint_builder)
@@ -529,11 +531,11 @@ impl PayProof {
                     blinding_factors.for_close_state.0,
                     challenge,
                 ),
-                // Complete the range proofs.
+                // Complete the range constraints.
                 customer_balance_proof: customer_range_constraint_builder
-                    .generate_proof_response(challenge),
+                    .generate_constraint_response(challenge),
                 merchant_balance_proof: merchant_range_constraint_builder
-                    .generate_proof_response(challenge),
+                    .generate_constraint_response(challenge),
 
                 // Add commitments.
                 old_revocation_lock_commitment,
@@ -570,7 +572,7 @@ impl PayProof {
             .with(&self.old_revocation_lock_proof)
             .with(&self.state_proof)
             .with(&self.close_state_proof)
-            // integrate signature and range proofs
+            // integrate signature and range constraints
             .with(&self.old_pay_token_proof)
             .with(&self.customer_balance_proof)
             .with(&self.merchant_balance_proof)
@@ -617,7 +619,7 @@ impl PayProof {
         let old_pay_token_response_scalars =
             self.old_pay_token_proof.conjunction_response_scalars();
 
-        // Check that range proofs verify against the updated balances in the state.
+        // Check that range constraints verify against the updated balances in the state.
         let customer_balance_proof_verifies = self.customer_balance_proof.verify_range_constraint(
             &params.range_constraint_parameters,
             challenge,

@@ -62,7 +62,7 @@ pub struct Config {
     pub(crate) signing_keypair: KeyPair<5>,
     /// Pedersen parameters for committing to revocation locks.
     pub(crate) revocation_commitment_parameters: PedersenParameters<G1Projective, 1>,
-    /// Parameters for generating and verifying range proofs.
+    /// Parameters for generating and verifying range constraints.
     pub(crate) range_constraint_parameters: RangeConstraintParameters,
 }
 

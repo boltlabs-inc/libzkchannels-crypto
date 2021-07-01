@@ -23,8 +23,8 @@ The customer must blind the input and unblind the output with the _same_ blindin
 */
 
 use crate::{
-    customer, merchant, revlock::*, types::*, Balance, Error, Nonce, PaymentAmount, Rng,
-    Verification, CLOSE_SCALAR,
+    customer, merchant, revlock::*, types::pedersen::Commitment, types::*, Balance, Error, Nonce,
+    PaymentAmount, Rng, Verification, CLOSE_SCALAR,
 };
 use serde::*;
 use sha3::{Digest, Sha3_256};
@@ -443,7 +443,14 @@ impl CloseState {
 /// used to generate [`BlindedPayToken`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct StateCommitment(pub BlindedMessage);
+pub struct StateCommitment(pub(crate) BlindedMessage);
+
+impl StateCommitment {
+    /// Create a new StateCommitment based on a commitment
+    pub fn new(commitment: Commitment<G1Projective>) -> Self {
+        StateCommitment(BlindedMessage(commitment))
+    }
+}
 
 /// Commitment to a CloseState and a constant, fixed close tag.
 ///
@@ -451,7 +458,14 @@ pub struct StateCommitment(pub BlindedMessage);
 /// used to generate [`CloseStateBlindedSignature`]s.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateCommitment(pub BlindedMessage);
+pub struct CloseStateCommitment(pub(crate) BlindedMessage);
+
+impl CloseStateCommitment {
+    /// Create a new CloseStateCommitment based on a commitment
+    pub fn new(commitment: Commitment<G1Projective>) -> Self {
+        CloseStateCommitment(BlindedMessage(commitment))
+    }
+}
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone, Serialize, Deserialize)]

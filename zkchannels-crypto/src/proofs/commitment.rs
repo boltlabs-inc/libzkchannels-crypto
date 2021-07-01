@@ -46,7 +46,7 @@ use serde::*;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: SerializeElement")]
 pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
-    /// The actual commitment.
+    /// The commitment that implicitly represents the proof statement.
     commitment: Commitment<G>,
     /// The commitment to the commitment scalars.
     scalar_commitment: Commitment<G>,
@@ -113,7 +113,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 /// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
-    /// The actual commitment.
+    /// The commitment that implicitly represents the proof statement.
     commitment: Commitment<G>,
     /// Commitment to the commitment scalars.
     scalar_commitment: Commitment<G>,

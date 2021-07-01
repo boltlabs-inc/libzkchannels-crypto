@@ -16,7 +16,6 @@ use crate::{
 
 use zkchannels_crypto::{
     pedersen::Commitment,
-    pointcheval_sanders::BlindedMessage,
     proofs::{
         ChallengeBuilder, CommitmentProof, CommitmentProofBuilder, RangeConstraint,
         RangeConstraintBuilder, SignatureProof, SignatureProofBuilder,
@@ -78,8 +77,8 @@ impl EstablishProof {
     /// Retrieve the state commitment for the proof.
     pub(crate) fn extract_commitments(self) -> (StateCommitment, CloseStateCommitment) {
         (
-            StateCommitment(BlindedMessage(self.state_proof.commitment())),
-            CloseStateCommitment(BlindedMessage(self.close_state_proof.commitment())),
+            StateCommitment::new(self.state_proof.commitment()),
+            CloseStateCommitment::new(self.close_state_proof.commitment()),
         )
     }
 
@@ -316,12 +315,12 @@ impl PayProof {
 
     /// Get the state commitment out of the proof.
     pub(crate) fn state_commitment(&self) -> StateCommitment {
-        StateCommitment(BlindedMessage(self.state_proof.commitment()))
+        StateCommitment::new(self.state_proof.commitment())
     }
 
     /// Get the close state commitment out of the proof.
     pub(crate) fn close_state_commitment(&self) -> CloseStateCommitment {
-        CloseStateCommitment(BlindedMessage(self.close_state_proof.commitment()))
+        CloseStateCommitment::new(self.close_state_proof.commitment())
     }
 
     pub(crate) fn extract_commitments(
@@ -333,8 +332,8 @@ impl PayProof {
     ) {
         (
             RevocationLockCommitment(self.old_revocation_lock_proof.commitment()),
-            StateCommitment(BlindedMessage(self.state_proof.commitment())),
-            CloseStateCommitment(BlindedMessage(self.close_state_proof.commitment())),
+            StateCommitment::new(self.state_proof.commitment()),
+            CloseStateCommitment::new(self.close_state_proof.commitment()),
         )
     }
 

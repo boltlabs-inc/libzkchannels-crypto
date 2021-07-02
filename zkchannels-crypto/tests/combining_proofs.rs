@@ -53,7 +53,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
         .into_inner()
         .expect("length mismatch impossible");
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &params, &ccs, &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &ccs, &params);
 
     // Form challenge from both proofs.
     let challenge = ChallengeBuilder::new()
@@ -105,9 +105,8 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
 
     // Construct proof - commitment phase.
     // Use matching commitment scalars for each message item.
-    let com_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg, &params, &[None; N], &params,
-    );
+    let com_proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
     let ccs = com_proof_builder
         .conjunction_commitment_scalars()
         .iter()
@@ -185,9 +184,8 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Proof commitment phase: use the same commitment scalar for both messages.
-    let com_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg2, &params, &[None; N], &params,
-    );
+    let com_proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg2, &[None; N], &params);
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[first_pos] =
         Some(com_proof_builder.conjunction_commitment_scalars()[second_pos]);

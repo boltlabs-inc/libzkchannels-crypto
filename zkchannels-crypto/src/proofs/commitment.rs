@@ -140,12 +140,11 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
         msg: &Message<N>,
-        params_msg_commitment: &PedersenParameters<G, N>,
         conjunction_commitment_scalars: &[Option<Scalar>; N],
-        params_commitment_scalars: &PedersenParameters<G, N>,
+        pedersen_params: &PedersenParameters<G, N>,
     ) -> Self {
         let message_blinding_factor = BlindingFactor::new(&mut *rng);
-        let commitment = params_msg_commitment.commit(&msg, message_blinding_factor);
+        let commitment = pedersen_params.commit(&msg, message_blinding_factor);
 
         let blinding_factor_commitment_scalar = Scalar::random(&mut *rng);
         // Choose commitment scalars (that haven't already been specified)
@@ -159,7 +158,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         );
 
         // Commit to the scalars
-        let scalar_commitment = params_commitment_scalars.commit(
+        let scalar_commitment = pedersen_params.commit(
             &Message::new(*message_commitment_scalars),
             BlindingFactor::from_scalar(blinding_factor_commitment_scalar),
         );

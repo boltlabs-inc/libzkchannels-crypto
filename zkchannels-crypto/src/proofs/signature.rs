@@ -103,7 +103,6 @@ impl<const N: usize> SignatureProofBuilder<N> {
         let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &message,
-            &params,
             conjunction_commitment_scalars,
             &params,
         );

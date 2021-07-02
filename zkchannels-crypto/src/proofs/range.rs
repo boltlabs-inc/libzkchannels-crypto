@@ -312,9 +312,84 @@ impl ChallengeInput for RangeConstraint {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::pedersen::Commitment;
+    use crate::pointcheval_sanders::BlindedSignature;
+    use crate::proofs::CommitmentProofBuilder;
     use crate::test::rng;
+    use crate::SerializeElement;
+    use ff::Field;
     use rand::Rng;
     use std::convert::TryFrom;
+    use std::iter;
+
+    pub struct CommitmentProofBuilderWithPublicFields<G: Group<Scalar = Scalar>, const N: usize> {
+        pub scalar_commitment: Commitment<G>,
+        pub blinding_factor_commitment_scalar: Scalar,
+        pub message_commitment_scalars: Box<[Scalar; N]>,
+    }
+
+    pub struct SignatureProofBuilderWithPublicFields<const N: usize> {
+        pub message: Message<N>,
+        pub message_commitment: Commitment<G2Projective>,
+        pub message_blinding_factor: BlindingFactor,
+        pub blinded_signature: BlindedSignature,
+        pub commitment_proof_builder: CommitmentProofBuilder<G2Projective, N>,
+    }
+
+    #[test]
+    fn test_range_constraint_challenge() {
+        let mut rng = rng();
+
+        let signatures = iter::repeat_with(|| generate_signature_proof_builder(&mut rng))
+            .take(9)
+            .collect::<ArrayVec<_, 9>>()
+            .into_inner()
+            .unwrap();
+
+        let range_constraint_builder = RangeConstraintBuilder {
+            digit_proof_builders: Box::new(signatures),
+            commitment_scalar: Scalar::random(&mut rng),
+        };
+        let builder_challenge = ChallengeBuilder::new()
+            .with(&range_constraint_builder)
+            .finish();
+        let constraint = range_constraint_builder.generate_constraint_response(builder_challenge);
+        let constraint_challenge = ChallengeBuilder::new().with(&constraint).finish();
+        println!("{}", builder_challenge.to_scalar());
+        println!("{}", constraint_challenge.to_scalar());
+        assert_eq!(
+            builder_challenge.to_scalar(),
+            constraint_challenge.to_scalar()
+        );
+    }
+
+    fn generate_signature_proof_builder(mut rng: &mut impl Rng) -> SignatureProofBuilder<1> {
+        let msg = Message::<5>::random(&mut rng);
+        let mut ser_commitment = Vec::<u8>::new();
+        let mut serializer = bincode::Serializer::new(&mut ser_commitment, bincode::options());
+        SerializeElement::serialize(&G2Projective::random(&mut rng), &mut serializer).unwrap();
+        let commitment = bincode::deserialize::<Commitment<G2Projective>>(&ser_commitment).unwrap();
+        let mut ser_signature = Vec::<u8>::new();
+        let mut serializer = bincode::Serializer::new(&mut ser_signature, bincode::options());
+        SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
+        SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
+        let signature = bincode::deserialize::<BlindedSignature>(&ser_signature).unwrap();
+        let bf = BlindingFactor::new(&mut rng);
+        let proof_builder = CommitmentProofBuilderWithPublicFields {
+            scalar_commitment: commitment,
+            blinding_factor_commitment_scalar: Scalar::random(&mut rng),
+            message_commitment_scalars: Box::new([Scalar::random(&mut rng); 1]),
+        };
+        unsafe {
+            std::mem::transmute(SignatureProofBuilderWithPublicFields {
+                message: msg,
+                message_commitment: commitment,
+                message_blinding_factor: bf,
+                blinded_signature: signature,
+                commitment_proof_builder: std::mem::transmute(proof_builder),
+            })
+        }
+    }
 
     /// Test the validation code during deserialization of the range constraint parameters
     #[test]

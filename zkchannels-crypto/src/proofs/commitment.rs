@@ -7,10 +7,10 @@
 //! This implements the original Schnorr protocol \[1\], leaving the challenge phase undefined.
 //!
 //! The protocol has three phases.
-//! 1. *Commit*. The prover chooses random commitment scalars for each message in the tuple and the
-//!     commitment randomness. They form a commitment to this randomness with the same parameters
-//!     that were used to form the original commitment. The output of this step is described by
-//!     [`CommitmentProofBuilder`].
+//! 1. *Commit*. The prover commits to the message and chooses random commitment scalars for each
+//!     message in the tuple and the commitment randomness. They form a commitment to this
+//!     randomness with the same parameters that were used to form the original commitment. The
+//!     output of this step is described by [`CommitmentProofBuilder`].
 //!
 //! 2. *Challenge*. In an interactive proof, the prover obtains a random challenge from the
 //!     verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform an
@@ -19,13 +19,13 @@
 //! 3. *Response*. The prover constructs response scalars, which mask each element of the message
 //!     tuple and the blinding factor with the corresponding commitment scalar and the challenge.
 //!
-//! The [`CommitmentProof`] consists of the commitment to the commitment scalars and the response
-//! scalars.
+//! The [`CommitmentProof`] consists of the commitment to the scalars, the commitment to the
+//! commitment scalars and the response scalars.
 //!
-//! Given the proof and the commitment, the verifier checks the consistency of the commitment (to
-//! the original message), the commitment to randomness, the challenge, and the responses. A
-//! malicious prover cannot produce a consistent set of objects without knowing the underlying
-//! message and blinding factor.
+//! Given the proof, the verifier checks the consistency of the commitment (to the original
+//! message), the commitment to randomness, the challenge, and the responses. A malicious prover
+//! cannot produce a consistent set of objects without knowing the underlying message and blinding
+//! factor.
 //!
 //! ## References
 //! 1. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology,
@@ -93,7 +93,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
         self.scalar_commitment
     }
 
-    /// Get the commitment
+    /// Get the commitment to the message
     pub fn commitment(&self) -> Commitment<G> {
         self.commitment
     }
@@ -131,12 +131,13 @@ pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     /// Run the commitment phase of a Schnorr-style commitment proof.
     ///
-    /// The `conjunction_commitment_scalars` argument allows the caller to choose particular commitment
-    /// scalars for the message tuple. This allows them to express constraints among messages in one or more
-    /// proof objects.
-    /// For example, equality of two message elements is enforced by using the same commitment scalar for those
-    /// elements. A linear equation (message tuples `a`, `b`, `c` where `c = a + b`) is enforced by setting the
-    /// commitment scalar for `c` to the sum of the commitment scalars for `a` and `b`.
+    /// This is a proof of knowledge of the message `msg`.
+    /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
+    /// commitment scalars for the message tuple. This allows them to express constraints among
+    /// messages in one or more proof objects. For example, equality of two message elements is
+    /// enforced by using the same commitment scalar for those elements. A linear equation (message
+    /// tuples `a`, `b`, `c` where `c = a + b`) is enforced by setting the commitment scalar for `c`
+    /// to the sum of the commitment scalars for `a` and `b`.
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
         msg: &Message<N>,

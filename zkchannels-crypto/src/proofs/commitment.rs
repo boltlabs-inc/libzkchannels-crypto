@@ -115,6 +115,8 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
     /// The commitment that implicitly represents the proof statement.
     commitment: Commitment<G>,
+    /// The blinding factor of the commitment that implicitly represents the proof statement.
+    message_blinding_factor: BlindingFactor,
     /// Commitment to the commitment scalars.
     scalar_commitment: Commitment<G>,
     /// The commitment scalar for the blinding factor.
@@ -137,10 +139,14 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     /// commitment scalar for `c` to the sum of the commitment scalars for `a` and `b`.
     pub fn generate_proof_commitments(
         rng: &mut dyn Rng,
-        commitment: Commitment<G>,
+        msg: &Message<N>,
+        params_msg_commitment: &PedersenParameters<G, N>,
         conjunction_commitment_scalars: &[Option<Scalar>; N],
-        params: &PedersenParameters<G, N>,
+        params_commitment_scalars: &PedersenParameters<G, N>,
     ) -> Self {
+        let message_blinding_factor = BlindingFactor::new(&mut *rng);
+        let commitment = params_msg_commitment.commit(&msg, message_blinding_factor);
+
         let blinding_factor_commitment_scalar = Scalar::random(&mut *rng);
         // Choose commitment scalars (that haven't already been specified)
         let message_commitment_scalars = Box::new(
@@ -153,17 +159,28 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         );
 
         // Commit to the scalars
-        let scalar_commitment = params.commit(
+        let scalar_commitment = params_commitment_scalars.commit(
             &Message::new(*message_commitment_scalars),
             BlindingFactor::from_scalar(blinding_factor_commitment_scalar),
         );
 
         Self {
             commitment,
+            message_blinding_factor,
             scalar_commitment,
             blinding_factor_commitment_scalar,
             message_commitment_scalars,
         }
+    }
+
+    /// Get the commitment.
+    pub fn commitment(&self) -> Commitment<G> {
+        self.commitment
+    }
+
+    /// Get the blinding factor
+    pub fn message_blinding_factor(&self) -> BlindingFactor {
+        self.message_blinding_factor
     }
 
     /// Get the commitment scalars corresponding to the message tuple to use when constructing
@@ -179,20 +196,15 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         self.scalar_commitment
     }
 
-    /// Get the commitment.
-    pub fn commitment(&self) -> Commitment<G> {
-        self.commitment
-    }
-
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
     pub fn generate_proof_response(
         self,
         msg: &Message<N>,
-        blinding_factor: BlindingFactor,
         challenge: Challenge,
     ) -> CommitmentProof<G, N> {
         // Generate response scalars.
-        let blinding_factor_response_scalar = challenge.to_scalar() * blinding_factor.as_scalar()
+        let blinding_factor_response_scalar = challenge.to_scalar()
+            * self.message_blinding_factor.as_scalar()
             + self.blinding_factor_commitment_scalar;
         let message_response_scalars = Box::new(
             msg.iter()

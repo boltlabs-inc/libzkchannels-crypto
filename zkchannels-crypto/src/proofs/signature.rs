@@ -99,19 +99,19 @@ impl<const N: usize> SignatureProofBuilder<N> {
         let params = params.to_g2_pedersen_parameters();
 
         // Run signature proof setup phase:
-        // Blind and randomize signature
-        let message_blinding_factor = BlindingFactor::new(rng);
-        let mut blinded_signature = BlindedSignature::blind(signature, message_blinding_factor);
-        blinded_signature.randomize(rng);
-
         // Form commitment to blinding factor + message
-        let message_commitment = params.commit(&message, message_blinding_factor);
         let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
-            message_commitment,
+            &message,
+            &params,
             conjunction_commitment_scalars,
             &params,
         );
+
+        // Blind and randomize signature
+        let message_blinding_factor = commitment_proof_builder.message_blinding_factor();
+        let mut blinded_signature = BlindedSignature::blind(signature, message_blinding_factor);
+        blinded_signature.randomize(rng);
 
         Self {
             message,
@@ -133,11 +133,9 @@ impl<const N: usize> SignatureProofBuilder<N> {
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
     pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof<N> {
         // Run response phase for PoK of opening of commitment to message
-        let commitment_proof = self.commitment_proof_builder.generate_proof_response(
-            &self.message,
-            self.message_blinding_factor,
-            challenge_scalar,
-        );
+        let commitment_proof = self
+            .commitment_proof_builder
+            .generate_proof_response(&self.message, challenge_scalar);
 
         SignatureProof {
             blinded_signature: self.blinded_signature,

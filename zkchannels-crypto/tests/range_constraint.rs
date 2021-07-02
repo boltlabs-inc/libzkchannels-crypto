@@ -12,7 +12,7 @@ use zkchannels_crypto::{
         ChallengeBuilder, CommitmentProofBuilder, RangeConstraintBuilder,
         RangeConstraintParameters, SignatureProofBuilder,
     },
-    BlindingFactor, Message,
+    Message,
 };
 
 #[test]
@@ -31,8 +31,6 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
     let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
 
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Proof commitment phase: prepare range constraint on the value and use the resulting commitment scalar in the commitment proof.
     let rp_params = RangeConstraintParameters::new(&mut rng);
@@ -46,7 +44,8 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_constraint_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        com,
+        &msg,
+        &params,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -59,7 +58,7 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof = proof_builder.generate_proof_response(&msg, challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&range_constraint)
@@ -193,9 +192,7 @@ fn range_constraint_test_extremes() {
 
     // Form commitment to (0, 2^63 - 1).
     let params = PedersenParameters::<G1Projective, 2>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
     let msg = Message::new([Scalar::from(0), Scalar::from((i64::MAX) as u64)]);
-    let com = params.commit(&msg, bf);
 
     // Proof commitment phase: build commitment proof with range constraint
     let rp_params = RangeConstraintParameters::new(&mut rng);
@@ -206,7 +203,8 @@ fn range_constraint_test_extremes() {
             .unwrap();
     let com_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        com,
+        &msg,
+        &params,
         &[
             Some(zero_builder.commitment_scalar()),
             Some(max_builder.commitment_scalar()),
@@ -222,7 +220,7 @@ fn range_constraint_test_extremes() {
 
     let zero_proof = zero_builder.generate_constraint_response(challenge);
     let max_proof = max_builder.generate_constraint_response(challenge);
-    let com_proof = com_builder.generate_proof_response(&msg, bf, challenge);
+    let com_proof = com_builder.generate_proof_response(&msg, challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&com_proof)
@@ -272,8 +270,6 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
 
     // Form commitment to message
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Proof commitment phase: prepare range constraint on the value; use the resulting commitment scalar in the commitment proof.
     let rp_params = RangeConstraintParameters::new(&mut rng);
@@ -287,7 +283,8 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_constraint_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        com,
+        &msg,
+        &params,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -300,7 +297,7 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof = proof_builder.generate_proof_response(&msg, challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&range_constraint)
@@ -337,8 +334,6 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
 
     // Form commitment to message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Proof commitment phase: prepare range constraint on the value.
     let rp_params = RangeConstraintParameters::new(&mut rng);
@@ -349,8 +344,9 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
     )
     .unwrap();
     // Failure case: *don't* use the range commitment scalar in the commitment proof.
-    let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, com, &[None; N], &params);
+    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng, &msg, &params, &[None; N], &params,
+    );
 
     // Form challenge using both proofs.
     let challenge = ChallengeBuilder::new()
@@ -360,7 +356,7 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof = proof_builder.generate_proof_response(&msg, challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&range_constraint)
@@ -396,8 +392,6 @@ fn run_range_constraint_value_revealed<const N: usize>() {
 
     // Form commitment to message
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Proof commitment phase: prepare range constraint on the value; use the resulting commitment scalar in the commitment proof.
     let rp_params = RangeConstraintParameters::new(&mut rng);
@@ -412,7 +406,8 @@ fn run_range_constraint_value_revealed<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_value_commitment_scalar);
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        com,
+        &msg,
+        &params,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -425,7 +420,7 @@ fn run_range_constraint_value_revealed<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof = proof_builder.generate_proof_response(&msg, challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&range_constraint)

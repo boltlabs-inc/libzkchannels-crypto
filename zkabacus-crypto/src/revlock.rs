@@ -9,7 +9,7 @@ A pair ([`RevocationLock`], [`RevocationSecret`]) satisfies two properties:
 with only negligible probability (e.g. basically never).
 
 */
-use crate::{customer, merchant, types::*, Rng, Verification};
+use crate::{merchant, types::*, Rng, Verification};
 use ff::Field;
 use serde::*;
 use sha3::{Digest, Sha3_256};
@@ -51,13 +51,6 @@ pub struct RevocationLockCommitment(pub(crate) Commitment<G1Projective>);
 #[allow(missing_copy_implementations)]
 pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 
-impl RevocationLockBlindingFactor {
-    /// Generate a blinding factor uniformly at random.
-    pub(crate) fn new(rng: &mut impl Rng) -> Self {
-        Self(BlindingFactor::new(rng))
-    }
-}
-
 impl RevocationSecret {
     /// Create a new, random revocation secret.
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
@@ -93,25 +86,12 @@ impl RevocationLock {
         Verification::from(self.0 == rs.revocation_lock().0)
     }
 
-    /// Form a commitment to the revocation lock.
-    pub(crate) fn commit(
-        &self,
-        params: &customer::Config,
-        revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
-    ) -> RevocationLockCommitment {
-        RevocationLockCommitment(params.revocation_commitment_parameters.commit(
-            &Message::from(self.to_scalar()),
-            revocation_lock_blinding_factor.0,
-        ))
-    }
-
     /// Convert a revocation lock to its canonical `Scalar` representation.
     pub(crate) fn to_scalar(&self) -> Scalar {
         self.0
     }
 }
 
-#[allow(unused)]
 impl RevocationLockCommitment {
     /// Validate the [`RevocationLockCommitment`] against the given parameters and blinding factor.
     ///

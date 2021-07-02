@@ -9,7 +9,7 @@ use zkchannels_crypto::{
     pedersen::PedersenParameters,
     pointcheval_sanders::KeyPair,
     proofs::{ChallengeBuilder, CommitmentProofBuilder, SignatureProofBuilder},
-    BlindingFactor, Message,
+    Message,
 };
 
 #[test]
@@ -35,8 +35,6 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
 
     // Form commitment on message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Construct proof - commitment phase.
     // Use matching commitment scalars for each message item.
@@ -55,7 +53,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
         .into_inner()
         .expect("length mismatch impossible");
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, com, &ccs, &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &params, &ccs, &params);
 
     // Form challenge from both proofs.
     let challenge = ChallengeBuilder::new()
@@ -65,7 +63,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
 
     // Complete proofs - response phase.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg, bf, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(&msg, challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&sig_proof)
@@ -104,13 +102,12 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
 
     // Form commitment to message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Construct proof - commitment phase.
     // Use matching commitment scalars for each message item.
-    let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, com, &[None; N], &params);
+    let com_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng, &msg, &params, &[None; N], &params,
+    );
     let ccs = com_proof_builder
         .conjunction_commitment_scalars()
         .iter()
@@ -134,7 +131,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
 
     // Complete proofs.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg, bf, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(&msg, challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&com_proof)
@@ -186,12 +183,11 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
 
     // Commit to [a + public_value].
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg2, bf);
 
     // Proof commitment phase: use the same commitment scalar for both messages.
-    let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, com, &[None; N], &params);
+    let com_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng, &msg2, &params, &[None; N], &params,
+    );
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[first_pos] =
         Some(com_proof_builder.conjunction_commitment_scalars()[second_pos]);
@@ -211,7 +207,7 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
 
     // Complete proofs - response phase.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg2, bf, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(&msg2, challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&sig_proof)

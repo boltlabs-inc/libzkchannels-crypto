@@ -75,7 +75,7 @@ pub struct BlindingFactor(#[serde(with = "SerializeElement")] Scalar);
 
 impl BlindingFactor {
     /// Generate a new blinding factor uniformly at random from the set of possible [`Scalar`]s.
-    pub fn new(rng: &mut impl Rng) -> Self {
+    pub fn new(rng: &mut (impl Rng + ?Sized)) -> Self {
         Self(Scalar::random(rng))
     }
 

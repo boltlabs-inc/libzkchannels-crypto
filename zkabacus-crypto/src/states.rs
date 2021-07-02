@@ -300,18 +300,6 @@ impl State {
         self.revocation_secret
     }
 
-    /// Form a commitment (and corresponding blinding factor) to the `State`'s
-    /// [`RevocationLock`].
-    pub fn commit_to_revocation(
-        &self,
-        rng: &mut impl Rng,
-        param: &customer::Config,
-    ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
-        let blinding_factor = RevocationLockBlindingFactor::new(rng);
-        let commitment = self.revocation_lock().commit(param, &blinding_factor);
-        (commitment, blinding_factor)
-    }
-
     /// Get the [`CloseState`] corresponding to this `State`.
     ///
     /// This is typically called by the customer.
@@ -348,12 +336,7 @@ impl State {
         })
     }
 
-    /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
-    /// tuple (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
-    ///
-    /// Note that this _does not_ include the revocation secret!
-    ///
-    /// This is typically called by the customer.
+    #[cfg(test)]
     pub fn commit<'a>(
         &'a self,
         rng: &mut impl Rng,
@@ -384,27 +367,6 @@ impl State {
 }
 
 impl CloseState {
-    /// Form a commitment (and corresponding blinding factor) to the [`CloseState`] and a constant,
-    /// fixed close tag.
-    ///
-    /// This is typically called by the customer.
-    pub(crate) fn commit<'a>(
-        &'a self,
-        rng: &mut impl Rng,
-        param: &customer::Config,
-    ) -> (CloseStateCommitment, CloseStateBlindingFactor) {
-        let msg = self.to_message();
-        let blinding_factor = BlindingFactor::new(rng);
-        let commitment = param
-            .merchant_public_key
-            .blind_message(&msg, blinding_factor);
-
-        (
-            CloseStateCommitment(commitment),
-            CloseStateBlindingFactor(blinding_factor),
-        )
-    }
-
     /// Get the message representation of a CloseState.
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([

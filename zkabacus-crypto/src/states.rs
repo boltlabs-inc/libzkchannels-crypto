@@ -336,24 +336,6 @@ impl State {
         })
     }
 
-    #[cfg(test)]
-    pub fn commit<'a>(
-        &'a self,
-        rng: &mut impl Rng,
-        param: &customer::Config,
-    ) -> (StateCommitment, PayTokenBlindingFactor) {
-        let msg = self.to_message();
-        let blinding_factor = BlindingFactor::new(rng);
-        let commitment = param
-            .merchant_public_key
-            .blind_message(&msg, blinding_factor);
-
-        (
-            StateCommitment(commitment),
-            PayTokenBlindingFactor(blinding_factor),
-        )
-    }
-
     /// Get the message representation of a State.
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
@@ -410,7 +392,7 @@ pub struct StateCommitment(pub(crate) BlindedMessage);
 impl StateCommitment {
     /// Create a new StateCommitment based on a commitment
     pub fn new(commitment: Commitment<G1Projective>) -> Self {
-        StateCommitment(BlindedMessage(commitment))
+        StateCommitment(BlindedMessage::new(commitment))
     }
 }
 
@@ -425,7 +407,7 @@ pub struct CloseStateCommitment(pub(crate) BlindedMessage);
 impl CloseStateCommitment {
     /// Create a new CloseStateCommitment based on a commitment
     pub fn new(commitment: Commitment<G1Projective>) -> Self {
-        CloseStateCommitment(BlindedMessage(commitment))
+        CloseStateCommitment(BlindedMessage::new(commitment))
     }
 }
 

@@ -54,7 +54,6 @@ use crate::{
     proofs::{
         Challenge, ChallengeBuilder, ChallengeInput, CommitmentProof, CommitmentProofBuilder,
     },
-    BlindingFactor,
 };
 use serde::{Deserialize, Serialize};
 
@@ -74,8 +73,6 @@ pub struct SignatureProof<const N: usize> {
 pub struct SignatureProofBuilder<const N: usize> {
     /// Underlying message in the signature.
     message: Message<N>,
-    /// Blinding factor for the `message_commitment`.
-    message_blinding_factor: BlindingFactor,
     /// Randomized and blinded version of the original signature.
     blinded_signature: BlindedSignature,
     /// Commitment phase output for the underlying proof of knowledge of the opening of the `message_commitment`.
@@ -108,13 +105,14 @@ impl<const N: usize> SignatureProofBuilder<N> {
         );
 
         // Blind and randomize signature
-        let message_blinding_factor = commitment_proof_builder.message_blinding_factor();
-        let mut blinded_signature = BlindedSignature::blind(signature, message_blinding_factor);
+        let mut blinded_signature = BlindedSignature::blind(
+            signature,
+            commitment_proof_builder.message_blinding_factor(),
+        );
         blinded_signature.randomize(rng);
 
         Self {
             message,
-            message_blinding_factor,
             blinded_signature,
             commitment_proof_builder,
         }

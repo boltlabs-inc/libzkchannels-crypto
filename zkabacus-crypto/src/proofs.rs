@@ -82,12 +82,12 @@ impl EstablishProof {
     }
 
     /**
-       Form a new zero-knowledge [`EstablishProof`] object.
+          Form a new zero-knowledge [`EstablishProof`] object.
 
-       It takes the [`State`] and two current blinding factors. These should correspond to
-       commitments made from the given [`State`] and its associated [`CloseState`].
+          It takes the [`State`] and two current blinding factors. These should correspond to
+          commitments made from the given [`State`] and its associated [`CloseState`].
 
-       This function is typically called by the customer.
+          This function is typically called by the customer.
     */
     pub(crate) fn new(
         rng: &mut impl Rng,
@@ -312,24 +312,24 @@ impl PayProof {
     }
 
     /**
-       Form a new zero-knowledge [`PayProof`] object.
+          Form a new zero-knowledge [`PayProof`] object.
 
-       It takes the previous [`State`] and corresponding [`PayToken`], and the new [`State`].
+          It takes the previous [`State`] and corresponding [`PayToken`], and the new [`State`].
 
-       Internally, it forms commitments to items used in the proof: the previous [`State`]'s
-       revocation lock, the [`PayToken`], and the [`CloseState`] derived from the given [`State`].
-       It returns the blinding factors corresponding to these commitments.
+          Internally, it forms commitments to items used in the proof: the previous [`State`]'s
+          revocation lock, the [`PayToken`], and the [`CloseState`] derived from the given [`State`].
+          It returns the blinding factors corresponding to these commitments.
 
-       It also prepares the signature proof on the given [`PayToken`]:
+          It also prepares the signature proof on the given [`PayToken`]:
 
-       - blinds and randomizes the [`PayToken`] to produce a [`PayTokenCommitment`] and
-         corresponding [`PayTokenBlindingFactor`], and
-       - forms a commitment to the old [`State`] underlying the [`PayToken`]
+          - blinds and randomizes the [`PayToken`] to produce a [`PayTokenCommitment`] and
+            corresponding [`PayTokenBlindingFactor`], and
+          - forms a commitment to the old [`State`] underlying the [`PayToken`]
 
-       This blinding factor is not used again during the protocol, so it doesn't leave this
-       function.
+          This blinding factor is not used again during the protocol, so it doesn't leave this
+          function.
 
-       This function is typically called by the customer.
+          This function is typically called by the customer.
     */
     pub(crate) fn new(
         rng: &mut impl Rng,
@@ -486,9 +486,9 @@ impl PayProof {
     }
 
     /**
-       Verify a PayProof against the given verification objects.
+          Verify a PayProof against the given verification objects.
 
-       This function is typically called by the merchant.
+          This function is typically called by the merchant.
     */
     pub fn verify(
         &self,
@@ -797,9 +797,18 @@ mod tests {
         let new_state = old_state.apply_payment(&mut rng, amount).unwrap();
 
         // Get a pay token AKA signature on the old state.
-        let (old_state_com, old_pt_bf) = old_state.commit(&mut rng, &params);
-        let pay_token =
-            BlindedPayToken::sign(&mut rng, &merchant_params, &old_state_com).unblind(old_pt_bf);
+        let msg = old_state.to_message();
+        let blinding_factor = BlindingFactor::new(&mut rng);
+        let commitment = params
+            .merchant_public_key
+            .to_g1_pedersen_parameters()
+            .commit(&msg, blinding_factor);
+        let pay_token = BlindedPayToken::sign(
+            &mut rng,
+            &merchant_params,
+            &StateCommitment::new(commitment),
+        )
+        .unblind(PayTokenBlindingFactor(blinding_factor));
 
         // Save a copy of the nonce...
         let nonce = *old_state.nonce();

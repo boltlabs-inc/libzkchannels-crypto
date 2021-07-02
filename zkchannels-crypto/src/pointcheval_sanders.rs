@@ -352,9 +352,14 @@ impl ChallengeInput for Signature {
 /// programmatically, a `BlindedMessage` can be constructed using
 /// [`PublicKey::blind_message`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindedMessage(pub Commitment<G1Projective>);
+pub struct BlindedMessage(pub(crate) Commitment<G1Projective>);
 
 impl BlindedMessage {
+    /// Create a new [`BlindedMessage`] from a commitment
+    pub fn new(commitment: Commitment<G1Projective>) -> Self {
+        BlindedMessage(commitment)
+    }
+
     /// Extract the internal commitment object.
     pub fn to_commitment(self) -> Commitment<G1Projective> {
         self.0
@@ -516,7 +521,9 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let blinded_msg = kp.public_key().blind_message(&msg, bf);
+        let blinded_msg =
+            BlindedMessage(kp.public_key().to_g1_pedersen_parameters().commit(&msg, bf));
+
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
         let sig = blind_sig.unblind(bf);
 
@@ -533,7 +540,9 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let blinded_msg = kp.public_key().blind_message(&msg, bf);
+        let blinded_msg =
+            BlindedMessage(kp.public_key().to_g1_pedersen_parameters().commit(&msg, bf));
+
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
 
         let bad_bf = BlindingFactor::new(&mut rng);

@@ -33,9 +33,8 @@ fn run_commitment_proof_verifies<const N: usize>() {
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Build proof.
-    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg, &params, &[None; N], &params,
-    );
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof = proof_builder.generate_proof_response(&msg, challenge);
 
@@ -64,9 +63,8 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Build proof.
-    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg, &params, &[None; N], &params,
-    );
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof_builder_for_bad_params = proof_builder.clone();
     let proof_builder_for_bad_com = proof_builder.clone();
@@ -152,9 +150,8 @@ fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() {
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Start proof, making a copy for each version of this test.
-    let proof_builder_for_msg = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg, &params, &[None; N], &params,
-    );
+    let proof_builder_for_msg =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
     let challenge = ChallengeBuilder::new()
         .with(&proof_builder_for_msg)
         .finish();
@@ -193,9 +190,8 @@ fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Build proof using normally-generated challenge.
-    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg, &params, &[None; N], &params,
-    );
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof = proof_builder.generate_proof_response(&msg, challenge);
 
@@ -241,9 +237,8 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Construct proofs - commitment phase.
-    let proof_builder1 = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg1, &params, &[None; N], &params,
-    );
+    let proof_builder1 =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg1, &[None; N], &params);
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[second_pos] =
         Some(proof_builder1.conjunction_commitment_scalars()[first_pos]);
@@ -252,7 +247,6 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
     let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
         &msg2,
-        &params,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -311,9 +305,8 @@ fn run_commitment_proof_with_public_value<const N: usize>() {
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Construct proof.
-    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg, &params, &[None; N], &params,
-    );
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
     // Save commitment scalars for public elements (in this case, all of them).
     let commitment_scalars = proof_builder.conjunction_commitment_scalars().to_vec();
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
@@ -364,9 +357,8 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Construct proof - commitment phase.
-    let proof_builder1 = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg1, &params, &[None; N], &params,
-    );
+    let proof_builder1 =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg1, &[None; N], &params);
     // Commitment scalars for elements with linear relationships must match.
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[second_pos] =
@@ -374,7 +366,6 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
         &msg2,
-        &params,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -424,9 +415,8 @@ fn commitment_proof_fails_on_random_commit<
     let params = PedersenParameters::<G, 3>::new(&mut rng);
 
     // Build proof.
-    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg, &params, &[None; 3], &params,
-    );
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; 3], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof_builder_for_bad_com = proof_builder.clone();
     let proof = proof_builder.generate_proof_response(&msg, challenge);

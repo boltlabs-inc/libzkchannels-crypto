@@ -45,7 +45,6 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
         &msg,
-        &params,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -204,7 +203,6 @@ fn range_constraint_test_extremes() {
     let com_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
         &msg,
-        &params,
         &[
             Some(zero_builder.commitment_scalar()),
             Some(max_builder.commitment_scalar()),
@@ -284,7 +282,6 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
         &msg,
-        &params,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -344,9 +341,8 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
     )
     .unwrap();
     // Failure case: *don't* use the range commitment scalar in the commitment proof.
-    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
-        &mut rng, &msg, &params, &[None; N], &params,
-    );
+    let proof_builder =
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
 
     // Form challenge using both proofs.
     let challenge = ChallengeBuilder::new()
@@ -407,7 +403,6 @@ fn run_range_constraint_value_revealed<const N: usize>() {
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
         &msg,
-        &params,
         &conjunction_commitment_scalars,
         &params,
     );

@@ -72,7 +72,6 @@ pub struct EstablishProof {
     close_state_proof: CommitmentProof<G1Projective, 5>,
 }
 
-// #[allow(unused)]
 impl EstablishProof {
     /// Retrieve the state commitment for the proof.
     pub(crate) fn extract_commitments(self) -> (StateCommitment, CloseStateCommitment) {
@@ -102,7 +101,6 @@ impl EstablishProof {
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &state.to_message(),
-            &params.merchant_public_key.to_g1_pedersen_parameters(),
             &[None; 5],
             &pedersen_parameters,
         );
@@ -120,7 +118,6 @@ impl EstablishProof {
         let close_state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &state.close_state().to_message(),
-            &params.merchant_public_key.to_g1_pedersen_parameters(),
             &[Some(cs[0]), None, Some(cs[2]), Some(cs[3]), Some(cs[4])],
             &pedersen_parameters,
         );
@@ -371,7 +368,6 @@ impl PayProof {
         let old_revocation_lock_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &Message::from(old_state.revocation_lock().to_scalar()),
-            &params.revocation_commitment_parameters,
             &[None],
             &params.revocation_commitment_parameters,
         );
@@ -407,7 +403,6 @@ impl PayProof {
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &state.to_message(),
-            &params.merchant_public_key.to_g1_pedersen_parameters(),
             &[
                 Some(channel_id_commitment_scalar),
                 None,
@@ -429,7 +424,6 @@ impl PayProof {
         let close_state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             &state.close_state().to_message(),
-            &params.merchant_public_key.to_g1_pedersen_parameters(),
             &[Some(cs[0]), None, Some(cs[2]), Some(cs[3]), Some(cs[4])],
             &pedersen_parameters,
         );

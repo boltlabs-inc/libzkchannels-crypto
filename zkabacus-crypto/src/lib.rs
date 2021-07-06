@@ -11,7 +11,7 @@ state machine: it operates primarily as a server, atomically processing requests
 customers but never retaining (or even learning) information about specific channels.
 
 Internally, this crate also defines zkAbacus-aware cryptographic types as wrappers around the basic
-cryptographic primitives defined in `libzkchannels-crypto`. Some of these types must be sent
+cryptographic primitives defined in `zkchannels-crypto`. Some of these types must be sent
 between parties in the execution of zkAbacus; these are revealed publicly.
 
 # References

@@ -113,6 +113,8 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 /// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
 pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
+    /// The message used to define the proof statement.
+    msg: Message<N>,
     /// The commitment that implicitly represents the proof statement.
     commitment: Commitment<G>,
     /// The blinding factor of the commitment that implicitly represents the proof statement.
@@ -139,8 +141,8 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     /// tuples `a`, `b`, `c` where `c = a + b`) is enforced by setting the commitment scalar for `c`
     /// to the sum of the commitment scalars for `a` and `b`.
     pub fn generate_proof_commitments(
-        rng: &mut dyn Rng,
-        msg: &Message<N>,
+        rng: &mut impl Rng,
+        msg: Message<N>,
         conjunction_commitment_scalars: &[Option<Scalar>; N],
         pedersen_params: &PedersenParameters<G, N>,
     ) -> Self {
@@ -165,6 +167,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         );
 
         Self {
+            msg,
             commitment,
             message_blinding_factor,
             scalar_commitment,
@@ -197,17 +200,14 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
     }
 
     /// Run the response phase of the Schnorr-style commitment proof to complete the proof.
-    pub fn generate_proof_response(
-        self,
-        msg: &Message<N>,
-        challenge: Challenge,
-    ) -> CommitmentProof<G, N> {
+    pub fn generate_proof_response(self, challenge: Challenge) -> CommitmentProof<G, N> {
         // Generate response scalars.
         let blinding_factor_response_scalar = challenge.to_scalar()
             * self.message_blinding_factor.as_scalar()
             + self.blinding_factor_commitment_scalar;
         let message_response_scalars = Box::new(
-            msg.iter()
+            self.msg
+                .iter()
                 .zip(&*self.message_commitment_scalars)
                 .map(|(mi, cs)| challenge.to_scalar() * mi + cs)
                 .collect::<ArrayVec<_, N>>()

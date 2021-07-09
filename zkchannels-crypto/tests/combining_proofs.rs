@@ -53,7 +53,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
         .into_inner()
         .expect("length mismatch impossible");
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &ccs, &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg, &ccs, &params);
 
     // Form challenge from both proofs.
     let challenge = ChallengeBuilder::new()
@@ -63,7 +63,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
 
     // Complete proofs - response phase.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&sig_proof)
@@ -105,8 +105,12 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
 
     // Construct proof - commitment phase.
     // Use matching commitment scalars for each message item.
-    let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
+    let com_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg.clone(),
+        &[None; N],
+        &params,
+    );
     let ccs = com_proof_builder
         .conjunction_commitment_scalars()
         .iter()
@@ -116,7 +120,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
         .expect("length mismatch impossible");
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
-        msg.clone(),
+        msg,
         sig,
         &ccs,
         kp.public_key(),
@@ -130,7 +134,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
 
     // Complete proofs.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&com_proof)
@@ -185,7 +189,7 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
 
     // Proof commitment phase: use the same commitment scalar for both messages.
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg2, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg2, &[None; N], &params);
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[first_pos] =
         Some(com_proof_builder.conjunction_commitment_scalars()[second_pos]);
@@ -205,7 +209,7 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
 
     // Complete proofs - response phase.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg2, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&sig_proof)

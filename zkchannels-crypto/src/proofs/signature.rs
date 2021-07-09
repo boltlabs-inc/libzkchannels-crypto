@@ -71,8 +71,6 @@ pub struct SignatureProof<const N: usize> {
 /// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
 pub struct SignatureProofBuilder<const N: usize> {
-    /// Underlying message in the signature.
-    message: Message<N>,
     /// Randomized and blinded version of the original signature.
     blinded_signature: BlindedSignature,
     /// Commitment phase output for the underlying proof of knowledge of the opening of the `message_commitment`.
@@ -99,7 +97,7 @@ impl<const N: usize> SignatureProofBuilder<N> {
         // Form commitment to blinding factor + message
         let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
-            &message,
+            message,
             conjunction_commitment_scalars,
             &params,
         );
@@ -112,7 +110,6 @@ impl<const N: usize> SignatureProofBuilder<N> {
         blinded_signature.randomize(rng);
 
         Self {
-            message,
             blinded_signature,
             commitment_proof_builder,
         }
@@ -132,7 +129,7 @@ impl<const N: usize> SignatureProofBuilder<N> {
         // Run response phase for PoK of opening of commitment to message
         let commitment_proof = self
             .commitment_proof_builder
-            .generate_proof_response(&self.message, challenge_scalar);
+            .generate_proof_response(challenge_scalar);
 
         SignatureProof {
             blinded_signature: self.blinded_signature,

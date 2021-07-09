@@ -44,7 +44,7 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_constraint_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &msg,
+        msg,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -57,7 +57,7 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
-    let proof = proof_builder.generate_proof_response(&msg, challenge);
+    let proof = proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&range_constraint)
@@ -202,7 +202,7 @@ fn range_constraint_test_extremes() {
             .unwrap();
     let com_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &msg,
+        msg,
         &[
             Some(zero_builder.commitment_scalar()),
             Some(max_builder.commitment_scalar()),
@@ -218,7 +218,7 @@ fn range_constraint_test_extremes() {
 
     let zero_proof = zero_builder.generate_constraint_response(challenge);
     let max_proof = max_builder.generate_constraint_response(challenge);
-    let com_proof = com_builder.generate_proof_response(&msg, challenge);
+    let com_proof = com_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&com_proof)
@@ -281,7 +281,7 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_constraint_builder.commitment_scalar());
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &msg,
+        msg,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -294,7 +294,7 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
-    let proof = proof_builder.generate_proof_response(&msg, challenge);
+    let proof = proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&range_constraint)
@@ -342,7 +342,7 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
     .unwrap();
     // Failure case: *don't* use the range commitment scalar in the commitment proof.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &msg, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg, &[None; N], &params);
 
     // Form challenge using both proofs.
     let challenge = ChallengeBuilder::new()
@@ -352,7 +352,7 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
-    let proof = proof_builder.generate_proof_response(&msg, challenge);
+    let proof = proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&range_constraint)
@@ -402,7 +402,7 @@ fn run_range_constraint_value_revealed<const N: usize>() {
     conjunction_commitment_scalars[pos] = Some(range_value_commitment_scalar);
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        &msg,
+        msg.clone(),
         &conjunction_commitment_scalars,
         &params,
     );
@@ -415,7 +415,7 @@ fn run_range_constraint_value_revealed<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
-    let proof = proof_builder.generate_proof_response(&msg, challenge);
+    let proof = proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&range_constraint)

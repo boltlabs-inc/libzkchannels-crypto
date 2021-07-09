@@ -23,8 +23,8 @@ The customer must blind the input and unblind the output with the _same_ blindin
 */
 
 use crate::{
-    customer, merchant, revlock::*, types::pedersen::Commitment, types::*, Balance, Error, Nonce,
-    PaymentAmount, Rng, Verification, CLOSE_SCALAR,
+    customer, merchant, revlock::*, types::*, Balance, Error, Nonce, PaymentAmount, Rng,
+    Verification, CLOSE_SCALAR,
 };
 use serde::*;
 use sha3::{Digest, Sha3_256};
@@ -300,6 +300,18 @@ impl State {
         self.revocation_secret
     }
 
+    /// Form a commitment (and corresponding blinding factor) to the `State`'s
+    /// [`RevocationLock`].
+    pub fn commit_to_revocation(
+        &self,
+        rng: &mut impl Rng,
+        param: &customer::Config,
+    ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
+        let blinding_factor = RevocationLockBlindingFactor::new(rng);
+        let commitment = self.revocation_lock().commit(param, &blinding_factor);
+        (commitment, blinding_factor)
+    }
+
     /// Get the [`CloseState`] corresponding to this `State`.
     ///
     /// This is typically called by the customer.
@@ -336,6 +348,29 @@ impl State {
         })
     }
 
+    /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
+    /// tuple (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
+    ///
+    /// Note that this _does not_ include the revocation secret!
+    ///
+    /// This is typically called by the customer.
+    pub fn commit<'a>(
+        &'a self,
+        rng: &mut impl Rng,
+        param: &customer::Config,
+    ) -> (StateCommitment, PayTokenBlindingFactor) {
+        let msg = self.to_message();
+        let blinding_factor = BlindingFactor::new(rng);
+        let commitment = param
+            .merchant_public_key
+            .blind_message(&msg, blinding_factor);
+
+        (
+            StateCommitment(commitment),
+            PayTokenBlindingFactor(blinding_factor),
+        )
+    }
+
     /// Get the message representation of a State.
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
@@ -349,6 +384,27 @@ impl State {
 }
 
 impl CloseState {
+    /// Form a commitment (and corresponding blinding factor) to the [`CloseState`] and a constant,
+    /// fixed close tag.
+    ///
+    /// This is typically called by the customer.
+    pub(crate) fn commit<'a>(
+        &'a self,
+        rng: &mut impl Rng,
+        param: &customer::Config,
+    ) -> (CloseStateCommitment, CloseStateBlindingFactor) {
+        let msg = self.to_message();
+        let blinding_factor = BlindingFactor::new(rng);
+        let commitment = param
+            .merchant_public_key
+            .blind_message(&msg, blinding_factor);
+
+        (
+            CloseStateCommitment(commitment),
+            CloseStateBlindingFactor(blinding_factor),
+        )
+    }
+
     /// Get the message representation of a CloseState.
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
@@ -389,13 +445,6 @@ impl CloseState {
 #[allow(missing_copy_implementations)]
 pub struct StateCommitment(pub(crate) BlindedMessage);
 
-impl StateCommitment {
-    /// Create a new StateCommitment based on a commitment
-    pub fn new(commitment: Commitment<G1Projective>) -> Self {
-        StateCommitment(BlindedMessage::new(commitment))
-    }
-}
-
 /// Commitment to a CloseState and a constant, fixed close tag.
 ///
 /// Note that there is no direct verification function on `CloseStateCommitment`s. They are
@@ -403,13 +452,6 @@ impl StateCommitment {
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct CloseStateCommitment(pub(crate) BlindedMessage);
-
-impl CloseStateCommitment {
-    /// Create a new CloseStateCommitment based on a commitment
-    pub fn new(commitment: Commitment<G1Projective>) -> Self {
-        CloseStateCommitment(BlindedMessage::new(commitment))
-    }
-}
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone, Serialize, Deserialize)]

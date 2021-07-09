@@ -355,11 +355,6 @@ impl ChallengeInput for Signature {
 pub struct BlindedMessage(pub(crate) Commitment<G1Projective>);
 
 impl BlindedMessage {
-    /// Create a new [`BlindedMessage`] from a commitment
-    pub fn new(commitment: Commitment<G1Projective>) -> Self {
-        BlindedMessage(commitment)
-    }
-
     /// Extract the internal commitment object.
     pub fn to_commitment(self) -> Commitment<G1Projective> {
         self.0

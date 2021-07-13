@@ -491,9 +491,8 @@ impl CloseStateSignature {
         param: &customer::Config,
         close_state: &CloseState,
     ) -> Verification {
-        param
-            .merchant_public_key
-            .verify(&close_state.to_message(), &self.0)
+        self.0
+            .verify(param.merchant_public_key(), &close_state.to_message())
             .into()
     }
 
@@ -542,9 +541,8 @@ impl PayToken {
     ///
     /// This is typically called by the customer.
     pub fn verify(&self, param: &customer::Config, state: &State) -> Verification {
-        param
-            .merchant_public_key
-            .verify(&state.to_message(), &self.0)
+        self.0
+            .verify(param.merchant_public_key(), &state.to_message())
             .into()
     }
 }

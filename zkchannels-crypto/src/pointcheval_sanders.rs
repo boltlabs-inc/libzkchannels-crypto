@@ -159,27 +159,6 @@ impl<const N: usize> PublicKey<N> {
         }
     }
 
-    /// Verify a signature on a given message.
-    pub fn verify(&self, msg: &Message<N>, sig: &Signature) -> bool {
-        if !sig.is_well_formed() {
-            return false;
-        }
-
-        // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
-        let lhs = self.x2
-            + self
-                .y2s
-                .iter()
-                .zip(msg.iter())
-                .map(|(yi, mi)| yi * mi)
-                .sum::<G2Projective>();
-
-        let verify_pairing = pairing(&sig.sigma1, &lhs.into());
-        let signature_pairing = pairing(&sig.sigma2, &self.g2);
-
-        verify_pairing == signature_pairing
-    }
-
     /// Convert the public key to a byte representation.
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
@@ -301,6 +280,27 @@ impl Signature {
     pub fn sigma2(self) -> G1Affine {
         self.sigma2
     }
+
+    /// Verify a signature on a given message.
+    pub fn verify<const N: usize>(&self, public_key: &PublicKey<N>, msg: &Message<N>) -> bool {
+        if !self.is_well_formed() {
+            return false;
+        }
+
+        // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
+        let lhs = public_key.x2
+            + public_key
+                .y2s
+                .iter()
+                .zip(msg.iter())
+                .map(|(yi, mi)| yi * mi)
+                .sum::<G2Projective>();
+
+        let verify_pairing = pairing(&self.sigma1, &lhs.into());
+        let signature_pairing = pairing(&self.sigma2, &public_key.g2);
+
+        verify_pairing == signature_pairing
+    }
 }
 
 impl ChallengeInput for Signature {
@@ -413,7 +413,7 @@ mod test {
         let sig = kp.sign(&mut rng, &msg);
 
         assert!(
-            kp.public_key().verify(&msg, &sig),
+            sig.verify(kp.public_key(), &msg),
             "Signature didn't verify!! {:?}, {:?}",
             kp,
             msg
@@ -434,7 +434,7 @@ mod test {
             "RNG failed to generate a different message."
         );
         assert!(
-            !kp.public_key().verify(&bad_msg, &sig),
+            !sig.verify(kp.public_key(), &bad_msg),
             "Signature verified on the wrong message!",
         );
     }
@@ -449,7 +449,7 @@ mod test {
         let bad_sig = bad_kp.sign(&mut rng, &msg);
 
         assert!(
-            !kp.public_key().verify(&msg, &bad_sig),
+            !bad_sig.verify(kp.public_key(), &msg),
             "Signature from a different keypair verified!",
         );
     }
@@ -466,7 +466,7 @@ mod test {
         };
 
         assert!(
-            !kp.public_key().verify(&msg, &bad_sig),
+            !bad_sig.verify(kp.public_key(), &msg),
             "Bad signature with sigma1 = 1 verified!"
         );
     }
@@ -480,7 +480,7 @@ mod test {
         let mut sig = kp.sign(&mut rng, &msg);
         sig.randomize(&mut rng);
 
-        assert!(kp.public_key().verify(&msg, &sig))
+        assert!(sig.verify(kp.public_key(), &msg))
     }
 
     #[test]
@@ -496,7 +496,7 @@ mod test {
         let sig = blind_sig.unblind(bf);
 
         assert!(
-            kp.public_key().verify(&msg, &sig),
+            sig.verify(kp.public_key(), &msg),
             "Signature didn't verify!!"
         );
     }
@@ -516,7 +516,7 @@ mod test {
         let sig = blind_sig.unblind(bad_bf);
 
         assert!(
-            !kp.public_key().verify(&msg, &sig),
+            !sig.verify(kp.public_key(), &msg),
             "Signature verified!! (with wrong blinding factor, *not* good, *do not* want this)"
         );
     }
@@ -534,7 +534,7 @@ mod test {
         let sig = blind_sig.unblind(bf);
 
         assert!(
-            kp.public_key().verify(&msg, &sig),
+            sig.verify(kp.public_key(), &msg),
             "Signature didn't verify!!"
         );
     }

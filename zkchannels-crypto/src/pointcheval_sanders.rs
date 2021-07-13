@@ -8,7 +8,7 @@
 
 use crate::{
     common::*,
-    pedersen::Commitment,
+    pedersen::{Commitment, PedersenParameters},
     proofs::{ChallengeBuilder, ChallengeInput},
     serde::SerializeElement,
     BlindingFactor,
@@ -233,7 +233,7 @@ impl<const N: usize> KeyPair<N> {
     }
 
     /// Sign a message.
-    pub fn sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Signature {
+    pub(crate) fn sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Signature {
         self.sk.sign(rng, msg)
     }
 
@@ -317,9 +317,18 @@ impl ChallengeInput for Signature {
 /// programmatically, a `BlindedMessage` can be constructed using
 /// [`Message::blind()`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindedMessage(pub(crate) Commitment<G1Projective>);
+pub struct BlindedMessage(Commitment<G1Projective>);
 
 impl BlindedMessage {
+    pub(crate) fn new<const N: usize>(
+        public_key: &PublicKey<N>,
+        msg: &Message<N>,
+        bf: BlindingFactor,
+    ) -> Self {
+        let pedersen_params = PedersenParameters::<G1Projective, N>::from_public_key(public_key);
+        BlindedMessage(msg.commit(&pedersen_params, bf))
+    }
+
     /// Extract the internal commitment object.
     pub fn to_commitment(self) -> Commitment<G1Projective> {
         self.0

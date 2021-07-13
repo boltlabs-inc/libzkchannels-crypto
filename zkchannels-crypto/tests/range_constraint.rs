@@ -102,7 +102,7 @@ fn run_range_constraint_with_signature_verifies<const N: usize>() {
     let (range_tested_value, pos, msg) = message_with_value_in_range(&mut rng, &mut real_rng);
 
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Proof commitment phase. Form range constraint on element and use resulting commitment scalar in
     // signature proof.

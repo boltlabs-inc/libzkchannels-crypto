@@ -361,12 +361,9 @@ impl State {
     ) -> (StateCommitment, PayTokenBlindingFactor) {
         let msg = self.to_message();
         let blinding_factor = BlindingFactor::new(rng);
-        let commitment = param
-            .merchant_public_key
-            .blind_message(&msg, blinding_factor);
-
+        let blinded_state = msg.blind(param.merchant_public_key(), blinding_factor);
         (
-            StateCommitment(commitment),
+            StateCommitment(blinded_state),
             PayTokenBlindingFactor(blinding_factor),
         )
     }
@@ -395,12 +392,9 @@ impl CloseState {
     ) -> (CloseStateCommitment, CloseStateBlindingFactor) {
         let msg = self.to_message();
         let blinding_factor = BlindingFactor::new(rng);
-        let commitment = param
-            .merchant_public_key
-            .blind_message(&msg, blinding_factor);
-
+        let blinded_close_state = msg.blind(param.merchant_public_key(), blinding_factor);
         (
-            CloseStateCommitment(commitment),
+            CloseStateCommitment(blinded_close_state),
             CloseStateBlindingFactor(blinding_factor),
         )
     }

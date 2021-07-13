@@ -14,7 +14,7 @@ use crate::{
     CLOSE_SCALAR,
 };
 use zkchannels_crypto::{
-    pedersen::Commitment,
+    pedersen::{Commitment, PedersenParameters},
     proofs::{
         ChallengeBuilder, CommitmentProof, CommitmentProofBuilder, RangeConstraint,
         RangeConstraintBuilder, SignatureProof, SignatureProofBuilder,
@@ -101,7 +101,9 @@ impl EstablishProof {
         let (close_state_commitment, close_state_blinding_factor) =
             state.close_state().commit(rng, &params);
 
-        let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
+        // Note: This type conversion will go away when the refactor is complete.
+        let pedersen_parameters =
+            PedersenParameters::<G1Projective, 5>::from_public_key(params.merchant_public_key());
 
         // Start commitment proof to the new state.
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
@@ -199,10 +201,11 @@ impl EstablishProof {
             .with_bytes(context.as_bytes())
             .finish();
 
-        let pedersen_parameters = params
-            .signing_keypair
-            .public_key()
-            .to_g1_pedersen_parameters();
+        // Note: This type conversion should disappear when the refactor is complete; the verification function will take a
+        // `PublicKey` directly.
+        let pedersen_parameters = PedersenParameters::<G1Projective, 5>::from_public_key(
+            params.signing_keypair.public_key(),
+        );
 
         // Check that the state proof verifies.
         let state_proof_verifies = self.state_proof.verify_knowledge_of_opening_of_commitment(
@@ -382,7 +385,9 @@ impl PayProof {
         state: &State,
         context: &Context,
     ) -> (Self, BlindingFactors) {
-        let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
+        // Note: this will go away when the PS refactor is complete.
+        let pedersen_parameters =
+            PedersenParameters::<G1Projective, 5>::from_public_key(params.merchant_public_key());
 
         // Form commits to new state, new close state, and old revocation lock.
         let (old_revocation_lock_commitment, revocation_lock_bf) =
@@ -580,10 +585,10 @@ impl PayProof {
             .with_bytes(context.as_bytes())
             .finish();
 
-        let pedersen_parameters = params
-            .signing_keypair
-            .public_key()
-            .to_g1_pedersen_parameters();
+        // Note: this type conversion will go away when the PS refactor is complete.
+        let pedersen_parameters = PedersenParameters::<G1Projective, 5>::from_public_key(
+            params.signing_keypair.public_key(),
+        );
 
         // Check that the individual signature and commitment proofs verify.
         let old_pay_token_proof_verifies = self

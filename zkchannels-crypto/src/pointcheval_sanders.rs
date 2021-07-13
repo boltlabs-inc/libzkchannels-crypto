@@ -159,36 +159,6 @@ impl<const N: usize> PublicKey<N> {
         }
     }
 
-    /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
-    pub(crate) fn to_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective, N> {
-        let gs = self
-            .y2s
-            .iter()
-            .map(|y2| y2.into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
-        PedersenParameters {
-            h: self.g2.into(),
-            gs: Box::new(gs),
-        }
-    }
-
-    /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
-    pub fn to_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective, N> {
-        let gs = self
-            .y1s
-            .iter()
-            .map(|y1| y1.into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
-        PedersenParameters {
-            h: self.g1.into(),
-            gs: Box::new(gs),
-        }
-    }
-
     /// Verify a signature on a given message.
     pub fn verify(&self, msg: &Message<N>, sig: &Signature) -> bool {
         if !sig.is_well_formed() {
@@ -212,7 +182,8 @@ impl<const N: usize> PublicKey<N> {
 
     /// Blind a message using the given blinding factor.
     pub fn blind_message(&self, msg: &Message<N>, bf: BlindingFactor) -> BlindedMessage {
-        BlindedMessage(self.to_g1_pedersen_parameters().commit(msg, bf))
+        let pedersen_params = PedersenParameters::<G1Projective, N>::from_public_key(self);
+        BlindedMessage(msg.commit(&pedersen_params, bf))
     }
 
     /// Convert the public key to a byte representation.
@@ -516,8 +487,9 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let blinded_msg =
-            BlindedMessage(kp.public_key().to_g1_pedersen_parameters().commit(&msg, bf));
+        let pedersen_params =
+            PedersenParameters::<G1Projective, 3>::from_public_key(kp.public_key());
+        let blinded_msg = BlindedMessage(msg.commit(&pedersen_params, bf));
 
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
         let sig = blind_sig.unblind(bf);
@@ -535,8 +507,9 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let blinded_msg =
-            BlindedMessage(kp.public_key().to_g1_pedersen_parameters().commit(&msg, bf));
+        let pedersen_params =
+            PedersenParameters::<G1Projective, 3>::from_public_key(kp.public_key());
+        let blinded_msg = BlindedMessage(msg.commit(&pedersen_params, bf));
 
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
 

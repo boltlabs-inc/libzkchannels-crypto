@@ -10,8 +10,8 @@
 //! let params = PedersenParameters::<G1Projective, 5>::new(&mut rng);
 //! let msg = Message::<5>::random(&mut rng);
 //! let bf = BlindingFactor::new(&mut rng);
-//! let commitment = params.commit(&msg, bf);
-//! assert!(params.decommit(&msg, bf, commitment));
+//! let commitment = msg.commit(&params, bf);
+//! assert!(commitment.decommit(&params, bf, &msg));
 //! ```
 //!
 //! ## References
@@ -29,6 +29,7 @@
 
 use crate::{
     common::*,
+    pointcheval_sanders::PublicKey,
     proofs::{ChallengeBuilder, ChallengeInput},
     serde::{SerializeElement, SerializeG1},
 };
@@ -40,7 +41,7 @@ use std::iter;
 /// A Pedersen commitment to a message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(bound = "G: SerializeElement")]
-pub struct Commitment<G>(#[serde(with = "SerializeElement")] G)
+pub struct Commitment<G>(#[serde(with = "SerializeElement")] pub(crate) G)
 where
     G: Group<Scalar = Scalar>;
 
@@ -48,6 +49,16 @@ impl<G: Group<Scalar = Scalar>> Commitment<G> {
     /// Get the inner group element representing the commitment.
     pub fn to_element(self) -> G {
         self.0
+    }
+
+    /// Verify the commitment and blinding factor on a message.
+    pub fn decommit<const N: usize>(
+        &self,
+        pedersen_params: &PedersenParameters<G, N>,
+        bf: BlindingFactor,
+        msg: &Message<N>,
+    ) -> bool {
+        msg.commit(pedersen_params, bf) == *self
     }
 }
 
@@ -68,9 +79,9 @@ where
     G: Group<Scalar = Scalar>,
 {
     #[serde(with = "SerializeElement")]
-    pub(crate) h: G,
+    h: G,
     #[serde(with = "SerializeElement")]
-    pub(crate) gs: Box<[G; N]>,
+    gs: Box<[G; N]>,
 }
 
 #[cfg(feature = "sqlite")]
@@ -95,22 +106,12 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
         }
     }
 
-    /// Commit to a message using the provided blinding factor.
-    pub fn commit(&self, msg: &Message<N>, bf: BlindingFactor) -> Commitment<G> {
-        let com: G = self.h * bf.as_scalar()
-            + self
-                .gs
-                .iter()
-                .zip(msg.iter())
-                .map(|(&g, m)| g * m)
-                .sum::<G>();
-
-        Commitment(com)
+    pub(crate) fn h(&self) -> &G {
+        &self.h
     }
 
-    /// Verify a commitment to a message, using the given blinding factor.
-    pub fn decommit(&self, msg: &Message<N>, bf: BlindingFactor, com: Commitment<G>) -> bool {
-        self.commit(msg, bf) == com
+    pub(crate) fn gs(&self) -> &[G; N] {
+        self.gs.as_ref()
     }
 }
 
@@ -125,6 +126,42 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
     }
 }
 
+impl<const N: usize> PedersenParameters<G1Projective, N> {
+    /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
+    pub fn from_public_key(public_key: &PublicKey<N>) -> PedersenParameters<G1Projective, N> {
+        let gs = public_key
+            .y1s
+            .iter()
+            .map(|y1| y1.into())
+            .collect::<ArrayVec<_, N>>()
+            .into_inner()
+            .expect("lengths guaranteed to match");
+        PedersenParameters {
+            h: public_key.g1.into(),
+            gs: Box::new(gs),
+        }
+    }
+}
+
+impl<const N: usize> PedersenParameters<G2Projective, N> {
+    /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
+    pub(crate) fn from_public_key(
+        public_key: &PublicKey<N>,
+    ) -> PedersenParameters<G2Projective, N> {
+        let gs = public_key
+            .y2s
+            .iter()
+            .map(|y2| y2.into())
+            .collect::<ArrayVec<_, N>>()
+            .into_inner()
+            .expect("lengths guaranteed to match");
+        PedersenParameters {
+            h: public_key.g2.into(),
+            gs: Box::new(gs),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -135,8 +172,8 @@ mod test {
         let msg = Message::random(&mut rng);
         let bf = BlindingFactor::new(&mut rng);
 
-        let com = params.commit(&msg, bf);
-        assert!(params.decommit(&msg, bf, com));
+        let com = msg.commit(&params, bf);
+        assert!(com.decommit(&params, bf, &msg));
     }
 
     #[test]
@@ -162,8 +199,8 @@ mod test {
             "unfortunate RNG seed: bad_msg should be different"
         );
 
-        let com = params.commit(&msg, bf);
-        assert!(!params.decommit(&bad_msg, bf, com));
+        let com = msg.commit(&params, bf);
+        assert!(!com.decommit(&params, bf, &bad_msg));
     }
 
     #[test]
@@ -188,8 +225,8 @@ mod test {
             "unfortunate RNG seed: bad_bf should be different"
         );
 
-        let com = params.commit(&msg, bf);
-        assert!(!params.decommit(&msg, bad_bf, com));
+        let com = msg.commit(&params, bf);
+        assert!(!com.decommit(&params, bad_bf, &msg));
     }
 
     #[test]
@@ -210,16 +247,16 @@ mod test {
 
         let bad_com = {
             let msg = Message::random(&mut rng);
-            params.commit(&msg, bf)
+            msg.commit(&params, bf)
         };
 
-        let com = params.commit(&msg, bf);
+        let com = msg.commit(&params, bf);
 
         assert_ne!(
             com.0, bad_com.0,
             "unfortunate RNG seed: bad_com should be different"
         );
-        assert!(!params.decommit(&msg, bf, bad_com));
+        assert!(!bad_com.decommit(&params, bf, &msg));
     }
 
     #[test]
@@ -240,13 +277,13 @@ mod test {
 
         let bad_com = Commitment::<G>(G::random(&mut rng));
 
-        let com = params.commit(&msg, bf);
+        let com = msg.commit(&params, bf);
 
         assert_ne!(
             com.0, bad_com.0,
             "unfortunate RNG seed: bad_com should be different"
         );
-        assert!(!params.decommit(&msg, bf, bad_com));
+        assert!(!bad_com.decommit(&params, bf, &msg));
     }
 
     #[test]

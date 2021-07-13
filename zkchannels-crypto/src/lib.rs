@@ -29,6 +29,7 @@ use crate::common::*;
 use ::serde::*;
 use arrayvec::ArrayVec;
 use ff::Field;
+use pedersen::{Commitment, PedersenParameters};
 use std::{iter, ops::Deref};
 
 /// Fixed-length message type used across schemes.
@@ -60,6 +61,23 @@ impl<const N: usize> Message<N> {
                 .into_inner()
                 .expect("length mismatch impossible"),
         ))
+    }
+
+    /// Commit to a message using the provided blinding factor.
+    pub fn commit<G: Group<Scalar = Scalar>>(
+        &self,
+        pedersen_params: &PedersenParameters<G, N>,
+        bf: BlindingFactor,
+    ) -> Commitment<G> {
+        let com: G = *pedersen_params.h() * bf.as_scalar()
+            + pedersen_params
+                .gs()
+                .iter()
+                .zip(self.iter())
+                .map(|(&g, m)| g * m)
+                .sum::<G>();
+
+        Commitment(com)
     }
 }
 

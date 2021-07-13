@@ -8,7 +8,7 @@
 
 use crate::{
     common::*,
-    pedersen::{Commitment, PedersenParameters},
+    pedersen::Commitment,
     proofs::{ChallengeBuilder, ChallengeInput},
     serde::SerializeElement,
     BlindingFactor,
@@ -180,12 +180,6 @@ impl<const N: usize> PublicKey<N> {
         verify_pairing == signature_pairing
     }
 
-    /// Blind a message using the given blinding factor.
-    pub fn blind_message(&self, msg: &Message<N>, bf: BlindingFactor) -> BlindedMessage {
-        let pedersen_params = PedersenParameters::<G1Projective, N>::from_public_key(self);
-        BlindedMessage(msg.commit(&pedersen_params, bf))
-    }
-
     /// Convert the public key to a byte representation.
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = Vec::new();
@@ -321,7 +315,7 @@ impl ChallengeInput for Signature {
 /// Mathematically, this is a commitment produced using the G1 generators of the [`PublicKey`] as
 /// the parameters;
 /// programmatically, a `BlindedMessage` can be constructed using
-/// [`PublicKey::blind_message`].
+/// [`Message::blind()`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedMessage(pub(crate) Commitment<G1Projective>);
 
@@ -487,9 +481,7 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let pedersen_params =
-            PedersenParameters::<G1Projective, 3>::from_public_key(kp.public_key());
-        let blinded_msg = BlindedMessage(msg.commit(&pedersen_params, bf));
+        let blinded_msg = msg.blind(kp.public_key(), bf);
 
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
         let sig = blind_sig.unblind(bf);
@@ -507,9 +499,7 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let pedersen_params =
-            PedersenParameters::<G1Projective, 3>::from_public_key(kp.public_key());
-        let blinded_msg = BlindedMessage(msg.commit(&pedersen_params, bf));
+        let blinded_msg = msg.blind(kp.public_key(), bf);
 
         let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
 

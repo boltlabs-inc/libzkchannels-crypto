@@ -30,6 +30,7 @@ use ::serde::*;
 use arrayvec::ArrayVec;
 use ff::Field;
 use pedersen::{Commitment, PedersenParameters};
+use pointcheval_sanders::{BlindedMessage, PublicKey};
 use std::{iter, ops::Deref};
 
 /// Fixed-length message type used across schemes.
@@ -78,6 +79,12 @@ impl<const N: usize> Message<N> {
                 .sum::<G>();
 
         Commitment(com)
+    }
+
+    /// Blind a message using the given blinding factor.
+    pub fn blind(&self, public_key: &PublicKey<N>, bf: BlindingFactor) -> BlindedMessage {
+        let pedersen_params = PedersenParameters::<G1Projective, N>::from_public_key(public_key);
+        BlindedMessage(self.commit(&pedersen_params, bf))
     }
 }
 

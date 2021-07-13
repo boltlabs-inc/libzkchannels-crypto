@@ -60,14 +60,14 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let msg = Message::<N>::random(&mut rng);
 
     // Form the "correct" commmitment.
-    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+    let pedersen_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Build proof.
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
         msg.clone(),
         &[None; N],
-        &params,
+        &pedersen_params,
     );
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof_builder_for_bad_params = proof_builder.clone();
@@ -76,7 +76,7 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
 
     // Proof must not verify on a commitment with the wrong blinding factor.
     let bad_bf = BlindingFactor::new(&mut rng);
-    let bad_bf_com = params.commit(&msg, bad_bf);
+    let bad_bf_com = msg.commit(&pedersen_params, bad_bf);
     assert_ne!(
         proof.commitment(),
         bad_bf_com,
@@ -85,14 +85,16 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let bad_proof = modify_proof::<N>(&proof, &bad_bf_com);
     let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !bad_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge),
+        !bad_proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong blinding factor."
     );
 
     // Proof must not verify on a commitment with the wrong parameters.
     let bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bad_params_com =
-        bad_params.commit(&msg, proof_builder_for_bad_params.message_blinding_factor());
+    let bad_params_com = msg.commit(
+        &bad_params,
+        proof_builder_for_bad_params.message_blinding_factor(),
+    );
     assert_ne!(
         proof.commitment(),
         bad_params_com,
@@ -101,21 +103,21 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let bad_proof = modify_proof::<N>(&proof, &bad_params_com);
     let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge),
+        !proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong parameters."
     );
 
     // Proof must to verify on a commitment with the wrong message.
     let bad_msg = Message::<N>::random(&mut rng);
     assert_ne!(&*msg, &*bad_msg, "Accidentally generated matching messages");
-    let bad_msg_com = params.commit(
-        &bad_msg,
+    let bad_msg_com = bad_msg.commit(
+        &pedersen_params,
         proof_builder_for_bad_com.message_blinding_factor(),
     );
     let bad_proof = modify_proof::<N>(&proof, &bad_msg_com);
     let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge),
+        !proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong message."
     );
 }
@@ -376,14 +378,14 @@ fn commitment_proof_fails_on_random_commit<
     let msg = Message::<3>::random(&mut rng);
 
     // Form the "correct" commmitment.
-    let params = PedersenParameters::<G, 3>::new(&mut rng);
+    let pedersen_params = PedersenParameters::<G, 3>::new(&mut rng);
 
     // Build proof.
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
         msg.clone(),
         &[None; 3],
-        &params,
+        &pedersen_params,
     );
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
     let proof_builder_for_bad_com = proof_builder.clone();
@@ -399,7 +401,10 @@ fn commitment_proof_fails_on_random_commit<
     let bad_com: Commitment<G> = bincode::deserialize(&bytes).unwrap();
     // Make sure new commitment isn't accidentally the correct one.
     assert_ne!(
-        params.commit(&msg, proof_builder_for_bad_com.message_blinding_factor()),
+        msg.commit(
+            &pedersen_params,
+            proof_builder_for_bad_com.message_blinding_factor()
+        ),
         bad_com,
         "Unfortunate RNG seed: Accidentally generated the correct commitment."
     );
@@ -409,7 +414,7 @@ fn commitment_proof_fails_on_random_commit<
         .with(&proof.scalar_commitment())
         .finish();
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge),
+        !proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
         "Proof verified on totally random commitment."
     );
 }

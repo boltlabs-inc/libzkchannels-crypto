@@ -65,12 +65,12 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     /// Verify knowledge of the opening of a commitment.
     pub fn verify_knowledge_of_opening_of_commitment(
         &self,
-        params: &PedersenParameters<G, N>,
+        pedersen_params: &PedersenParameters<G, N>,
         challenge: Challenge,
     ) -> bool {
         // Construct commitment to response scalars.
-        let rhs = params.commit(
-            &Message::new(*self.message_response_scalars),
+        let rhs = Message::new(*self.message_response_scalars).commit(
+            pedersen_params,
             BlindingFactor::from_scalar(self.blinding_factor_response_scalar),
         );
 
@@ -147,7 +147,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         pedersen_params: &PedersenParameters<G, N>,
     ) -> Self {
         let message_blinding_factor = BlindingFactor::new(&mut *rng);
-        let commitment = pedersen_params.commit(&msg, message_blinding_factor);
+        let commitment = msg.commit(pedersen_params, message_blinding_factor);
 
         let blinding_factor_commitment_scalar = Scalar::random(&mut *rng);
         // Choose commitment scalars (that haven't already been specified)
@@ -161,8 +161,8 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         );
 
         // Commit to the scalars
-        let scalar_commitment = pedersen_params.commit(
-            &Message::new(*message_commitment_scalars),
+        let scalar_commitment = Message::new(*message_commitment_scalars).commit(
+            pedersen_params,
             BlindingFactor::from_scalar(blinding_factor_commitment_scalar),
         );
 

@@ -50,6 +50,7 @@
 
 use crate::{
     common::*,
+    pedersen::PedersenParameters,
     pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
     proofs::{
         Challenge, ChallengeBuilder, ChallengeInput, CommitmentProof, CommitmentProofBuilder,
@@ -91,7 +92,7 @@ impl<const N: usize> SignatureProofBuilder<N> {
         params: &PublicKey<N>,
     ) -> Self {
         // Run commitment phase for PoK of opening of commitment to message.
-        let params = params.to_g2_pedersen_parameters();
+        let pedersen_params = PedersenParameters::<G2Projective, N>::from_public_key(params);
 
         // Run signature proof setup phase:
         // Form commitment to blinding factor + message
@@ -99,7 +100,7 @@ impl<const N: usize> SignatureProofBuilder<N> {
             rng,
             message,
             conjunction_commitment_scalars,
-            &params,
+            &pedersen_params,
         );
 
         // Blind and randomize signature
@@ -165,7 +166,7 @@ impl<const N: usize> SignatureProof<N> {
         let valid_commitment_proof = self
             .commitment_proof
             .verify_knowledge_of_opening_of_commitment(
-                &params.to_g2_pedersen_parameters(),
+                &PedersenParameters::<G2Projective, N>::from_public_key(params),
                 challenge,
             );
 

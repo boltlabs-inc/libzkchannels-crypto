@@ -31,7 +31,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
 
     // Form signature on message.
     let kp = KeyPair::<N>::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Form commitment on message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
@@ -98,7 +98,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
     let msg = Message::<N>::random(&mut rng);
     // Form signature on message
     let kp = KeyPair::<N>::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Form commitment to message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
@@ -182,7 +182,7 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
 
     // Sign [a].
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Commit to [a + public_value].
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);

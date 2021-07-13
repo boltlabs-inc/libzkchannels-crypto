@@ -28,7 +28,7 @@ fn run_signature_proof_verifies<const N: usize>() {
     // Generate message and form signature.
     let msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -63,7 +63,7 @@ fn run_signature_proof_fails_with_wrong_message<const N: usize>() {
     let msg = Message::<N>::random(&mut rng);
     let bad_msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof with the wrong message.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -100,7 +100,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_signature<const N: usize>
     let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message with the wrong parameters.
-    let sig = bad_kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &bad_kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -137,7 +137,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_proof<const N: usize>() {
     let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof with the wrong parameters.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -174,7 +174,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_verification<const N: usi
     let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -210,7 +210,7 @@ fn run_signature_proof_fails_with_wrong_challenge<const N: usize>() {
     let kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -258,8 +258,8 @@ fn run_signature_proof_equality_relation<const N: usize>() {
 
     // Sign the messages
     let kp = KeyPair::new(&mut rng);
-    let sig1 = kp.sign(&mut rng, &msg);
-    let sig2 = kp.sign(&mut rng, &msg2);
+    let sig1 = msg.sign(&mut rng, &kp);
+    let sig2 = msg2.sign(&mut rng, &kp);
 
     // Form proofs - commitment phase. The commitment scalars for the matching elements must match.
     let sig_proof_builder1 = SignatureProofBuilder::generate_proof_commitments(
@@ -332,7 +332,7 @@ fn run_signature_proof_public_value<const N: usize>() {
     let pos = rng.gen_range(0..N);
     let public_value = msg[pos];
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -386,8 +386,8 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
 
     // Form signatures on messages.
     let kp = KeyPair::new(&mut rng);
-    let sig1 = kp.sign(&mut rng, &msg);
-    let sig2 = kp.sign(&mut rng, &msg2);
+    let sig1 = msg.sign(&mut rng, &kp);
+    let sig2 = msg2.sign(&mut rng, &kp);
 
     // Proof commitment phase: use matching commitment scalars for message values with linear relationship.
     let sig_proof_builder1 = SignatureProofBuilder::generate_proof_commitments(

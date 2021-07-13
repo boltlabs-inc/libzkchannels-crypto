@@ -30,7 +30,7 @@ use ::serde::*;
 use arrayvec::ArrayVec;
 use ff::Field;
 use pedersen::{Commitment, PedersenParameters};
-use pointcheval_sanders::{BlindedMessage, PublicKey};
+use pointcheval_sanders::{BlindedMessage, KeyPair, PublicKey, Signature};
 use std::{iter, ops::Deref};
 
 /// Fixed-length message type used across schemes.
@@ -83,8 +83,12 @@ impl<const N: usize> Message<N> {
 
     /// Blind a message using the given blinding factor.
     pub fn blind(&self, public_key: &PublicKey<N>, bf: BlindingFactor) -> BlindedMessage {
-        let pedersen_params = PedersenParameters::<G1Projective, N>::from_public_key(public_key);
-        BlindedMessage(self.commit(&pedersen_params, bf))
+        BlindedMessage::new(public_key, self, bf)
+    }
+
+    /// Sign a message.
+    pub fn sign(&self, rng: &mut impl Rng, kp: &KeyPair<N>) -> Signature {
+        kp.sign(rng, self)
     }
 }
 

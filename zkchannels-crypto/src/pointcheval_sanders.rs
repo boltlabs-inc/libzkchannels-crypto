@@ -38,19 +38,19 @@ pub(crate) struct SecretKey<const N: usize> {
 pub struct PublicKey<const N: usize> {
     /// G1 generator (g)
     #[serde(with = "SerializeElement")]
-    pub g1: G1Affine,
+    g1: G1Affine,
     /// Y_1 ... Y_l
     #[serde(with = "SerializeElement")]
-    pub y1s: Box<[G1Affine; N]>,
+    y1s: Box<[G1Affine; N]>,
     /// G2 generator (g~)
     #[serde(with = "SerializeElement")]
-    pub g2: G2Affine,
+    g2: G2Affine,
     /// X~
     #[serde(with = "SerializeElement")]
-    pub x2: G2Affine,
+    x2: G2Affine,
     /// Y~_1 ... Y~_l
     #[serde(with = "SerializeElement")]
-    pub y2s: Box<[G2Affine; N]>,
+    y2s: Box<[G2Affine; N]>,
 }
 
 /// A keypair formed from a `SecretKey` and a [`PublicKey`] for multi-message operations.
@@ -118,6 +118,31 @@ impl<const N: usize> SecretKey<N> {
 }
 
 impl<const N: usize> PublicKey<N> {
+    /// G1 generator (g)
+    pub(crate) fn g1(&self) -> &G1Affine {
+        &self.g1
+    }
+
+    /// Y_1 ... Y_l
+    pub(crate) fn y1s(&self) -> &[G1Affine; N] {
+        self.y1s.as_ref()
+    }
+
+    /// G2 generator (g~)
+    pub(crate) fn g2(&self) -> &G2Affine {
+        &self.g2
+    }
+
+    /// X~
+    pub(crate) fn x2(&self) -> &G2Affine {
+        &self.x2
+    }
+
+    /// Y~_1 ... Y~_l
+    pub(crate) fn y2s(&self) -> &[G2Affine; N] {
+        self.y2s.as_ref()
+    }
+
     /// Derive a new `PublicKey` from an existing [`SecretKey`] and a generator from G1.
     ///
     /// This is called internally, and we require `g1` is chosen uniformly at random and is not the

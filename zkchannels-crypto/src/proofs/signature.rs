@@ -174,8 +174,8 @@ impl<const N: usize> SignatureProof<N> {
         let sig = self.blinded_signature.0;
         let commitment_proof_matches_signature = pairing(
             &sig.sigma1(),
-            &(params.x2 + self.commitment_proof.commitment().to_element()).into(),
-        ) == pairing(&sig.sigma2(), &params.g2);
+            &(params.x2() + self.commitment_proof.commitment().to_element()).into(),
+        ) == pairing(&sig.sigma2(), &params.g2());
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }

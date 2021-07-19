@@ -1,0 +1,1 @@
+//! Proofs of knowledge of the opening of a commitment, that allow blind signatures on the opening.

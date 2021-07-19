@@ -130,14 +130,14 @@ impl<const N: usize> PedersenParameters<G1Projective, N> {
     /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
     pub fn from_public_key(public_key: &PublicKey<N>) -> PedersenParameters<G1Projective, N> {
         let gs = public_key
-            .y1s
+            .y1s()
             .iter()
             .map(|y1| y1.into())
             .collect::<ArrayVec<_, N>>()
             .into_inner()
             .expect("lengths guaranteed to match");
         PedersenParameters {
-            h: public_key.g1.into(),
+            h: public_key.g1().into(),
             gs: Box::new(gs),
         }
     }
@@ -149,14 +149,14 @@ impl<const N: usize> PedersenParameters<G2Projective, N> {
         public_key: &PublicKey<N>,
     ) -> PedersenParameters<G2Projective, N> {
         let gs = public_key
-            .y2s
+            .y2s()
             .iter()
             .map(|y2| y2.into())
             .collect::<ArrayVec<_, N>>()
             .into_inner()
             .expect("lengths guaranteed to match");
         PedersenParameters {
-            h: public_key.g2.into(),
+            h: public_key.g2().into(),
             gs: Box::new(gs),
         }
     }

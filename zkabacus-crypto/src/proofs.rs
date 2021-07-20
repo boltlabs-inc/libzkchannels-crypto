@@ -101,7 +101,8 @@ impl EstablishProof {
         let (close_state_commitment, close_state_blinding_factor) =
             state.close_state().commit(rng, &params);
 
-        // Note: This type conversion will go away when the refactor is complete.
+        // Note: This type conversion should disappear when the refactor is complete; the proof
+        // generation functions will take a `PublicKey` directly.
         let pedersen_parameters =
             PedersenParameters::<G1Projective, 5>::from_public_key(params.merchant_public_key());
 
@@ -201,8 +202,8 @@ impl EstablishProof {
             .with_bytes(context.as_bytes())
             .finish();
 
-        // Note: This type conversion should disappear when the refactor is complete; the verification function will take a
-        // `PublicKey` directly.
+        // Note: This type conversion should disappear when the refactor is complete; the proof
+        // verification function will take a `PublicKey` directly.
         let pedersen_parameters = PedersenParameters::<G1Projective, 5>::from_public_key(
             params.signing_keypair.public_key(),
         );
@@ -385,7 +386,8 @@ impl PayProof {
         state: &State,
         context: &Context,
     ) -> (Self, BlindingFactors) {
-        // Note: this will go away when the PS refactor is complete.
+        // Note: This type conversion should disappear when the refactor is complete; the proof
+        // generation functions will take a `PublicKey` directly.
         let pedersen_parameters =
             PedersenParameters::<G1Projective, 5>::from_public_key(params.merchant_public_key());
 
@@ -585,7 +587,8 @@ impl PayProof {
             .with_bytes(context.as_bytes())
             .finish();
 
-        // Note: this type conversion will go away when the PS refactor is complete.
+        // Note: This type conversion should disappear when the refactor is complete; the proof
+        // verification functions will take a `PublicKey` directly.
         let pedersen_parameters = PedersenParameters::<G1Projective, 5>::from_public_key(
             params.signing_keypair.public_key(),
         );

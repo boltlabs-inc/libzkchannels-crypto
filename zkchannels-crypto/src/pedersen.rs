@@ -1,6 +1,7 @@
 //! Pedersen commitments \[1\] over the prime-order pairing groups from BLS12-381 \[2\].
 //!
-//! Commitments may be formed using the [`PedersenParameters`] struct's [`commit`] and [`decommit`]
+//! Commitments may be formed using the [`commit`] method on a [`Message`] and verified with the
+//! [`verify_opening`] method on a [`Commitment`].
 //! methods. [`PedersenParameters`] may be constructed by uniform random sampling from an [`Rng`],
 //! using the [`PedersenParameters::new`] method.
 //! ```
@@ -11,7 +12,7 @@
 //! let msg = Message::<5>::random(&mut rng);
 //! let bf = BlindingFactor::new(&mut rng);
 //! let commitment = msg.commit(&params, bf);
-//! assert!(commitment.decommit(&params, bf, &msg));
+//! assert!(commitment.verify_opening(&params, bf, &msg));
 //! ```
 //!
 //! ## References
@@ -23,8 +24,8 @@
 //!    Internet-draft, IETF. 2021. URL:
 //!    <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04>
 //!
-//! [`commit`]: PedersenParameters::commit
-//! [`decommit`]: PedersenParameters::decommit
+//! [`commit`]: Message::commit
+//! [`verify_opening`]: Commitment::verify_opening
 //! [`Rng`]: crate::Rng
 
 use crate::{
@@ -51,8 +52,8 @@ impl<G: Group<Scalar = Scalar>> Commitment<G> {
         self.0
     }
 
-    /// Verify the commitment and blinding factor on a message.
-    pub fn decommit<const N: usize>(
+    /// Verify a provided opening of the commitment.
+    pub fn verify_opening<const N: usize>(
         &self,
         pedersen_params: &PedersenParameters<G, N>,
         bf: BlindingFactor,
@@ -166,27 +167,27 @@ impl<const N: usize> PedersenParameters<G2Projective, N> {
 mod test {
     use super::*;
 
-    fn commit_decommit<G: Group<Scalar = Scalar>>() {
+    fn commit_open<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();
         let params = PedersenParameters::<G, 3>::new(&mut rng);
         let msg = Message::random(&mut rng);
         let bf = BlindingFactor::new(&mut rng);
 
         let com = msg.commit(&params, bf);
-        assert!(com.decommit(&params, bf, &msg));
+        assert!(com.verify_opening(&params, bf, &msg));
     }
 
     #[test]
-    fn commit_decommit_g1() {
-        commit_decommit::<G1Projective>()
+    fn commit_open_g1() {
+        commit_open::<G1Projective>()
     }
 
     #[test]
-    fn commit_decommit_g2() {
-        commit_decommit::<G2Projective>()
+    fn commit_open_g2() {
+        commit_open::<G2Projective>()
     }
 
-    fn commit_does_not_decommit_on_wrong_msg<G: Group<Scalar = Scalar>>() {
+    fn commit_does_not_open_on_wrong_msg<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();
         let params = PedersenParameters::<G, 3>::new(&mut rng);
         let msg = Message::random(&mut rng);
@@ -200,20 +201,20 @@ mod test {
         );
 
         let com = msg.commit(&params, bf);
-        assert!(!com.decommit(&params, bf, &bad_msg));
+        assert!(!com.verify_opening(&params, bf, &bad_msg));
     }
 
     #[test]
-    fn commit_does_not_decommit_on_wrong_msg_g1() {
-        commit_does_not_decommit_on_wrong_msg::<G1Projective>()
+    fn commit_does_not_open_on_wrong_msg_g1() {
+        commit_does_not_open_on_wrong_msg::<G1Projective>()
     }
 
     #[test]
-    fn commit_does_not_decommit_on_wrong_msg_g2() {
-        commit_does_not_decommit_on_wrong_msg::<G2Projective>()
+    fn commit_does_not_open_on_wrong_msg_g2() {
+        commit_does_not_open_on_wrong_msg::<G2Projective>()
     }
 
-    fn commit_does_not_decommit_on_wrong_bf<G: Group<Scalar = Scalar>>() {
+    fn commit_does_not_open_on_wrong_bf<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();
         let params = PedersenParameters::<G, 3>::new(&mut rng);
         let msg = Message::random(&mut rng);
@@ -226,20 +227,20 @@ mod test {
         );
 
         let com = msg.commit(&params, bf);
-        assert!(!com.decommit(&params, bad_bf, &msg));
+        assert!(!com.verify_opening(&params, bad_bf, &msg));
     }
 
     #[test]
-    fn commit_does_not_decommit_on_wrong_bf_g1() {
-        commit_does_not_decommit_on_wrong_bf::<G1Projective>()
+    fn commit_does_not_open_on_wrong_bf_g1() {
+        commit_does_not_open_on_wrong_bf::<G1Projective>()
     }
 
     #[test]
-    fn commit_does_not_decommit_on_wrong_bf_g2() {
-        commit_does_not_decommit_on_wrong_bf::<G2Projective>()
+    fn commit_does_not_open_on_wrong_bf_g2() {
+        commit_does_not_open_on_wrong_bf::<G2Projective>()
     }
 
-    fn commit_does_not_decommit_on_wrong_commit<G: Group<Scalar = Scalar>>() {
+    fn commit_does_not_open_on_wrong_commit<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();
         let params = PedersenParameters::<G, 3>::new(&mut rng);
         let msg = Message::random(&mut rng);
@@ -256,20 +257,20 @@ mod test {
             com.0, bad_com.0,
             "unfortunate RNG seed: bad_com should be different"
         );
-        assert!(!bad_com.decommit(&params, bf, &msg));
+        assert!(!bad_com.verify_opening(&params, bf, &msg));
     }
 
     #[test]
-    fn commit_does_not_decommit_on_wrong_commit_g1() {
-        commit_does_not_decommit_on_wrong_commit::<G1Projective>()
+    fn commit_does_not_open_on_wrong_commit_g1() {
+        commit_does_not_open_on_wrong_commit::<G1Projective>()
     }
 
     #[test]
-    fn commit_does_not_decommit_on_wrong_commit_g2() {
-        commit_does_not_decommit_on_wrong_commit::<G2Projective>()
+    fn commit_does_not_open_on_wrong_commit_g2() {
+        commit_does_not_open_on_wrong_commit::<G2Projective>()
     }
 
-    fn commit_does_not_decommit_on_random_commit<G: Group<Scalar = Scalar>>() {
+    fn commit_does_not_open_on_random_commit<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();
         let params = PedersenParameters::<G, 3>::new(&mut rng);
         let msg = Message::random(&mut rng);
@@ -283,16 +284,16 @@ mod test {
             com.0, bad_com.0,
             "unfortunate RNG seed: bad_com should be different"
         );
-        assert!(!bad_com.decommit(&params, bf, &msg));
+        assert!(!bad_com.verify_opening(&params, bf, &msg));
     }
 
     #[test]
-    fn commit_does_not_decommit_on_random_commit_g1() {
-        commit_does_not_decommit_on_random_commit::<G1Projective>()
+    fn commit_does_not_open_on_random_commit_g1() {
+        commit_does_not_open_on_random_commit::<G1Projective>()
     }
 
     #[test]
-    fn commit_does_not_decommit_on_random_commit_g2() {
-        commit_does_not_decommit_on_random_commit::<G2Projective>()
+    fn commit_does_not_open_on_random_commit_g2() {
+        commit_does_not_open_on_random_commit::<G2Projective>()
     }
 }

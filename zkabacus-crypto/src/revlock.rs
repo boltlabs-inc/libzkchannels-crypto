@@ -115,23 +115,23 @@ impl RevocationLock {
 impl RevocationLockCommitment {
     /// Validate the [`RevocationLockCommitment`] against the given parameters and blinding factor.
     ///
-    /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is
+    /// This function verifies the opening of the commitment _and_ confirms that the [`RevocationLock`] is
     /// derived from the [`RevocationSecret`].
-    pub(crate) fn verify(
+    pub(crate) fn verify_opening(
         &self,
         parameters: &merchant::Config,
         revocation_secret: &RevocationSecret,
         revocation_lock: &RevocationLock,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Verification {
-        let verify_pair = revocation_lock.verify(revocation_secret);
-        let verify_commitment = self.0.decommit(
+        let pair_is_valid = revocation_lock.verify(revocation_secret);
+        let opening_is_valid = self.0.verify_opening(
             parameters.revocation_commitment_parameters(),
             revocation_lock_blinding_factor.0,
             &Message::from(revocation_lock.to_scalar()),
         );
 
-        if matches!(verify_pair, Verification::Verified) && verify_commitment {
+        if matches!(pair_is_valid, Verification::Verified) && opening_is_valid {
             Verification::Verified
         } else {
             Verification::Failed

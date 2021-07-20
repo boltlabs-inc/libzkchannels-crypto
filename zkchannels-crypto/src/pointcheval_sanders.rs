@@ -281,7 +281,7 @@ impl Signature {
         self.sigma2
     }
 
-    /// Verify a signature on a given message.
+    /// Verify a signature on a message with respect to a given public key.
     pub fn verify<const N: usize>(&self, public_key: &PublicKey<N>, msg: &Message<N>) -> bool {
         if !self.is_well_formed() {
             return false;

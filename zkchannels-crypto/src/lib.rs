@@ -64,21 +64,13 @@ impl<const N: usize> Message<N> {
         ))
     }
 
-    /// Commit to a message using the provided blinding factor.
+    /// Commit to the message using the provided blinding factor.
     pub fn commit<G: Group<Scalar = Scalar>>(
         &self,
         pedersen_params: &PedersenParameters<G, N>,
         bf: BlindingFactor,
     ) -> Commitment<G> {
-        let com: G = *pedersen_params.h() * bf.as_scalar()
-            + pedersen_params
-                .gs()
-                .iter()
-                .zip(self.iter())
-                .map(|(&g, m)| g * m)
-                .sum::<G>();
-
-        Commitment(com)
+        Commitment::new(self, pedersen_params, bf)
     }
 
     /// Blind a message using the given blinding factor.
@@ -88,7 +80,7 @@ impl<const N: usize> Message<N> {
 
     /// Sign a message.
     pub fn sign(&self, rng: &mut impl Rng, kp: &KeyPair<N>) -> Signature {
-        kp.sign(rng, self)
+        Signature::new(rng, kp, self)
     }
 }
 

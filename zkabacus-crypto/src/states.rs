@@ -470,7 +470,7 @@ impl CloseStateBlindedSignature {
         param: &merchant::Config,
         com: CloseStateCommitment,
     ) -> CloseStateBlindedSignature {
-        CloseStateBlindedSignature(param.signing_keypair.blind_sign(rng, &com.0))
+        CloseStateBlindedSignature(BlindedSignature::new(param.signing_keypair(), rng, &com.0))
     }
 
     /// Unblind a [`CloseStateBlindedSignature`] to get an (unblinded) [`CloseStateSignature`]
@@ -525,7 +525,7 @@ impl BlindedPayToken {
         param: &merchant::Config,
         com: &StateCommitment,
     ) -> Self {
-        BlindedPayToken(param.signing_keypair.blind_sign(rng, &com.0))
+        BlindedPayToken(BlindedSignature::new(param.signing_keypair(), rng, &com.0))
     }
 
     /// Unblind a [`BlindedPayToken`] to get an (unblinded) [`PayToken`].

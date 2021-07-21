@@ -130,7 +130,7 @@ impl RangeConstraintParameters {
 
         let keypair = KeyPair::<1>::new(rng);
         let digit_signatures = (0..RP_PARAMETER_U)
-            .map(|i| keypair.sign(&mut *rng, &Scalar::from(i).into()))
+            .map(|i| Signature::new(rng, &keypair, &Scalar::from(i).into()))
             .collect::<ArrayVec<_, RP_PARAMETER_U_AS_USIZE>>();
 
         Self {

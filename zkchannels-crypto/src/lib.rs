@@ -116,7 +116,10 @@ impl BlindingFactor {
 mod common {
     //! Common types used internally.
 
+    use std::{iter::Sum, ops::Mul};
+
     pub use crate::{BlindingFactor, Message};
+    pub use arrayvec::ArrayVec;
     pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
     pub use group::{Group, GroupEncoding};
 
@@ -136,6 +139,29 @@ mod common {
                 return g;
             }
         }
+    }
+
+    /// Map a function over a fixed-size array.
+    pub fn map_array<T, X, F, const N: usize>(ts: &[T; N], f: F) -> [X; N]
+    where
+        F: Fn(&T) -> X + Sized,
+        X: core::fmt::Debug,
+    {
+        ts.iter()
+            .map(f)
+            .collect::<ArrayVec<X, N>>()
+            .into_inner()
+            .expect("lengths guaranteed to match")
+    }
+
+    /// Computes the sum of the product of the elements in the two arrays.
+    /// In practice, the type T will be either a Group<Scalar = Scalar> or a Scalar.
+    pub fn inner_product<'b, T, X, const N: usize>(ts: &'b [T; N], us: &'b [Scalar; N]) -> X
+    where
+        X: Sum<X> + core::fmt::Debug,
+        T: 'b + Mul<&'b Scalar, Output = X> + Copy,
+    {
+        ts.iter().zip(us.iter()).map(|(&t, u)| t * u).sum::<X>()
     }
 }
 

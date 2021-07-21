@@ -112,22 +112,10 @@ impl<const N: usize> PublicKey<N> {
         let g2: G2Projective = random_non_identity(&mut *rng);
 
         // y1i = g1 * [yi] (point multiplication with the secret key)
-        let y1s = sk
-            .ys
-            .iter()
-            .map(|yi| (g1 * yi).into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
+        let y1s = map_array(sk.ys.as_ref(), |yi| (g1 * yi).into());
 
         // y2i = g2 * [yi] (point multiplication with the secret key)
-        let y2s = sk
-            .ys
-            .iter()
-            .map(|yi| (g2 * yi).into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
+        let y2s = map_array(sk.ys.as_ref(), |yi| (g2 * yi).into());
 
         PublicKey {
             g1: g1.into(),
@@ -217,14 +205,7 @@ impl Signature {
         let h: G1Projective = random_non_identity(&mut *rng);
 
         // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
-        let scalar_combination = signing_key.sk.x
-            + signing_key
-                .sk
-                .ys
-                .iter()
-                .zip(msg.iter())
-                .map(|(yi, mi)| yi * mi)
-                .sum::<Scalar>();
+        let scalar_combination = signing_key.sk.x + inner_product(signing_key.sk.ys.as_ref(), msg);
 
         Signature {
             sigma1: h.into(),
@@ -275,13 +256,7 @@ impl Signature {
         }
 
         // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
-        let lhs = public_key.x2
-            + public_key
-                .y2s
-                .iter()
-                .zip(msg.iter())
-                .map(|(yi, mi)| yi * mi)
-                .sum::<G2Projective>();
+        let lhs = public_key.x2 + inner_product(public_key.y2s.as_ref(), msg);
 
         let verify_pairing = pairing(&self.sigma1, &lhs.into());
         let signature_pairing = pairing(&self.sigma2, &public_key.g2);

@@ -53,13 +53,8 @@ impl<G: Group<Scalar = Scalar>> Commitment<G> {
         pedersen_params: &PedersenParameters<G, N>,
         bf: BlindingFactor,
     ) -> Self {
-        let com: G = *pedersen_params.h() * bf.as_scalar()
-            + pedersen_params
-                .gs()
-                .iter()
-                .zip(msg.iter())
-                .map(|(&g, m)| g * m)
-                .sum::<G>();
+        let com: G =
+            *pedersen_params.h() * bf.as_scalar() + inner_product(pedersen_params.gs(), msg);
 
         Commitment(com)
     }
@@ -146,14 +141,11 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 
 impl<const N: usize> PedersenParameters<G1Projective, N> {
     /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
+    ///
+    /// Note: this function should be pub(crate) once the refactor is complete. The external calls
+    /// will be wrapped into the new (internal) proof type.
     pub fn from_public_key(public_key: &PublicKey<N>) -> PedersenParameters<G1Projective, N> {
-        let gs = public_key
-            .y1s
-            .iter()
-            .map(|y1| y1.into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
+        let gs = map_array(public_key.y1s.as_ref(), |y1| y1.into());
         PedersenParameters {
             h: public_key.g1.into(),
             gs: Box::new(gs),
@@ -166,13 +158,7 @@ impl<const N: usize> PedersenParameters<G2Projective, N> {
     pub(crate) fn from_public_key(
         public_key: &PublicKey<N>,
     ) -> PedersenParameters<G2Projective, N> {
-        let gs = public_key
-            .y2s
-            .iter()
-            .map(|y2| y2.into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
+        let gs = map_array(public_key.y2s.as_ref(), |y2| y2.into());
         PedersenParameters {
             h: public_key.g2.into(),
             gs: Box::new(gs),

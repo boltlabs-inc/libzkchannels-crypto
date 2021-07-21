@@ -47,9 +47,21 @@ where
     G: Group<Scalar = Scalar>;
 
 impl<G: Group<Scalar = Scalar>> Commitment<G> {
-    /// Get the inner group element representing the commitment.
-    pub fn to_element(self) -> G {
-        self.0
+    /// Form a commit to a message and blinding factor using the given parameters.
+    pub(crate) fn new<const N: usize>(
+        msg: &Message<N>,
+        pedersen_params: &PedersenParameters<G, N>,
+        bf: BlindingFactor,
+    ) -> Self {
+        let com: G = *pedersen_params.h() * bf.as_scalar()
+            + pedersen_params
+                .gs()
+                .iter()
+                .zip(msg.iter())
+                .map(|(&g, m)| g * m)
+                .sum::<G>();
+
+        Commitment(com)
     }
 
     /// Verify a provided opening of the commitment.
@@ -60,6 +72,11 @@ impl<G: Group<Scalar = Scalar>> Commitment<G> {
         msg: &Message<N>,
     ) -> bool {
         msg.commit(pedersen_params, bf) == *self
+    }
+
+    /// Get the inner group element representing the commitment.
+    pub fn to_element(self) -> G {
+        self.0
     }
 }
 

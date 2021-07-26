@@ -8,7 +8,7 @@
 
 use crate::{
     common::*,
-    pedersen::{Commitment, PedersenParameters},
+    pedersen::{Commitment, PedersenParameters, ToPedersenParameters},
     proofs::{ChallengeBuilder, ChallengeInput},
     serde::SerializeElement,
     BlindingFactor,
@@ -159,6 +159,24 @@ impl<const N: usize> ChallengeInput for PublicKey<N> {
     }
 }
 
+impl<const N: usize> ToPedersenParameters<G1Projective, N> for PublicKey<N> {
+    fn to_pedersen_parameters(&self) -> PedersenParameters<G1Projective, N> {
+        PedersenParameters::from_generators(
+            self.g1.into(),
+            map_array(self.y1s.as_ref(), |y1| y1.into()),
+        )
+    }
+}
+
+impl<const N: usize> ToPedersenParameters<G2Projective, N> for PublicKey<N> {
+    fn to_pedersen_parameters(&self) -> PedersenParameters<G2Projective, N> {
+        PedersenParameters::from_generators(
+            self.g2.into(),
+            map_array(self.y2s.as_ref(), |y2| y2.into()),
+        )
+    }
+}
+
 impl<const N: usize> KeyPair<N> {
     /// Generate a new `KeyPair` of a given length.
     ///
@@ -287,7 +305,7 @@ impl BlindedMessage {
         msg: &Message<N>,
         bf: BlindingFactor,
     ) -> Self {
-        let pedersen_params = PedersenParameters::<G1Projective, N>::from_public_key(public_key);
+        let pedersen_params = public_key.to_pedersen_parameters();
         BlindedMessage(msg.commit(&pedersen_params, bf))
     }
 

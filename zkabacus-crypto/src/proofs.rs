@@ -14,7 +14,7 @@ use crate::{
     CLOSE_SCALAR,
 };
 use zkchannels_crypto::{
-    pedersen::{Commitment, PedersenParameters},
+    pedersen::{Commitment, ToPedersenParameters},
     proofs::{
         ChallengeBuilder, CommitmentProof, CommitmentProofBuilder, RangeConstraint,
         RangeConstraintBuilder, SignatureProof, SignatureProofBuilder,
@@ -102,9 +102,8 @@ impl EstablishProof {
             state.close_state().commit(rng, &params);
 
         // Note: This type conversion should disappear when the refactor is complete; the proof
-        // generation functions will take a `PublicKey` directly.
-        let pedersen_parameters =
-            PedersenParameters::<G1Projective, 5>::from_public_key(params.merchant_public_key());
+        // generation functions will take a `PublicKey` directly. The group is G1, but it is inferred.
+        let pedersen_parameters = params.merchant_public_key().to_pedersen_parameters();
 
         // Start commitment proof to the new state.
         let state_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
@@ -203,10 +202,11 @@ impl EstablishProof {
             .finish();
 
         // Note: This type conversion should disappear when the refactor is complete; the proof
-        // verification function will take a `PublicKey` directly.
-        let pedersen_parameters = PedersenParameters::<G1Projective, 5>::from_public_key(
-            params.signing_keypair.public_key(),
-        );
+        // verification function will take a `PublicKey` directly. The group G1 is inferred.
+        let pedersen_parameters = params
+            .signing_keypair()
+            .public_key()
+            .to_pedersen_parameters();
 
         // Check that the state proof verifies.
         let state_proof_verifies = self.state_proof.verify_knowledge_of_opening_of_commitment(
@@ -387,9 +387,8 @@ impl PayProof {
         context: &Context,
     ) -> (Self, BlindingFactors) {
         // Note: This type conversion should disappear when the refactor is complete; the proof
-        // generation functions will take a `PublicKey` directly.
-        let pedersen_parameters =
-            PedersenParameters::<G1Projective, 5>::from_public_key(params.merchant_public_key());
+        // generation functions will take a `PublicKey` directly. The group G1 should be inferred.
+        let pedersen_parameters = params.merchant_public_key().to_pedersen_parameters();
 
         // Form commits to new state, new close state, and old revocation lock.
         let (old_revocation_lock_commitment, revocation_lock_bf) =
@@ -588,10 +587,11 @@ impl PayProof {
             .finish();
 
         // Note: This type conversion should disappear when the refactor is complete; the proof
-        // verification functions will take a `PublicKey` directly.
-        let pedersen_parameters = PedersenParameters::<G1Projective, 5>::from_public_key(
-            params.signing_keypair.public_key(),
-        );
+        // verification functions will take a `PublicKey` directly. The group G1 is inferred.
+        let pedersen_parameters = params
+            .signing_keypair()
+            .public_key()
+            .to_pedersen_parameters();
 
         // Check that the individual signature and commitment proofs verify.
         let old_pay_token_proof_verifies = self

@@ -30,7 +30,6 @@
 
 use crate::{
     common::*,
-    pointcheval_sanders::PublicKey,
     proofs::{ChallengeBuilder, ChallengeInput},
     serde::{SerializeElement, SerializeG1},
 };
@@ -101,8 +100,7 @@ where
 crate::impl_sqlx_for_bincode_ty!(PedersenParameters<G1Projective, 1>);
 
 impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
-    /// Generate a new set of parameters for making commitments to messages of given
-    /// length.
+    /// Generate a new, random set of Pedersen parameters.
     ///
     /// These are chosen uniformly at random, such that no discrete logarithm relationships
     /// are known among the generators.
@@ -119,12 +117,36 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
         }
     }
 
+    /// Produce Pedersen parameters from a set of known generators.
+    ///
+    /// In general, we recommend using an instantiation of `IntoPedersenParameters` for some
+    /// interesting type, rather than calling this directly.
+    pub fn from_generators(h: G, gs: [G; N]) -> PedersenParameters<G, N> {
+        Self {
+            h,
+            gs: Box::new(gs),
+        }
+    }
+
     pub(crate) fn h(&self) -> &G {
         &self.h
     }
 
     pub(crate) fn gs(&self) -> &[G; N] {
         self.gs.as_ref()
+    }
+}
+
+/// Set of things that can be converted (deterministically) into [`PedersenParameters`].
+pub trait ToPedersenParameters<G: Group<Scalar = Scalar>, const N: usize> {
+    /// Generate [`PedersenParameters`] based on self.
+    fn to_pedersen_parameters(&self) -> PedersenParameters<G, N>;
+}
+
+impl<G: Group<Scalar = Scalar>, const N: usize> ToPedersenParameters<G, N> for String {
+    /// Produce Pedersen parameters using a hash-to-curve algorithm on a string.
+    fn to_pedersen_parameters(&self) -> PedersenParameters<G, N> {
+        todo!()
     }
 }
 
@@ -135,33 +157,6 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
         builder.consume_bytes(self.h.to_bytes());
         for g in &*self.gs {
             builder.consume_bytes(g.to_bytes());
-        }
-    }
-}
-
-impl<const N: usize> PedersenParameters<G1Projective, N> {
-    /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
-    ///
-    /// Note: this function should be pub(crate) once the refactor is complete. The external calls
-    /// will be wrapped into the new (internal) proof type.
-    pub fn from_public_key(public_key: &PublicKey<N>) -> PedersenParameters<G1Projective, N> {
-        let gs = map_array(public_key.y1s.as_ref(), |y1| y1.into());
-        PedersenParameters {
-            h: public_key.g1.into(),
-            gs: Box::new(gs),
-        }
-    }
-}
-
-impl<const N: usize> PedersenParameters<G2Projective, N> {
-    /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
-    pub(crate) fn from_public_key(
-        public_key: &PublicKey<N>,
-    ) -> PedersenParameters<G2Projective, N> {
-        let gs = map_array(public_key.y2s.as_ref(), |y2| y2.into());
-        PedersenParameters {
-            h: public_key.g2.into(),
-            gs: Box::new(gs),
         }
     }
 }

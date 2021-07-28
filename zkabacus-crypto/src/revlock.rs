@@ -117,7 +117,7 @@ impl RevocationLockCommitment {
     ///
     /// This function verifies the opening of the commitment _and_ confirms that the [`RevocationLock`] is
     /// derived from the [`RevocationSecret`].
-    pub(crate) fn verify_opening(
+    pub(crate) fn verify_revocation_pair(
         &self,
         parameters: &merchant::Config,
         revocation_secret: &RevocationSecret,
@@ -131,10 +131,9 @@ impl RevocationLockCommitment {
             &Message::from(revocation_lock.to_scalar()),
         );
 
-        if matches!(pair_is_valid, Verification::Verified) && opening_is_valid {
-            Verification::Verified
-        } else {
-            Verification::Failed
+        match (pair_is_valid, opening_is_valid) {
+            (Verification::Verified, true) => Verification::Verified,
+            _ => Verification::Failed,
         }
     }
 }

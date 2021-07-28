@@ -64,7 +64,7 @@ impl<const N: usize> Message<N> {
         ))
     }
 
-    /// Commit to the message using the provided blinding factor.
+    /// Form a Pedersen commitment to the message using the provided Pedersen parameters and blinding factor.
     pub fn commit<G: Group<Scalar = Scalar>>(
         &self,
         pedersen_params: &PedersenParameters<G, N>,
@@ -73,12 +73,12 @@ impl<const N: usize> Message<N> {
         Commitment::new(self, pedersen_params, bf)
     }
 
-    /// Blind a message using the given blinding factor.
+    /// Form a Pointcheval Sanders blinded message from the message, using the Pointcheval Sanders blind signing public key and blinding factor.
     pub fn blind(&self, public_key: &PublicKey<N>, bf: BlindingFactor) -> BlindedMessage {
         BlindedMessage::new(public_key, self, bf)
     }
 
-    /// Sign a message.
+    /// Sign a message using Pointcheval Sanders.
     pub fn sign(&self, rng: &mut impl Rng, kp: &KeyPair<N>) -> Signature {
         Signature::new(rng, kp, self)
     }

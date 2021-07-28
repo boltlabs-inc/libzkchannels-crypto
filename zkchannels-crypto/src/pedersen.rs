@@ -119,8 +119,9 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
 
     /// Produce Pedersen parameters from a set of known generators.
     ///
-    /// In general, we recommend using an instantiation of `IntoPedersenParameters` for some
-    /// interesting type, rather than calling this directly.
+    /// In general, if these generators are derived from a more complex type we recommend using
+    /// an instantiation of `IntoPedersenParameters` rather than calling this directly. This avoids
+    /// errors caused by deriving the generators inconsistently across different calls.
     pub fn from_generators(h: G, gs: [G; N]) -> PedersenParameters<G, N> {
         Self {
             h,

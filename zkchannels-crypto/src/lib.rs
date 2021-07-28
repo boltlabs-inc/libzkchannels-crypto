@@ -175,4 +175,39 @@ mod test {
     pub fn rng() -> impl Rng {
         rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
     }
+
+    #[test]
+    fn map_arithmetic_on_array() {
+        let arr = [0, 1, 2, 3, 4, 5, 6];
+        let double_array = map_array(&arr, |x| x * 2);
+        assert_eq!(double_array, [0, 2, 4, 6, 8, 10, 12])
+    }
+
+    #[test]
+    fn small_inner_product_g1() {
+        let units = [G1Projective::identity(); 5];
+        let scalars = [
+            Scalar::one(),
+            Scalar::from(2),
+            Scalar::from(3),
+            Scalar::from(4),
+            Scalar::from(5),
+        ];
+        let ip = inner_product(&units, &scalars);
+        assert_eq!(ip, G1Projective::identity() * Scalar::from(15))
+    }
+
+    #[test]
+    fn small_inner_product_g2() {
+        let units = [G2Projective::identity(); 5];
+        let scalars = [
+            Scalar::one(),
+            Scalar::from(2),
+            Scalar::from(3),
+            Scalar::from(4),
+            Scalar::from(5),
+        ];
+        let ip = inner_product(&units, &scalars);
+        assert_eq!(ip, G2Projective::identity() * Scalar::from(25))
+    }
 }

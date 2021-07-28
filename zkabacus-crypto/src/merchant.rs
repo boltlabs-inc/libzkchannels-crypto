@@ -279,7 +279,7 @@ impl<'a> Unrevoked<'a> {
         revocation_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Result<crate::PayToken, Unrevoked<'a>> {
         // Verify that the provided parameters are consistent and they match the stored commitment.
-        match self.revocation_lock_commitment.verify_opening(
+        match self.revocation_lock_commitment.verify_revocation_pair(
             self.config,
             revocation_secret,
             revocation_lock,

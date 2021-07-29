@@ -410,9 +410,7 @@ fn commitment_proof_fails_on_random_commit<
     );
 
     // Proof must not verify
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof.scalar_commitment())
-        .finish();
+    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     assert!(
         !proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
         "Proof verified on totally random commitment."

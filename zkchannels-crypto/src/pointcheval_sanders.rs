@@ -310,13 +310,42 @@ impl BlindedMessage {
     }
 
     /// Extract the internal commitment object.
+    /// Note: this function should be obsoleted when the refactor is complete.
     pub fn to_commitment(self) -> Commitment<G1Projective> {
         self.0
     }
 
     /// Extract the group element corresponding to the internal commitment object. This is shorthand
     /// for `self.to_commitment().to_element()`.
+    /// Note: this function should be obsoleted when the refactor is complete.
     pub fn to_g1(self) -> G1Projective {
+        self.to_commitment().to_element()
+    }
+}
+
+/// A `VerifiedBlindedMessage` is a `BlindedMessage` for which a prover has provided a
+/// [`SignatureRequestProof`](proofs::SignatureRequestProof) that verifies.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct VerifiedBlindedMessage(pub(crate) Commitment<G1Projective>);
+
+impl VerifiedBlindedMessage {
+    /// Blind-sign a verified blinded message.
+    pub fn blind_sign<const N: usize>(
+        &self,
+        signing_key: &KeyPair<N>,
+        rng: &mut impl Rng,
+    ) -> BlindedSignature {
+        BlindedSignature::new(signing_key, rng, &self)
+    }
+
+    /// Extract the internal commitment object.
+    pub(crate) fn to_commitment(self) -> Commitment<G1Projective> {
+        self.0
+    }
+
+    /// Extract the group element corresponding to the internal commitment object. This is shorthand
+    /// for `self.to_commitment().to_element()`.
+    pub(crate) fn to_g1(self) -> G1Projective {
         self.to_commitment().to_element()
     }
 }
@@ -334,16 +363,11 @@ impl ChallengeInput for BlindedMessage {
 pub struct BlindedSignature(Signature);
 
 impl BlindedSignature {
-    /// Sign a blinded message.
-    ///
-    /// **Warning**: this should *only* be used if the signer has verified a proof of knowledge of
-    /// the opening of the `BlindedMessage`.
-    /// Note: this warning will go away when the refactor is complete; this function will take a
-    /// VerifiedBlindedMessage instead.
+    /// Sign a verified blinded message.
     pub fn new<const N: usize>(
         signing_key: &KeyPair<N>,
         rng: &mut impl Rng,
-        msg: &BlindedMessage,
+        msg: &VerifiedBlindedMessage,
     ) -> Self {
         let u = Scalar::random(rng);
 
@@ -499,8 +523,10 @@ mod test {
 
         let bf = BlindingFactor::new(&mut rng);
         let blinded_msg = msg.blind(kp.public_key(), bf);
+        // Manually generate a verified blinded message - this skips the proof step.
+        let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.to_commitment());
 
-        let blind_sig = BlindedSignature::new(&kp, &mut rng, &blinded_msg);
+        let blind_sig = BlindedSignature::new(&kp, &mut rng, &verified_blinded_msg);
         let sig = blind_sig.unblind(bf);
 
         assert!(
@@ -517,8 +543,10 @@ mod test {
 
         let bf = BlindingFactor::new(&mut rng);
         let blinded_msg = msg.blind(kp.public_key(), bf);
+        // Manually generate a verified blinded message - this skips the proof step.
+        let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.to_commitment());
 
-        let blind_sig = BlindedSignature::new(&kp, &mut rng, &blinded_msg);
+        let blind_sig = BlindedSignature::new(&kp, &mut rng, &verified_blinded_msg);
 
         let bad_bf = BlindingFactor::new(&mut rng);
         let sig = blind_sig.unblind(bad_bf);

@@ -324,7 +324,7 @@ impl BlindedMessage {
 }
 
 /// A `VerifiedBlindedMessage` is a `BlindedMessage` for which a prover has provided a
-/// [`SignatureRequestProof`](proofs::SignatureRequestProof) that verifies.
+/// [`SignatureRequestProof`](crate::proofs::SignatureRequestProof) that verifies.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct VerifiedBlindedMessage(pub(crate) Commitment<G1Projective>);
 

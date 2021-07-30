@@ -58,8 +58,8 @@ pub type CommitmentParameters = zkchannels_crypto::pedersen::PedersenParameters<
 pub type KeyPair = zkchannels_crypto::pointcheval_sanders::KeyPair<5>;
 
 pub use states::{
-    ChannelId, CloseState, CloseStateCommitment, CloseStateSignature, CustomerBalance,
-    CustomerRandomness, MerchantBalance, MerchantRandomness, StateCommitment,
+    BlindedCloseState, BlindedState, ChannelId, CloseState, CloseStateSignature, CustomerBalance,
+    CustomerRandomness, MerchantBalance, MerchantRandomness,
 };
 
 pub use revlock::RevocationLock;
@@ -186,7 +186,7 @@ impl PaymentAmount {
     }
 }
 
-/// The "CLOSE" scalar constant, used in place of a state's nonce to form a [`CloseStateCommitment`].
+/// The "CLOSE" scalar constant, used in place of a state's nonce to form a [`BlindedCloseState`].
 pub const CLOSE_SCALAR: Scalar = Scalar::from_raw([0, 0, 0, u64::from_le_bytes(*b"\0\0\0CLOSE")]);
 
 #[cfg(test)]

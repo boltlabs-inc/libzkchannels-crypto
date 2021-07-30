@@ -388,31 +388,34 @@ fn commitment_proof_fails_on_random_commit<
         &pedersen_params,
     );
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
-    let proof_builder_for_bad_com = proof_builder.clone();
     let proof = proof_builder.generate_proof_response(challenge);
 
     // Generate a bad commitment by deserializing it from a random element in G.
-    let mut bytes = Vec::<u8>::new();
+    let mut bad_com_bytes = Vec::<u8>::new();
     SerializeElement::serialize(
         &G::random(&mut rng),
-        &mut bincode::Serializer::new(&mut bytes, bincode::options()),
+        &mut bincode::Serializer::new(&mut bad_com_bytes, bincode::options()),
     )
     .unwrap();
-    let bad_com: Commitment<G> = bincode::deserialize(&bytes).unwrap();
-    // Make sure new commitment isn't accidentally the correct one.
-    assert_ne!(
-        msg.commit(
-            &pedersen_params,
-            proof_builder_for_bad_com.message_blinding_factor()
-        ),
-        bad_com,
-        "Unfortunate RNG seed: Accidentally generated the correct commitment."
-    );
 
-    // Proof must not verify
-    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    // Serialize and deserialize the proof, replacing the good commitment with the bad one.
+    let proof_bytes = bincode::serialize(&proof).unwrap();
+    let bad_proof_bytes: Vec<_> = bad_com_bytes
+        .iter()
+        .chain(proof_bytes.iter().skip(bad_com_bytes.len()))
+        .map(|v| *v)
+        .collect();
+    assert_ne!(
+        proof_bytes, bad_proof_bytes,
+        "Unfortunate RNG seed: Accidentally generated the correct commitment"
+    );
+    let bad_proof: CommitmentProof<G, 3> =
+        bincode::deserialize(bad_proof_bytes.as_slice()).unwrap();
+
+    // Proof must not verify with the wrong commitment. This uses the "correct" challenge - e.g.
+    // the one that was used to create the proof to make sure we test commitment correctness.
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
+        !bad_proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, challenge),
         "Proof verified on totally random commitment."
     );
 }

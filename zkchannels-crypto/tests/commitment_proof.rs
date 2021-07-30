@@ -3,14 +3,20 @@ mod test_utils;
 use arrayvec::ArrayVec;
 use bls12_381::*;
 use ff::Field;
-use group::{Group, GroupEncoding};
 use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
-    pedersen::Commitment,
     pedersen::PedersenParameters,
-    proofs::{ChallengeBuilder, CommitmentProof, CommitmentProofBuilder},
-    BlindingFactor, Message, SerializeElement,
+    proofs::{ChallengeBuilder, CommitmentProofBuilder},
+    Message,
+};
+
+#[cfg(feature = "bincode")]
+use {
+    group::{Group, GroupEncoding},
+    zkchannels_crypto::{
+        pedersen::Commitment, proofs::CommitmentProof, BlindingFactor, SerializeElement,
+    },
 };
 
 #[test]
@@ -44,6 +50,7 @@ fn run_commitment_proof_verifies<const N: usize>() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn commitment_proof_fails_on_wrong_commit() {
     run_commitment_proof_fails_on_wrong_commit::<1>();
     run_commitment_proof_fails_on_wrong_commit::<2>();
@@ -53,6 +60,7 @@ fn commitment_proof_fails_on_wrong_commit() {
     run_commitment_proof_fails_on_wrong_commit::<13>();
 }
 
+#[cfg(feature = "bincode")]
 fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
 
@@ -122,6 +130,7 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     );
 }
 
+#[cfg(feature = "bincode")]
 fn modify_proof<const N: usize>(
     proof: &CommitmentProof<G1Projective, N>,
     bad_bf_com: &Commitment<G1Projective>,
@@ -369,6 +378,7 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     }
 }
 
+#[cfg(feature = "bincode")]
 fn commitment_proof_fails_on_random_commit<
     G: Group<Scalar = Scalar> + GroupEncoding + SerializeElement,
 >() {
@@ -421,11 +431,13 @@ fn commitment_proof_fails_on_random_commit<
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn commitment_proof_fails_on_random_commit_g1() {
     commitment_proof_fails_on_random_commit::<G1Projective>()
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn commitment_proof_fails_on_random_commit_g2() {
     commitment_proof_fails_on_random_commit::<G2Projective>()
 }

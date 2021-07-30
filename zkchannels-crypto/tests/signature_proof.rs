@@ -1,16 +1,18 @@
 mod test_utils;
 
 use arrayvec::ArrayVec;
-use bls12_381::{G1Projective, Scalar};
+use bls12_381::Scalar;
 use ff::Field;
-use group::Group;
 use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
     pointcheval_sanders::{KeyPair, Signature},
     proofs::{ChallengeBuilder, SignatureProofBuilder},
-    Message, SerializeElement,
+    Message,
 };
+
+#[cfg(feature = "bincode")]
+use {bls12_381::G1Projective, group::Group, zkchannels_crypto::SerializeElement};
 
 #[test]
 fn signature_proof_verifies() {
@@ -432,6 +434,7 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn signature_proof_from_random_sig() {
     let mut rng = test_utils::seeded_rng();
 
@@ -446,6 +449,7 @@ fn signature_proof_from_random_sig() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn signature_proof_from_sig_with_identities() {
     let mut rng = test_utils::seeded_rng();
 
@@ -461,6 +465,7 @@ fn signature_proof_from_sig_with_identities() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn signature_proof_from_sig_with_identity_first() {
     let mut rng = test_utils::seeded_rng();
 
@@ -476,6 +481,7 @@ fn signature_proof_from_sig_with_identity_first() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn signature_proof_from_sig_with_identity_second() {
     let mut rng = test_utils::seeded_rng();
 
@@ -489,6 +495,7 @@ fn signature_proof_from_sig_with_identity_second() {
     build_proof_on_invalid_signature(&mut rng, bad_sig);
 }
 
+#[allow(unused)]
 fn build_proof_on_invalid_signature(rng: &mut impl zkchannels_crypto::Rng, sig: Signature) {
     let msg = Message::<5>::random(rng);
     let kp = KeyPair::new(rng);

@@ -2,9 +2,7 @@ use bls12_381::{G1Projective, Scalar};
 use ff::Field;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
-    proofs::{
-        ChallengeBuilder, CommitmentProof, CommitmentProofBuilder, SignatureProof,
-    },
+    proofs::{ChallengeBuilder, CommitmentProof, CommitmentProofBuilder, SignatureProof},
     Message, Rng,
 };
 
@@ -37,10 +35,8 @@ impl DoubleMessageProof {
         );
 
         // Generate challenge - the only public part of this proof is the proof itself.
-        let challenge = ChallengeBuilder::new()
-            .with(&proof_builder)
-            .finish();
-        
+        let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
+
         // Finish the proof.
         Self {
             proof: proof_builder.generate_proof_response(challenge),
@@ -49,10 +45,13 @@ impl DoubleMessageProof {
 
     pub fn verify(&self, pedersen_parameters: &PedersenParameters<G1Projective, 2>) -> bool {
         // 1. Check that the response scalars for the matching elements, match.
-        let responses_match =  self.proof.conjunction_response_scalars()[0] == self.proof.conjunction_response_scalars()[1];
+        let responses_match = self.proof.conjunction_response_scalars()[0]
+            == self.proof.conjunction_response_scalars()[1];
         let challenge = ChallengeBuilder::new().with(&self.proof).finish();
-        let proof_verifies = self.proof.verify_knowledge_of_opening_of_commitment(&pedersen_parameters, challenge);
-        
+        let proof_verifies = self
+            .proof
+            .verify_knowledge_of_opening_of_commitment(&pedersen_parameters, challenge);
+
         responses_match && proof_verifies
     }
 }

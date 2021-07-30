@@ -325,17 +325,17 @@ impl BlindedMessage {
 
 /// A `VerifiedBlindedMessage` is a `BlindedMessage` for which a prover has provided a
 /// [`SignatureRequestProof`](crate::proofs::SignatureRequestProof) that verifies.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct VerifiedBlindedMessage(pub(crate) Commitment<G1Projective>);
 
 impl VerifiedBlindedMessage {
     /// Blind-sign a verified blinded message.
     pub fn blind_sign<const N: usize>(
-        &self,
+        self,
         signing_key: &KeyPair<N>,
         rng: &mut impl Rng,
     ) -> BlindedSignature {
-        BlindedSignature::new(signing_key, rng, &self)
+        BlindedSignature::new(signing_key, rng, self)
     }
 
     /// Extract the internal commitment object.
@@ -367,7 +367,7 @@ impl BlindedSignature {
     pub fn new<const N: usize>(
         signing_key: &KeyPair<N>,
         rng: &mut impl Rng,
-        msg: &VerifiedBlindedMessage,
+        msg: VerifiedBlindedMessage,
     ) -> Self {
         let u = Scalar::random(rng);
 
@@ -526,7 +526,7 @@ mod test {
         // Manually generate a verified blinded message - this skips the proof step.
         let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.to_commitment());
 
-        let blind_sig = BlindedSignature::new(&kp, &mut rng, &verified_blinded_msg);
+        let blind_sig = BlindedSignature::new(&kp, &mut rng, verified_blinded_msg);
         let sig = blind_sig.unblind(bf);
 
         assert!(
@@ -546,7 +546,7 @@ mod test {
         // Manually generate a verified blinded message - this skips the proof step.
         let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.to_commitment());
 
-        let blind_sig = BlindedSignature::new(&kp, &mut rng, &verified_blinded_msg);
+        let blind_sig = BlindedSignature::new(&kp, &mut rng, verified_blinded_msg);
 
         let bad_bf = BlindingFactor::new(&mut rng);
         let sig = blind_sig.unblind(bad_bf);

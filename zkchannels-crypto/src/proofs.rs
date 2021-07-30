@@ -4,7 +4,7 @@
 //! These are designed to be combinable, and support a variety of common constraints:
 //! - Linear relationships of messages;
 //! - Partial openings of messages;
-//! - Range constraints for the range [0, 2^63];
+//! - Range constraints for the range `[0, 2^63)`;
 //!
 //! This module provides convenient constructors and verification functions for the three types of
 //! proof described above and for range constraints. The API allows users to manually _combine_
@@ -61,9 +61,9 @@
 //! used when the prover wants to demonstrate that they have a [`Signature`] on a [`Message`] from
 //! a specific key, without revealing these underlying values.
 //!
-//! The protocol is based on Schnorr proofs of knowledge of the opening of a commitment \[2\], but
-//!  adds an additional setup step to adapt it for signatures (this is not revealed in the API;
-//! it is executed along with the commitment phase in
+//! The protocol is based on Schnorr proofs of knowledge of the opening of a commitment
+//! [\[1\]](#references), but adds an additional setup step to adapt it for signatures (this is
+//! not revealed in the API; it is executed along with the commitment phase in
 //! [`generate_proof_commitments()`](SignatureProofBuilder::generate_proof_commitments()))
 //! The setup phase blinds and randomizs the signature. The commitment phase uses the same
 //! blinding factor to form the commitment to the `Message`.
@@ -80,7 +80,7 @@
 //! ## Signature request proofs
 //!
 //! This is a proof of knowledge of the opening of a blinded message --- again, a [`Message`].
-//! It is used when the prover wants the verifier to blindly sign a [`VerifiedBlindedMessage`]
+//! It is used when the prover wants the verifier to blindly sign a [`BlindedMessage`]
 //! of which the prover knows the opening.
 //!
 //! In general, a blind signature scheme _must not_ allow signatures on arbitrary messages.
@@ -90,9 +90,7 @@
 //! The structure is similar to that of a commitment proof, but with two important changes:
 //! - The commitment phase generates a [`BlindedMessage`] instead of a [`Commitment`].
 //! - On successful verification, provides a blind-signable [`VerifiedBlindedMessage`].
-//!
-//!   In fact, verification of a [`SignatureRequestProof`] is the _only_ way to obtain a
-//! [`VerifiedBlindedMessage`]!
+//!   In fact, this is the _only way_ to obtain a [`VerifiedBlindedMessage`] for blind signing!
 //!
 //! **A note on verification:**
 //! This library provides a [`VerifiedBlindedMessage`] for any [`SignatureRequestProof`] that
@@ -119,12 +117,16 @@
 //! equivalent relationships in the response scalars. To validate the proof, check that these
 //! relationships still hold with respect to the response scalars.
 //!
-//! To specify
 //! To access commitment scalars, use the `conjunction_commitment_scalars()` function on the
 //! `ProofBuilder`.
 //! To access response scalars, use the `conjunction_response_scalars()` function on the `Proof`.
 //! Each of these functions return a list; the `j`th element corresponds to the `j`th message in
 //! the message tuple.
+//!
+//! To apply a specific commitment scalar for a message, pass it to the commitment phase in the
+//! appropriate index of the
+//! [`conjunction_commitment_scalars`](CommitmentProofBuilder::generate_proof_commitments()).
+//! parameter.
 //!
 //! Some general guidelines follow:
 //!
@@ -132,11 +134,11 @@
 //!    commitment phase for all proof objects and constraints before generating a challenge.
 //!    You must use the same challenge to execute each response phase.
 //!
-//! 2. The Challenge phase must generate a single challenge that incorporates _all_ proof
+//! 2. The challenge phase must generate a single challenge that incorporates _all_ proof
 //!    components.
 //!
-//! 3. All constraints that are manually added must also be manually validated. Calling the
-//!    built-in validation functions _is not enough_.
+//! 3. All constraints that are manually added must also be manually verified. Calling the
+//!    built-in verification functions on `Proof`s is _not sufficient_.
 //!
 //! The following sections will give details on how to enforce specific types of constraints.
 //! For complete code, see the examples in this crate.
@@ -161,14 +163,13 @@
 //! ## Equality checks
 //! An equality check can enforce that two messages in a tuple have the same value.
 //!
-//! Modifications to standard flow:
+//! To enforce an equality constraint, make these additions:
 //! 1. **Commitment phase**. The two messages must have the same commitment scalar. If they are in
-//!    the same proof, generate a new commitment scalar (uniformly at random) and pass it to the 
-//!    commitment phase via the `conjunction_commitment_scalars` argument. 
+//!    the same proof, generate a new commitment scalar (uniformly at random) and pass it to the
+//!    commitment phase.
 //!
 //!    If they are in different proofs, generate the first proof normally, then retrieve
-//!    the commitment scalar corresponding to the message and pass it to the second proof via the 
-//!    `conjunction_commitment_scalars` argument. 
+//!    the commitment scalar corresponding to the message and pass it to the second proof.
 //!
 //! 2. **Verification**. Check that the response scalars for each matching value are equal.
 //!
@@ -178,18 +179,18 @@
 //! the sum of two other messages or
 //! the sum of a message and a public value (e.g. that is not contained in the proof).
 //!
-//! To enforce the relationship `m1 + m2 = m3`, make these modifications:
+//! To enforce the relationship `m1 + m2 = m3`, make these additions:
 //! 1. **Commitment phase**. The commitment scalar for `m3` must equal the sum of the commitment
 //!    scalars for `m1` and `m2`.
-//! 
+//!
 //! 2. **Verification**. The response scalar for `m3` must equal the sum of the response scalars
 //!    for `m1` and `m2`.
 //!
-//! To enforce the relationship `m1 + public = m2`, make these modifications:
+//! To enforce the relationship `m1 + public = m2`, make these additions:
 //! 1. **Commitment phase**. The commitment scalar for `m2` must equal that of `m1`.
-//! 
+//!
 //! 2. **Challenge phase**. Include the public value in the challenge.
-//! 
+//!
 //! 2. **Final proof**. Include the public value along with the proof.
 //!
 //! 3. **Verification**. Let `r1` and `r2` be the response scalars corresponding to `m1` and `m2`:
@@ -200,7 +201,33 @@
 //!
 //!
 //! ## Range proofs
+//! A range proof enforces that a value lies within the range `[0, 2^63)`.
 //!
+//! These are Camenish, Chaabouni, and shelat-style range constraints \[3\] built using standard
+//! Schnorr. This library replaces the signature scheme in \[3\] with single-message
+//! Pointcheval-Sanders signatures \[2\], and uses the
+//! pairing group defined in BLS12-381 \[4\].
+//! It does not support the general technique in \[3\] for constraints in an arbitrary interval.
+//!
+//! TODO: say something about parameters.
+//!
+//! As with other constraints, this requires that the relevant message `m` contained in another
+//! `Proof`. To add the range constraint, make these additions:
+//! 1. **Commitment phase**. Create a [`RangeConstraintBuilder`] on `m`. In the main `Proof`, the
+//!    commitment scalar for `m` must equal the
+//!    [`commitment_scalar`](RangeConstraintBuilder::commitment_scalar()) from the range
+//!    constraint.
+//!
+//! 2. **Challenge phase**. Incorporate the range constraint and parameters into the challenge.
+//!
+//! 3. **Response phase**. Execute the response phase for both the main `Proof` and the
+//!    [`RangeConstraintBuilder`](RangeConstraintBuilder::generate_constraint_response()).
+//!
+//! 4. **Final proof**. Include the [`RangeConstraint`] along with the proof.
+//!
+//! 5. **Verification**. Verify the [`RangeConstraint`] by passing the response scalar for `m`
+//!    from the proof to the
+//!    [range constraint verification function](RangeConstraint::verify_range_constraint()).
 //!
 //!
 //! ## References
@@ -211,6 +238,13 @@
 //!    Topics in Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International
 //!    Publishing, Cham, 2016.
 //!
+//! 3. Jan Camenisch, Rafik Chaabouni, and abhi shelat. Efficient protocols for set membership and
+//!    range proofs. In Josef Pieprzyk, editor, Advances in Cryptology - ASIACRYPT 2008, pages
+//!    234–252, Berlin, Heidelberg, 2008. Springer Berlin Heidelberg.
+//!
+//! 4. Dan Boneh, Sergey Gorbunov, Riad S. Wahby, Hoeteck Wee, and Zhenfei Zhang. BLS Signatures,
+//!    revision 4. Internet draft, Internet Engineering Task Force, 2020.
+//!    <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04>
 //!
 //! [`Message`]:crate::Message
 //! [`Commitment`]:crate::pedersen::Commitment

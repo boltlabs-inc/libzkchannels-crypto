@@ -94,9 +94,8 @@
 //!
 //! **A note on verification:**
 //! This library provides a [`VerifiedBlindedMessage`] for any [`SignatureRequestProof`] that
-//! verifies successfully. However, additional constraints (e.g. correctness of partial openings
-//! of the message, [`RangeConstraint`]s on the message, or linear constraints among the
-//! messages) require additional, manual verification.
+//! verifies successfully. However, additional [constraints](#constraints)
+//! require additional, manual verification.
 //!
 //! If such constraints are not checked correctly, it is possible to get a
 //! [`VerifiedBlindedMessage`] on an invalid proof! Be sure to validate _all_ constraints before
@@ -125,7 +124,7 @@
 //!
 //! To apply a specific commitment scalar for a message, pass it to the commitment phase in the
 //! appropriate index of the
-//! [`conjunction_commitment_scalars`](CommitmentProofBuilder::generate_proof_commitments()).
+//! [`conjunction_commitment_scalars`](CommitmentProofBuilder::generate_proof_commitments())
 //! parameter.
 //!
 //! Some general guidelines follow:
@@ -154,7 +153,7 @@
 //!   value in the challenge.
 //! 2. **Final proof**. Include the public value and its commitment scalar along with the proof.
 //! 3. **Verification**. Check the following equality for each opened value:
-//!    ```
+//!    ```ignore
 //!    challenge * public_value + public_value_commitment_scalar == public_value_response_scalar
 //!    ```
 //!    Also check that the public value in the proof statement matches the expected value.
@@ -194,22 +193,16 @@
 //! 2. **Final proof**. Include the public value along with the proof.
 //!
 //! 3. **Verification**. Let `r1` and `r2` be the response scalars corresponding to `m1` and `m2`:
-//!    ```
+//!    ```ignore
 //!    r2 == r1 + challenge * public
 //!    ```
 //!    Also check that the public value in the proof statement matches the expected value.
 //!
 //!
-//! ## Range proofs
-//! A range proof enforces that a value lies within the range `[0, 2^63)`.
-//!
-//! These are Camenish, Chaabouni, and shelat-style range constraints \[3\] built using standard
-//! Schnorr. This library replaces the signature scheme in \[3\] with single-message
-//! Pointcheval-Sanders signatures \[2\], and uses the
-//! pairing group defined in BLS12-381 \[4\].
-//! It does not support the general technique in \[3\] for constraints in an arbitrary interval.
-//!
-//! TODO: say something about parameters.
+//! ## Range constraints 
+//! A range constraint enforces that a value lies within the range `[0, 2^63)`.
+//! Unlike the other constraints, they require the verifier to supply a set of public
+//! [`RangeConstraintParameters`].
 //!
 //! As with other constraints, this requires that the relevant message `m` contained in another
 //! `Proof`. To add the range constraint, make these additions:
@@ -226,9 +219,13 @@
 //! 4. **Final proof**. Include the [`RangeConstraint`] along with the proof.
 //!
 //! 5. **Verification**. Verify the [`RangeConstraint`] by passing the response scalar for `m`
-//!    from the proof to the
+//!    from the `Proof` to the
 //!    [range constraint verification function](RangeConstraint::verify_range_constraint()).
 //!
+//! For more details on the range constraint algorithm and implementation, see:
+//! - [`RangeConstraint`]
+//! - [`RangeConstraintBuilder`]
+//! - [`RangeConstraintParameters`]
 //!
 //! ## References
 //! 1. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology,

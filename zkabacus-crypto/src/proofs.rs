@@ -665,54 +665,54 @@ mod tests {
 
     #[test]
     fn establish_proof_verifies() {
-        run_establish_proof(0, 100);
+        let _ = run_establish_proof(0, 100);
     }
 
     #[test]
     fn establish_proof_with_merch_balance_verifies() {
-        run_establish_proof(100, 100);
+        let _ = run_establish_proof(100, 100);
     }
 
     #[test]
     fn establish_proof_only_merch_balance_verifies() {
-        run_establish_proof(100, 0);
+        let _ = run_establish_proof(100, 0);
     }
 
     #[test]
     fn establish_proof_with_max_merch_balance_verifies() {
-        run_establish_proof(i64::MAX as u64, 100);
+        let _ = run_establish_proof(i64::MAX as u64, 100);
     }
 
     #[test]
     fn establish_proof_with_max_cust_balance_verifies() {
-        run_establish_proof(100, i64::MAX as u64);
+        let _ = run_establish_proof(100, i64::MAX as u64);
     }
 
     #[test]
     #[should_panic(expected = "AmountTooLarge")]
     fn establish_proof_negative_customer_balance_rejected() {
-        run_establish_proof(100, -5_i64 as u64);
+        let _ = run_establish_proof(100, -5_i64 as u64);
     }
 
     #[test]
     #[should_panic(expected = "AmountTooLarge")]
     fn establish_proof_overflow_customer_balance_rejected() {
-        run_establish_proof(100, i64::MAX as u64 + 1);
+        let _ = run_establish_proof(100, i64::MAX as u64 + 1);
     }
 
     #[test]
     #[should_panic(expected = "AmountTooLarge")]
     fn establish_proof_negative_merchant_balance_rejected() {
-        run_establish_proof(-5_i64 as u64, 100);
+        let _ = run_establish_proof(-5_i64 as u64, 100);
     }
 
     #[test]
     #[should_panic(expected = "AmountTooLarge")]
     fn establish_proof_overflow_merchant_balance_rejected() {
-        run_establish_proof(i64::MAX as u64 + 1, 100);
+        let _ = run_establish_proof(i64::MAX as u64 + 1, 100);
     }
 
-    fn run_establish_proof(merchant_balance: u64, customer_balance: u64) {
+    fn run_establish_proof(merchant_balance: u64, customer_balance: u64) -> (VerifiedBlindedState, PayTokenBlindingFactor) {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);
         let params = merchant_params.to_customer_config();
@@ -729,7 +729,7 @@ mod tests {
         let context = Context::new(b"establish proof verify test");
 
         // Form proof, retrieve blinding factors
-        let (proof, _, _) = EstablishProof::new(&mut rng, &params, &state, &context);
+        let (proof, _, pay_token_bf) = EstablishProof::new(&mut rng, &params, &state, &context);
 
         // Proof must verify against the provided values.
         let public_values = EstablishProofPublicValues {
@@ -738,9 +738,12 @@ mod tests {
             customer_balance: *state.customer_balance(),
         };
 
-        assert!(proof
-            .verify(&merchant_params, &public_values, &context)
-            .is_some());
+        // Unwrap result - will panic if the proof is invalid.
+        let (verified_state, _) = proof.verify(&merchant_params, &public_values, &context).unwrap();
+
+        // Return state and blinding factor (to be used in pay tests).
+        (verified_state, pay_token_bf)
+            
     }
 
     #[test]
@@ -800,14 +803,10 @@ mod tests {
         let amount = pay(amount).unwrap();
         let new_state = old_state.apply_payment(&mut rng, amount).unwrap();
 
-        // Get a pay token AKA signature on the old state.
-        let (old_state_com, old_pt_bf) = old_state.commit(&mut rng, &params);
         // Skip establish proof - deserialize blinded state into verified blinded state. Don't do this in practice.
-        let verified_state_com = bincode::deserialize::<VerifiedBlindedState>(
-            &bincode::serialize(&old_state_com).unwrap(),
-        )
-        .unwrap();
-        let pay_token = BlindedPayToken::sign(&mut rng, &merchant_params, &verified_state_com)
+        let (verified_state_com, old_pt_bf) = run_establish_proof(merchant_balance, customer_balance);
+
+        let pay_token = BlindedPayToken::sign(&mut rng, &merchant_params, verified_state_com)
             .unblind(old_pt_bf);
 
         // Save a copy of the nonce...

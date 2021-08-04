@@ -1,14 +1,13 @@
-//! Standard zero-knowledge proofs of knowledge of openings of commitments, of openings of blinded
-//! messages, and of signatures.
+//! Schnorr-based zero-knowledge proofs of knowledge for Pedersen commitments and Pointcheval Sanders efficient protocols.
 //!
-//! These are designed to be combinable, and support a variety of common constraints:
-//! - Linear relationships of messages;
-//! - Partial openings of messages;
-//! - Range constraints for the range `[0, 2^63)`;
+//! In addition to standard proofs of knowledge of an opening of a commitment or of a signature on a committed message, these proofs are designed to be combinable and to support a variety of common constraints:
+//! - Linear relationships of committed messages;
+//! - Partial openings of committed messages;
+//! - Range constraints for the range `[0, 2^63)`.
 //!
-//! This module provides convenient constructors and verification functions for the three types of
-//! proof described above and for range constraints. The API allows users to manually _combine_
-//! these proofs to form complex proof statements, and to manually verify these additional
+//! This module provides convenient constructors and verification functions for the types of
+//! proof and constraints described above. The API allows users to manually _combine_
+//! these proofs to form complex proof statements and to manually verify these additional
 //! constraints.
 //!
 //!
@@ -45,7 +44,7 @@
 //!
 //! ## Commitment proofs
 //!
-//! This is a proof of knowledge of the opening of a commitment --- that is, is a [`Message`].
+//! This is a proof of knowledge of the opening of a Pedersen commitment --- that is, a [`Message`].
 //! The structure described above is complete for a commitment proof. The commitment phase takes
 //! the `Message` for which the prover is proving knowledge. The generated commitment and blinding
 //! factor are stored in the [`CommitmentProofBuilder`] and can be retrieved for other uses.
@@ -58,14 +57,14 @@
 //! ## Signature proofs
 //!
 //! This is a proof of knowledge of a Pointcheval_Sanders signature [\[2\]](#references). It is
-//! used when the prover wants to demonstrate that they have a [`Signature`] on a [`Message`] from
-//! a specific key, without revealing these underlying values.
+//! used when the prover wants to demonstrate that they have a valid [`Signature`] on a [`Message`] with
+//! respect to a specific public key, without revealing the underlying message.
 //!
 //! The protocol is based on Schnorr proofs of knowledge of the opening of a commitment
 //! [\[1\]](#references), but adds an additional setup step to adapt it for signatures (this is
 //! not revealed in the API; it is executed along with the commitment phase in
-//! [`generate_proof_commitments()`](SignatureProofBuilder::generate_proof_commitments()))
-//! The setup phase blinds and randomizs the signature. The commitment phase uses the same
+//! [`generate_proof_commitments()`](SignatureProofBuilder::generate_proof_commitments())).
+//! The setup phase blinds and randomizes the signature. The commitment phase uses the same
 //! blinding factor to form the commitment to the `Message`.
 //!
 //! The generated proof includes the blinded, randomized signature and the underlying commitment
@@ -79,7 +78,7 @@
 //!
 //! ## Signature request proofs
 //!
-//! This is a proof of knowledge of the opening of a blinded message --- again, a [`Message`].
+//! This is a proof of knowledge of the opening of a Pointcheval Sanders blinded message --- that is, a [`Message`].
 //! It is used when the prover wants the verifier to blindly sign a [`BlindedMessage`]
 //! of which the prover knows the opening.
 //!
@@ -89,12 +88,12 @@
 //!
 //! The structure is similar to that of a commitment proof, but with two important changes:
 //! - The commitment phase generates a [`BlindedMessage`] instead of a [`Commitment`].
-//! - On successful verification, provides a blind-signable [`VerifiedBlindedMessage`].
+//! - Successful verification provides a blind-signable [`VerifiedBlindedMessage`].
 //!   In fact, this is the _only way_ to obtain a [`VerifiedBlindedMessage`] for blind signing!
 //!
 //! **A note on verification:**
 //! This library provides a [`VerifiedBlindedMessage`] for any [`SignatureRequestProof`] that
-//! verifies successfully. However, additional [constraints](#constraints)
+//! verifies successfully. However, any additional [constraints](#constraints)
 //! require additional, manual verification.
 //!
 //! If such constraints are not checked correctly, it is possible to get a
@@ -199,7 +198,7 @@
 //!    Also check that the public value in the proof statement matches the expected value.
 //!
 //!
-//! ## Range constraints 
+//! ## Range constraints
 //! A range constraint enforces that a value lies within the range `[0, 2^63)`.
 //! Unlike the other constraints, they require the verifier to supply a set of public
 //! [`RangeConstraintParameters`].

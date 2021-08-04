@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{ChallengeBuilder, ChallengeInput};
 
-/// Fully constructed proof of knowledge the opening of a blinded message.
+/// Fully constructed proof of knowledge of the opening of a blinded message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureRequestProof<const N: usize> {
     /// Blinded message on which this proof is requesting a signature.

@@ -79,7 +79,7 @@ use std::convert::TryFrom;
 use thiserror::*;
 
 /// Possible error conditions returned from the ZkAbacus API.
-#[derive(Debug, Error, Clone, Copy)]
+#[derive(Debug, Error, Clone, Copy, Serialize, Deserialize)]
 pub enum Error {
     /// An amount was too large to be representable as a 64-bit signed integer.
     #[error("amount too large to be representable (greater than 2^63: {0})")]

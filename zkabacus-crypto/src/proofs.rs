@@ -97,9 +97,9 @@ impl EstablishProof {
         context: &Context,
     ) -> (Self, CloseStateBlindingFactor, PayTokenBlindingFactor) {
         // Commit to state and corresponding close state.
-        let (state_commitment, pay_token_blinding_factor) = state.commit(rng, &params);
+        let (state_commitment, pay_token_blinding_factor) = state.commit(rng, params);
         let (close_state_commitment, close_state_blinding_factor) =
-            state.close_state().commit(rng, &params);
+            state.close_state().commit(rng, params);
 
         let pedersen_parameters = params.merchant_public_key.to_g1_pedersen_parameters();
 

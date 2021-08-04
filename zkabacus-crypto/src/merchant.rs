@@ -159,12 +159,12 @@ impl Config {
             customer_balance,
         };
         // Verify that proof is consistent with the expected inputs.
-        match proof.verify(&self, &public_values, context) {
+        match proof.verify(self, &public_values, context) {
             // If so, blindly sign the close state.
             Verified => {
                 let (state_commitment, close_state_commitment) = proof.extract_commitments();
                 Some((
-                    CloseStateBlindedSignature::sign(rng, &self, close_state_commitment),
+                    CloseStateBlindedSignature::sign(rng, self, close_state_commitment),
                     state_commitment,
                 ))
             }
@@ -187,7 +187,7 @@ impl Config {
         // Blindly sign the pay token.
         // Note that this should _only_ be called after the merchant has received a valid
         // `EstablishProof` that is consistent with the `state_commitment`.
-        BlindedPayToken::sign(rng, &self, &state_commitment)
+        BlindedPayToken::sign(rng, self, &state_commitment)
     }
 
     /**
@@ -215,18 +215,18 @@ impl Config {
             amount,
         };
         // Verify that proof is consistent with the expected inputs.
-        match pay_proof.verify(&self, &public_values, context) {
+        match pay_proof.verify(self, &public_values, context) {
             // If so, blindly sign the close state.
             Verified => {
                 let (revocation_lock_commitment, state_commitment, close_state_commitment) =
                     pay_proof.extract_commitments();
                 Some((
                     Unrevoked {
-                        config: &self,
+                        config: self,
                         revocation_lock_commitment,
                         state_commitment,
                     },
-                    CloseStateBlindedSignature::sign(rng, &self, close_state_commitment),
+                    CloseStateBlindedSignature::sign(rng, self, close_state_commitment),
                 ))
             }
             Failed => None,

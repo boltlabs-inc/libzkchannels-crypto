@@ -241,6 +241,15 @@ impl Signature {
         };
     }
 
+    /// Blind a [`Signature`] using the given [`BlindingFactor`].
+    pub fn blind(self, bf: BlindingFactor) -> BlindedSignature {
+        let Signature { sigma1, sigma2 } = self;
+        BlindedSignature(Signature {
+            sigma1,
+            sigma2: (sigma2 + (sigma1 * bf.as_scalar())).into(),
+        })
+    }
+
     /// Convert to a bytewise representation
     pub fn as_bytes(&self) -> [u8; 96] {
         let mut buf: [u8; 96] = [0; 96];
@@ -340,14 +349,14 @@ impl VerifiedBlindedMessage {
     }
 
     /// Extract the internal commitment object.
-    pub(crate) fn to_commitment(self) -> Commitment<G1Projective> {
+    pub(crate) fn into_commitment(self) -> Commitment<G1Projective> {
         self.0
     }
 
     /// Extract the group element corresponding to the internal commitment object. This is shorthand
     /// for `self.to_commitment().to_element()`.
-    pub(crate) fn to_g1(self) -> G1Projective {
-        self.to_commitment().to_element()
+    pub(crate) fn into_g1(self) -> G1Projective {
+        self.into_commitment().to_element()
     }
 }
 
@@ -374,16 +383,7 @@ impl BlindedSignature {
 
         BlindedSignature(Signature {
             sigma1: (signing_key.public_key().g1 * u).into(),
-            sigma2: ((signing_key.sk.x1 + msg.to_g1()) * u).into(),
-        })
-    }
-
-    /// Blind a [`Signature`] using the given [`BlindingFactor`].
-    pub fn blind(sig: Signature, bf: BlindingFactor) -> Self {
-        let Signature { sigma1, sigma2 } = sig;
-        Self(Signature {
-            sigma1,
-            sigma2: (sigma2 + (sigma1 * bf.as_scalar())).into(),
+            sigma2: ((signing_key.sk.x1 + msg.into_g1()) * u).into(),
         })
     }
 
@@ -564,9 +564,8 @@ mod test {
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
-        let sig = Signature::new(&mut rng, &kp, &msg);
         let bf = BlindingFactor::new(&mut rng);
-        let mut blind_sig = BlindedSignature::blind(sig, bf);
+        let mut blind_sig = Signature::new(&mut rng, &kp, &msg).blind(bf);
         blind_sig.randomize(&mut rng);
         let sig = blind_sig.unblind(bf);
 

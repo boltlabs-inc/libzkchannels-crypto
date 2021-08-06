@@ -5,13 +5,13 @@ use zkchannels_crypto::{
     Message, Rng,
 };
 
-struct PublicOpeningProof {
+struct PartialOpeningProof {
     pub public_value: Scalar,
     pub public_value_commitment_scalar: Scalar,
     pub commitment_proof: CommitmentProof<G1Projective, 2>,
 }
 
-impl PublicOpeningProof {
+impl PartialOpeningProof {
     pub fn new(
         rng: &mut impl Rng,
         pedersen_params: &PedersenParameters<G1Projective, 2>,
@@ -28,7 +28,7 @@ impl PublicOpeningProof {
             rng,
             msg,
             &[None; 2],
-            &pedersen_params,
+            pedersen_params,
         );
 
         // Save the commitment scalar corresponding to `public_value` (the first in the tuple)
@@ -42,7 +42,7 @@ impl PublicOpeningProof {
             .finish();
 
         // Finish building the proof and assemble components.
-        PublicOpeningProof {
+        PartialOpeningProof {
             public_value,
             public_value_commitment_scalar,
             commitment_proof: proof_builder.generate_proof_response(challenge),
@@ -72,7 +72,7 @@ impl PublicOpeningProof {
         // 3. Make sure the commitment proof is valid.
         let proof_validates = self
             .commitment_proof
-            .verify_knowledge_of_opening_of_commitment(&pedersen_params, challenge);
+            .verify_knowledge_of_opening_of_commitment(pedersen_params, challenge);
 
         public_value_matches_expected && public_value_matches_proof && proof_validates
     }
@@ -84,7 +84,7 @@ fn main() {
     let public_value = 123456789;
 
     let public_opening_proof =
-        PublicOpeningProof::new(&mut rng, &pedersen_params, public_value, 777666555);
+        PartialOpeningProof::new(&mut rng, &pedersen_params, public_value, 777666555);
 
     assert!(public_opening_proof.verify(&pedersen_params, public_value));
 }

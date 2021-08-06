@@ -1,3 +1,7 @@
+//! Proof of knowledge of the opening of a blinded message (e.g. a Pedesen commitment formed with
+//! parameters derived from a Pointcheval Sanders public key).
+//! To be used to verify messages for Pointcheval Sanders blind signatures.
+
 use crate::{
     common::*,
     pointcheval_sanders::{BlindedMessage, PublicKey, VerifiedBlindedMessage},
@@ -8,32 +12,30 @@ use serde::{Deserialize, Serialize};
 use super::{ChallengeBuilder, ChallengeInput};
 
 /// Fully constructed proof of knowledge of the opening of a blinded message.
+/// (that is, of a [`Message`] tuple).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureRequestProof<const N: usize> {
-    /// Blinded message on which this proof is requesting a signature.
-    blinded_message: BlindedMessage,
-    /// Proof of knowledge of opening of the `message_commitment`.
+    /// Proof of knowledge of opening of a blinded message.
     commitment_proof: CommitmentProof<G2Projective, N>,
 }
 
-/// A partially-built [`SignatureRequestProof`].
+/// A partially-built [`SignatureRequestProof`];
 ///
 /// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
 pub struct SignatureRequestProofBuilder<const N: usize> {
-    /// Blinded message on which this proof is requesting a signature.
-    blinded_message: BlindedMessage,
-    /// Commitment phase output for the underlying proof of knowledge of the opening of the `message_commitment`.
+    /// Commitment phase output for the underlying proof of knowledge of the opening of the
+    /// blinded message.
     commitment_proof_builder: CommitmentProofBuilder<G2Projective, N>,
 }
 
 #[allow(unused)]
 impl<const N: usize> SignatureRequestProofBuilder<N> {
-    /// Run the commitment phase of a Schnorr-style signature proof.
+    /// Run the commitment phase of a Schnorr-style signature request proof
+    /// to prove knowledge of the message tuple `msg`.
     ///
     /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
-    /// commitment scalars in the case that they need to satisfy some sort of constraint, for
-    /// example when implementing equality or linear combination constraints on top of the proof.
+    /// commitment scalars to create additional constraints.
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
         msg: &Message<N>,

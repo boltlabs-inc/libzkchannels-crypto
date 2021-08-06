@@ -1,3 +1,5 @@
+//! Proof of knowledge of the opening of a Pedersen commitment.
+
 use crate::{
     common::*,
     pedersen::{Commitment, PedersenParameters},
@@ -10,6 +12,7 @@ use group::Group;
 use serde::*;
 
 /// Fully constructed proof of knowledge of the opening of a commitment.
+/// (that is, of a [`Message`] tuple).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: SerializeElement")]
 pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
@@ -98,15 +101,11 @@ pub struct CommitmentProofBuilder<G: Group<Scalar = Scalar>, const N: usize> {
 }
 
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
-    /// Run the commitment phase of a Schnorr-style commitment proof.
+    /// Run the commitment phase of a Schnorr-style commitment proof
+    /// to prove knowledge of the message tuple `msg`.
     ///
-    /// This is a proof of knowledge of the message `msg`.
     /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
-    /// commitment scalars for the message tuple. This allows them to express constraints among
-    /// messages in one or more proof objects. For example, equality of two message elements is
-    /// enforced by using the same commitment scalar for those elements. A linear equation (message
-    /// tuples `a`, `b`, `c` where `c = a + b`) is enforced by setting the commitment scalar for `c`
-    /// to the sum of the commitment scalars for `a` and `b`.
+    /// commitment scalars to create additional constraints.
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
         msg: Message<N>,

@@ -1,3 +1,5 @@
+//! Constraint that a message lies within the range `[0, 2^63)`.
+
 use crate::{
     common::*,
     pointcheval_sanders::{KeyPair, PublicKey, Signature},
@@ -92,7 +94,7 @@ pub struct RangeConstraintBuilder {
 /// # Algorithm
 /// This is a Camenish, Chaabouni, and shelat-style range constraint \[2\] built using standard
 /// Schnorr. It replaces the signature scheme in \[2\] with single-message Pointcheval-Sanders
-/// signatures \[1\], and uses the pairing group defined in BLS12-381 \[3\].
+/// signatures \[1\], and uses the pairing in BLS12-381 \[3\].
 /// It does not support the techniques in \[2\] for constraints over an arbitrary interval, and
 /// the parameters are fixed as `u = 128` and `l = 9`.
 ///

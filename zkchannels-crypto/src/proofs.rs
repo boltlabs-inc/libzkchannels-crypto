@@ -1,6 +1,9 @@
-//! Schnorr-based zero-knowledge proofs of knowledge for Pedersen commitments and Pointcheval Sanders efficient protocols.
+//! Schnorr-based zero-knowledge proofs of knowledge for Pedersen commitments and Pointcheval
+//! Sanders efficient protocols.
 //!
-//! In addition to standard proofs of knowledge of an opening of a commitment or of a signature on a committed message, these proofs are designed to be combinable and to support a variety of common constraints:
+//! In addition to standard proofs of knowledge of an opening of a commitment or of a signature on
+//! a committed message, these proofs are designed to be combinable and to support a variety of
+//! common constraints:
 //! - Linear relationships of committed messages;
 //! - Partial openings of committed messages;
 //! - Range constraints for the range `[0, 2^63)`.
@@ -13,8 +16,8 @@
 //!
 //! # Proofs
 //! Each proof and constraint is constructed with a three phase process, based on the original
-//! Schnorr protocol [\[1\]](#references). This section gives a generic overview of the construction of a
-//! proof.
+//! Schnorr protocol [\[1\]](#references). This section gives a generic overview of the
+//! construction of a proof.
 //!
 //! 1. **Commit**. The prover forms a commitment to the underlying message. Some proof types
 //!    require additional information at this step. The prover chooses
@@ -108,23 +111,28 @@
 //! The library includes integrated support for range constraints and allows manual addition and
 //! verification of other types of constraints.
 //!
-//! The library supports combining multiple proof objects and constraints. But this combination
-//! requires some expertise to do correctly!
-//! Most constraints involve manipulation of the challenge scalars. Applying relationships to
-//! the challenge scalars can enforce properties on the underlying messages, and will lead to
+//! The library supports the combination of multiple proof objects and message constraints.
+//! But this combination requires some expertise to do correctly!
+//!
+//! In general, constraints involve manipulation of the challenge scalars. Applying relationships
+//! to the challenge scalars can enforce properties on the underlying messages, and will lead to
 //! equivalent relationships in the response scalars. To validate the proof, check that these
 //! relationships still hold with respect to the response scalars.
 //!
-//! To access commitment scalars, use the `conjunction_commitment_scalars()` function on the
-//! `ProofBuilder`.
-//! To access response scalars, use the `conjunction_response_scalars()` function on the `Proof`.
-//! Each of these functions return a list; the `j`th element corresponds to the `j`th message in
-//! the message tuple.
+//! The [`Message`] type has a length parameter; we refer to these objects as _message tuples_,
+//! and to each element of the underlying tuple as a message. Constraints are applied to
+//! messages, not to the entire message tuple.
 //!
 //! To apply a specific commitment scalar for a message, pass it to the commitment phase in the
 //! appropriate index of the
 //! [`conjunction_commitment_scalars`](CommitmentProofBuilder::generate_proof_commitments())
 //! parameter.
+//!
+//! To access commitment scalars from a `ProofBuilder`, use the `conjunction_commitment_scalars()`
+//! function.
+//! To access response scalars from a `Proof`, use the `conjunction_response_scalars()` function.
+//! Each of these functions return a list; the `j`th element corresponds to the `j`th message in
+//! the message tuple.
 //!
 //! Some general guidelines follow:
 //!
@@ -159,7 +167,7 @@
 //!
 //!
 //! ## Equality checks
-//! An equality check can enforce that two messages in a tuple have the same value.
+//! An equality check can enforce that two messages have the same value.
 //!
 //! To enforce an equality constraint, make these additions:
 //! 1. **Commitment phase**. The two messages must have the same commitment scalar. If they are in
@@ -173,9 +181,8 @@
 //!
 //!
 //! ## Linear combinations
-//! A linear combination enforces that a message is either
-//! the sum of two other messages or
-//! the sum of a message and a public value (e.g. that is not contained in the proof).
+//! A linear combination enforces modular relations modulo the group order.
+//! These small examples can be composed to describe more complex relations.
 //!
 //! To enforce the relationship `m1 + m2 = m3`, make these additions:
 //! 1. **Commitment phase**. The commitment scalar for `m3` must equal the sum of the commitment
@@ -184,7 +191,8 @@
 //! 2. **Verification**. The response scalar for `m3` must equal the sum of the response scalars
 //!    for `m1` and `m2`.
 //!
-//! To enforce the relationship `m1 + public = m2`, make these additions:
+//! To enforce the relationship `m1 + public = m2`, where `public` is some value known to both
+//! parties (and is not part of a message tuple), make these additions:
 //! 1. **Commitment phase**. The commitment scalar for `m2` must equal that of `m1`.
 //!
 //! 2. **Challenge phase**. Include the public value in the challenge.
@@ -197,6 +205,20 @@
 //!    ```
 //!    Also check that the public value in the proof statement matches the expected value.
 //!
+//! To enforce the relationship `m1 * public = m2`, where `public` is as above, make these
+//! additions:
+//! 1. **Commitment phase**. The commitment scalar for `m2` must equal that of `m1` multiplied by
+//!    `public`.
+//!
+//! 2. **Challenge phase**. Include the public value in the challenge.
+//!
+//! 2. **Final proof**. Include the public value along with the proof.
+//!
+//! 3. **Verification**. Let `r1` and `r2` be the response scalars corresponding to `m1` and `m2`:
+//!    ```ignore
+//!    r2 == r1 * public
+//!    ```
+//!    Also check that the public value in the proof statement matches the expected value.
 //!
 //! ## Range constraints
 //! A range constraint enforces that a value lies within the range `[0, 2^63)`.

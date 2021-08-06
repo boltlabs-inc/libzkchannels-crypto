@@ -393,7 +393,7 @@ fn commitment_proof_fails_on_random_commit<
     // Build proof.
     let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
-        msg.clone(),
+        msg,
         &[None; 3],
         &pedersen_params,
     );
@@ -413,7 +413,7 @@ fn commitment_proof_fails_on_random_commit<
     let bad_proof_bytes: Vec<_> = bad_com_bytes
         .iter()
         .chain(proof_bytes.iter().skip(bad_com_bytes.len()))
-        .map(|v| *v)
+        .copied()
         .collect();
     assert_ne!(
         proof_bytes, bad_proof_bytes,

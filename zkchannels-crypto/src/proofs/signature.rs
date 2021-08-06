@@ -1,3 +1,5 @@
+//! Proof of knowledge of a Pointcheval Sanders signature.
+
 use crate::{
     common::*,
     pedersen::ToPedersenParameters,
@@ -9,6 +11,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 /// Fully constructed proof of knowledge of a signature.
+/// (that is, of a [`Signature`] and the underlying [`Message`] tuple).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureProof<const N: usize> {
     /// Blinded, randomized version of the signature.
@@ -29,11 +32,11 @@ pub struct SignatureProofBuilder<const N: usize> {
 }
 
 impl<const N: usize> SignatureProofBuilder<N> {
-    /// Run the commitment phase of a Schnorr-style signature proof.
+    /// Run the commitment phase of a Schnorr-style signature proof
+    /// to prove knowledge of the message tuple `message` and the `signature`.
     ///
     /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
-    /// commitment scalars in the case that they need to satisfy some sort of constraint, for
-    /// example when implementing equality or linear combination constraints on top of the proof.
+    /// commitment scalars to create additional constraints.
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
         message: Message<N>,
@@ -41,23 +44,17 @@ impl<const N: usize> SignatureProofBuilder<N> {
         conjunction_commitment_scalars: &[Option<Scalar>; N],
         params: &PublicKey<N>,
     ) -> Self {
-        // Run commitment phase for PoK of opening of commitment to message.
-        let pedersen_params = params.to_pedersen_parameters();
-
-        // Run signature proof setup phase:
-        // Form commitment to blinding factor + message
+        // Commitment phase of PoK of the message tuple (using signature parameters).
         let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             message,
             conjunction_commitment_scalars,
-            &pedersen_params,
+            &params.to_pedersen_parameters(),
         );
 
         // Blind and randomize signature
-        let mut blinded_signature = BlindedSignature::blind(
-            signature,
-            commitment_proof_builder.message_blinding_factor(),
-        );
+        let mut blinded_signature =
+            signature.blind(commitment_proof_builder.message_blinding_factor());
         blinded_signature.randomize(rng);
 
         Self {

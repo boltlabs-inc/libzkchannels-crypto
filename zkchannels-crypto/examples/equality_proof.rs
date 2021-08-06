@@ -8,11 +8,11 @@ use zkchannels_crypto::{
 
 /// Zero knowledge proof of knowledge of a message tuple that repeats itself
 /// e.g. (x, x).
-pub struct DoubleMessageProof {
+pub struct RepeatedMessageProof {
     proof: CommitmentProof<G1Projective, 2>,
 }
 
-impl DoubleMessageProof {
+impl RepeatedMessageProof {
     pub fn new(
         rng: &mut impl Rng,
         pedersen_parameters: &PedersenParameters<G1Projective, 2>,
@@ -31,10 +31,11 @@ impl DoubleMessageProof {
                 Some(matching_commitment_scalar),
                 Some(matching_commitment_scalar),
             ],
-            &pedersen_parameters,
+            pedersen_parameters,
         );
 
-        // Generate challenge - the only public part of this proof is the proof itself.
+        // Generate challenge - the only public part of this proof is the proof itself, which
+        // includes the proof statement (the commitment to msg).
         let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
 
         // Finish the proof.
@@ -50,7 +51,7 @@ impl DoubleMessageProof {
         let challenge = ChallengeBuilder::new().with(&self.proof).finish();
         let proof_verifies = self
             .proof
-            .verify_knowledge_of_opening_of_commitment(&pedersen_parameters, challenge);
+            .verify_knowledge_of_opening_of_commitment(pedersen_parameters, challenge);
 
         responses_match && proof_verifies
     }
@@ -70,7 +71,7 @@ fn main() {
     let pedersen_parameters = PedersenParameters::new(&mut rng);
 
     // Build and verify a double message proof
-    let double_message_proof = DoubleMessageProof::new(&mut rng, &pedersen_parameters, 1000);
+    let double_message_proof = RepeatedMessageProof::new(&mut rng, &pedersen_parameters, 1000);
     assert!(double_message_proof.verify(&pedersen_parameters));
 
     // TODO: build and verify a flip-flop proof.

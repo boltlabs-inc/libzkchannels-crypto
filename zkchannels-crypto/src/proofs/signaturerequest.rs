@@ -16,7 +16,7 @@ use super::{ChallengeBuilder, ChallengeInput};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureRequestProof<const N: usize> {
     /// Proof of knowledge of opening of a blinded message.
-    commitment_proof: CommitmentProof<G2Projective, N>,
+    commitment_proof: CommitmentProof<G1Projective, N>,
 }
 
 /// A partially-built [`SignatureRequestProof`];
@@ -26,7 +26,7 @@ pub struct SignatureRequestProof<const N: usize> {
 pub struct SignatureRequestProofBuilder<const N: usize> {
     /// Commitment phase output for the underlying proof of knowledge of the opening of the
     /// blinded message.
-    commitment_proof_builder: CommitmentProofBuilder<G2Projective, N>,
+    commitment_proof_builder: CommitmentProofBuilder<G1Projective, N>,
 }
 
 #[allow(unused)]

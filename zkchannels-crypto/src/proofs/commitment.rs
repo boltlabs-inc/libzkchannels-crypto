@@ -58,7 +58,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
         &self.message_response_scalars
     }
 
-    /// Get the commitment to the response scalars.
+    /// Get the commitment to the commitment scalars.
     fn scalar_commitment(&self) -> Commitment<G> {
         self.scalar_commitment
     }
@@ -160,7 +160,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProofBuilder<G, N> {
         &self.message_commitment_scalars
     }
 
-    /// Get the commitment to the response scalars.
+    /// Get the commitment to the commitment scalars.
     fn scalar_commitment(&self) -> Commitment<G> {
         self.scalar_commitment
     }

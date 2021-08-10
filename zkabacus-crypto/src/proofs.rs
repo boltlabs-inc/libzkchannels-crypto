@@ -143,18 +143,10 @@ impl EstablishProof {
                 merchant_balance_commitment_scalar: commitment_scalars[4],
 
                 // Complete commitment proof on the state.
-                state_proof: state_proof_builder.generate_proof_response(
-                    //&state.to_message(),
-                    //pay_token_blinding_factor.0,
-                    challenge,
-                ),
+                state_proof: state_proof_builder.generate_proof_response(challenge),
 
                 // Complete commitment proof on the close state.
-                close_state_proof: close_state_proof_builder.generate_proof_response(
-                    //&state.close_state().to_message(),
-                    //close_state_blinding_factor.0,
-                    challenge,
-                ),
+                close_state_proof: close_state_proof_builder.generate_proof_response(challenge),
             },
             // Return blinding factors from newly-generated commitments.
             close_state_blinding_factor,
@@ -228,6 +220,7 @@ impl EstablishProof {
         let merchant_balances_match = state_response_scalars[4] == expected_merchant_balance
             && close_state_response_scalars[4] == expected_merchant_balance;
 
+        // Only return Verified outputs if everything passed.
         match (
             state_proof_verifies,
             close_state_proof_verifies,
@@ -456,23 +449,11 @@ impl PayProof {
                 old_pay_token_proof: old_pay_token_proof_builder.generate_proof_response(challenge),
                 // Complete the revocation lock proof.
                 old_revocation_lock_proof: old_revocation_lock_proof_builder
-                    .generate_proof_response(
-                        //&Message::from(old_state.revocation_lock().to_scalar()),
-                        //blinding_factors.for_old_revocation_lock.0,
-                        challenge,
-                    ),
+                    .generate_proof_response(challenge),
                 // Complete the state proof.
-                state_proof: state_proof_builder.generate_proof_response(
-                    //&state.to_message(),
-                    //blinding_factors.for_pay_token.0,
-                    challenge,
-                ),
+                state_proof: state_proof_builder.generate_proof_response(challenge),
                 // Complete the close state proof.
-                close_state_proof: close_state_proof_builder.generate_proof_response(
-                    //&state.close_state().to_message(),
-                    //blinding_factors.for_close_state.0,
-                    challenge,
-                ),
+                close_state_proof: close_state_proof_builder.generate_proof_response(challenge),
                 // Complete the range constraints.
                 customer_balance_proof: customer_range_constraint_builder
                     .generate_constraint_response(challenge),
@@ -526,7 +507,6 @@ impl PayProof {
             .old_revocation_lock_proof
             .verify_knowledge_of_opening_of_commitment(
                 params.revocation_commitment_parameters(),
-                //self.old_revocation_lock_commitment.0,
                 challenge,
             );
 
@@ -712,7 +692,10 @@ mod tests {
         let _ = run_establish_proof(i64::MAX as u64 + 1, 100);
     }
 
-    fn run_establish_proof(merchant_balance: u64, customer_balance: u64) -> (VerifiedBlindedState, PayTokenBlindingFactor) {
+    fn run_establish_proof(
+        merchant_balance: u64,
+        customer_balance: u64,
+    ) -> (VerifiedBlindedState, PayTokenBlindingFactor) {
         let mut rng = rng();
         let merchant_params = merchant::Config::new(&mut rng);
         let params = merchant_params.to_customer_config();
@@ -739,11 +722,12 @@ mod tests {
         };
 
         // Unwrap result - will panic if the proof is invalid.
-        let (verified_state, _) = proof.verify(&merchant_params, &public_values, &context).unwrap();
+        let (verified_state, _) = proof
+            .verify(&merchant_params, &public_values, &context)
+            .unwrap();
 
         // Return state and blinding factor (to be used in pay tests).
         (verified_state, pay_token_bf)
-            
     }
 
     #[test]
@@ -803,9 +787,9 @@ mod tests {
         let amount = pay(amount).unwrap();
         let new_state = old_state.apply_payment(&mut rng, amount).unwrap();
 
-        // Skip establish proof - deserialize blinded state into verified blinded state. Don't do this in practice.
-        let (verified_state_com, old_pt_bf) = run_establish_proof(merchant_balance, customer_balance);
-
+        // Run establish proof and sign result to get a valid signature on the old state.
+        let (verified_state_com, old_pt_bf) =
+            run_establish_proof(merchant_balance, customer_balance);
         let pay_token = BlindedPayToken::sign(&mut rng, &merchant_params, verified_state_com)
             .unblind(old_pt_bf);
 

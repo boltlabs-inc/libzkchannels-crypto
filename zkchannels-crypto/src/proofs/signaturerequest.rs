@@ -29,7 +29,6 @@ pub struct SignatureRequestProofBuilder<const N: usize> {
     commitment_proof_builder: CommitmentProofBuilder<G1Projective, N>,
 }
 
-#[allow(unused)]
 impl<const N: usize> SignatureRequestProofBuilder<N> {
     /// Run the commitment phase of a Schnorr-style signature request proof
     /// to prove knowledge of the message tuple `msg`.
@@ -37,10 +36,10 @@ impl<const N: usize> SignatureRequestProofBuilder<N> {
     /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
     /// commitment scalars to create additional constraints.
     pub fn generate_proof_commitments(
-        rng: &mut impl Rng,
-        msg: &Message<N>,
-        conjunction_commitment_scalars: &[Option<Scalar>; N],
-        params: &PublicKey<N>,
+        _rng: &mut impl Rng,
+        _msg: &Message<N>,
+        _conjunction_commitment_scalars: &[Option<Scalar>; N],
+        _params: &PublicKey<N>,
     ) -> Self {
         todo!()
     }
@@ -65,7 +64,7 @@ impl<const N: usize> SignatureRequestProofBuilder<N> {
     }
 
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
-    pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureRequestProof<N> {
+    pub fn generate_proof_response(self, _challenge: Challenge) -> SignatureRequestProof<N> {
         todo!()
     }
 }
@@ -76,7 +75,6 @@ impl<const N: usize> ChallengeInput for SignatureRequestProofBuilder<N> {
     }
 }
 
-#[allow(unused)]
 impl<const N: usize> SignatureRequestProof<N> {
     /// Check that a [`SignatureRequestProof`] is valid.
     ///
@@ -85,8 +83,8 @@ impl<const N: usize> SignatureRequestProof<N> {
     /// This verifies that the internal commitment proof is valid.
     pub fn verify_knowledge_of_blinded_message(
         &self,
-        params: &PublicKey<N>,
-        challenge: Challenge,
+        _params: &PublicKey<N>,
+        _challenge: Challenge,
     ) -> Option<VerifiedBlindedMessage> {
         todo!()
     }

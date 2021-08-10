@@ -159,10 +159,10 @@ impl Config {
         };
         // If the proof verifies consistently with the expected inputs, blind-sign the close state
         proof
-            .verify(&self, &public_values, context)
+            .verify(self, &public_values, context)
             .map(|(blinded_state, blinded_close_state)| {
                 (
-                    CloseStateBlindedSignature::sign(rng, &self, blinded_close_state),
+                    CloseStateBlindedSignature::sign(rng, self, blinded_close_state),
                     blinded_state,
                 )
             })
@@ -185,7 +185,7 @@ impl Config {
         // Blindly sign the pay token.
         // Note that this should _only_ be called after the merchant has received a valid
         // `EstablishProof` that is consistent with the `state_commitment`.
-        BlindedPayToken::sign(rng, &self, blinded_state)
+        BlindedPayToken::sign(rng, self, blinded_state)
     }
 
     /**
@@ -213,15 +213,15 @@ impl Config {
             amount,
         };
         // Verify that proof is consistent with the expected inputs.
-        pay_proof.verify(&self, &public_values, context).map(
+        pay_proof.verify(self, &public_values, context).map(
             |(blinded_state, blinded_close_state, revocation_lock_commitment)| {
                 (
                     Unrevoked {
-                        config: &self,
+                        config: self,
                         revocation_lock_commitment,
                         blinded_state,
                     },
-                    CloseStateBlindedSignature::sign(rng, &self, blinded_close_state),
+                    CloseStateBlindedSignature::sign(rng, self, blinded_close_state),
                 )
             },
         )

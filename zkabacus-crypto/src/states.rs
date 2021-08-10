@@ -337,27 +337,10 @@ impl State {
         })
     }
 
-    /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
-    /// tuple (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
+    /// Get the message representation of a State.
+    /// This is the tuple (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
     ///
     /// Note that this _does not_ include the revocation secret!
-    ///
-    /// This is typically called by the customer.
-    pub fn commit<'a>(
-        &'a self,
-        rng: &mut impl Rng,
-        param: &customer::Config,
-    ) -> (BlindedState, PayTokenBlindingFactor) {
-        let msg = self.to_message();
-        let blinding_factor = BlindingFactor::new(rng);
-        let blinded_state = msg.blind(param.merchant_public_key(), blinding_factor);
-        (
-            BlindedState(blinded_state),
-            PayTokenBlindingFactor(blinding_factor),
-        )
-    }
-
-    /// Get the message representation of a State.
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
             self.channel_id.to_scalar(),
@@ -370,25 +353,10 @@ impl State {
 }
 
 impl CloseState {
-    /// Form a commitment (and corresponding blinding factor) to the [`CloseState`] and a constant,
-    /// fixed close tag.
-    ///
-    /// This is typically called by the customer.
-    pub(crate) fn commit<'a>(
-        &'a self,
-        rng: &mut impl Rng,
-        param: &customer::Config,
-    ) -> (BlindedCloseState, CloseStateBlindingFactor) {
-        let msg = self.to_message();
-        let blinding_factor = BlindingFactor::new(rng);
-        let blinded_close_state = msg.blind(param.merchant_public_key(), blinding_factor);
-        (
-            BlindedCloseState(blinded_close_state),
-            CloseStateBlindingFactor(blinding_factor),
-        )
-    }
-
     /// Get the message representation of a CloseState.
+    /// This is the tuple (channel_id, CLOSE, revocation_lock, customer_balance, merchant_balance).
+    ///
+    /// Here, CLOSE is a constant, fixed close tag.
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
             self.channel_id.to_scalar(),

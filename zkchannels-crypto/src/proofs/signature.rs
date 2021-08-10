@@ -73,11 +73,11 @@ impl<const N: usize> SignatureProofBuilder<N> {
     }
 
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
-    pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof<N> {
+    pub fn generate_proof_response(self, challenge: Challenge) -> SignatureProof<N> {
         // Run response phase for PoK of opening of commitment to message
         let commitment_proof = self
             .commitment_proof_builder
-            .generate_proof_response(challenge_scalar);
+            .generate_proof_response(challenge);
 
         SignatureProof {
             blinded_signature: self.blinded_signature,

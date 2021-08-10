@@ -495,7 +495,7 @@ fn signature_proof_from_sig_with_identity_second() {
     build_proof_on_invalid_signature(&mut rng, bad_sig);
 }
 
-#[allow(unused)]
+#[cfg(feature = "bincode")]
 fn build_proof_on_invalid_signature(rng: &mut impl zkchannels_crypto::Rng, sig: Signature) {
     let msg = Message::<5>::random(rng);
     let kp = KeyPair::new(rng);

@@ -4,7 +4,8 @@
 
 use crate::{
     common::*,
-    pointcheval_sanders::{BlindedMessage, PublicKey, VerifiedBlindedMessage},
+    pedersen::ToPedersenParameters,
+    pointcheval_sanders::{PublicKey, VerifiedBlindedMessage},
     proofs::{Challenge, CommitmentProof, CommitmentProofBuilder},
 };
 use serde::{Deserialize, Serialize};
@@ -36,12 +37,20 @@ impl<const N: usize> SignatureRequestProofBuilder<N> {
     /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
     /// commitment scalars to create additional constraints.
     pub fn generate_proof_commitments(
-        _rng: &mut impl Rng,
-        _msg: &Message<N>,
-        _conjunction_commitment_scalars: &[Option<Scalar>; N],
-        _params: &PublicKey<N>,
+        rng: &mut impl Rng,
+        message: Message<N>,
+        conjunction_commitment_scalars: &[Option<Scalar>; N],
+        params: &PublicKey<N>,
     ) -> Self {
-        todo!()
+        // Commitment phase of PoK of the message tuple (using signature parameters).
+        Self {
+            commitment_proof_builder: CommitmentProofBuilder::generate_proof_commitments(
+                rng,
+                message,
+                conjunction_commitment_scalars,
+                &params.to_pedersen_parameters(),
+            ),
+        }
     }
 
     /// Get the commitment scalars corresponding to the message tuple to use when constructing
@@ -55,23 +64,23 @@ impl<const N: usize> SignatureRequestProofBuilder<N> {
 
     /// Get the blinding factor for the message.
     pub fn message_blinding_factor(&self) -> BlindingFactor {
-        todo!()
-    }
-
-    /// Get the [`BlindedMessage`].
-    pub fn blinded_message(&self) -> BlindedMessage {
-        todo!()
+        self.commitment_proof_builder.message_blinding_factor()
     }
 
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
-    pub fn generate_proof_response(self, _challenge: Challenge) -> SignatureRequestProof<N> {
-        todo!()
+    pub fn generate_proof_response(self, challenge: Challenge) -> SignatureRequestProof<N> {
+        // Run response phase for PoK of opening of commitment to message
+        SignatureRequestProof {
+            commitment_proof: self
+                .commitment_proof_builder
+                .generate_proof_response(challenge),
+        }
     }
 }
 
 impl<const N: usize> ChallengeInput for SignatureRequestProofBuilder<N> {
-    fn consume(&self, _builder: &mut ChallengeBuilder) {
-        todo!()
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        self.commitment_proof_builder.consume(builder);
     }
 }
 
@@ -83,10 +92,17 @@ impl<const N: usize> SignatureRequestProof<N> {
     /// This verifies that the internal commitment proof is valid.
     pub fn verify_knowledge_of_blinded_message(
         &self,
-        _params: &PublicKey<N>,
-        _challenge: Challenge,
+        params: &PublicKey<N>,
+        challenge: Challenge,
     ) -> Option<VerifiedBlindedMessage> {
-        todo!()
+        // commitment proof is valid
+        match self
+            .commitment_proof
+            .verify_knowledge_of_opening_of_commitment(&params.to_pedersen_parameters(), challenge)
+        {
+            true => Some(VerifiedBlindedMessage(self.commitment_proof.commitment())),
+            false => None,
+        }
     }
 
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.
@@ -95,15 +111,10 @@ impl<const N: usize> SignatureRequestProof<N> {
     pub fn conjunction_response_scalars(&self) -> &[Scalar; N] {
         self.commitment_proof.conjunction_response_scalars()
     }
-
-    /// Get the [`BlindedMessage`] on which this proof is requesting a signature.
-    pub fn blinded_message(&self) -> BlindedMessage {
-        todo!()
-    }
 }
 
 impl<const N: usize> ChallengeInput for SignatureRequestProof<N> {
-    fn consume(&self, _builder: &mut ChallengeBuilder) {
-        todo!()
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        self.commitment_proof.consume(builder);
     }
 }

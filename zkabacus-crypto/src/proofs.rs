@@ -89,7 +89,7 @@ impl EstablishProof {
         // Start commitment proof to the new state.
         let state_proof_builder = SignatureRequestProofBuilder::generate_proof_commitments(
             rng,
-            &state.to_message(),
+            state.to_message(),
             &[None; 5],
             params.merchant_public_key(),
         );
@@ -108,7 +108,7 @@ impl EstablishProof {
         // blinding factor.
         let close_state_proof_builder = SignatureRequestProofBuilder::generate_proof_commitments(
             rng,
-            &state.close_state().to_message(),
+            state.close_state().to_message(),
             &[Some(cs[0]), None, Some(cs[2]), Some(cs[3]), Some(cs[4])],
             params.merchant_public_key(),
         );
@@ -383,7 +383,7 @@ impl PayProof {
         // - equality: balances must match the values from the range constraint.
         let state_proof_builder = SignatureRequestProofBuilder::generate_proof_commitments(
             rng,
-            &state.to_message(),
+            state.to_message(),
             &[
                 Some(channel_id_commitment_scalar),
                 None,
@@ -404,7 +404,7 @@ impl PayProof {
         // - equality: balances must match the ones in the state (this also implies the addition constraint)
         let close_state_proof_builder = SignatureRequestProofBuilder::generate_proof_commitments(
             rng,
-            &state.close_state().to_message(),
+            state.close_state().to_message(),
             &[Some(cs[0]), None, Some(cs[2]), Some(cs[3]), Some(cs[4])],
             params.merchant_public_key(),
         );

@@ -250,6 +250,17 @@ impl Signature {
         })
     }
 
+    /// Blind and Randomize a [`Signature`] using the given [`BlindingFactor`].
+    pub fn blind_and_randomize(self, rng: &mut impl Rng, bf: BlindingFactor) -> BlindedSignature {
+        let Signature { sigma1, sigma2 } = self;
+        let mut blinded_signature = Signature {
+            sigma1,
+            sigma2: (sigma2 + (sigma1 * bf.as_scalar())).into(),
+        };
+        blinded_signature.randomize(rng);
+        BlindedSignature(blinded_signature)
+    }
+
     /// Convert to a bytewise representation
     pub fn as_bytes(&self) -> [u8; 96] {
         let mut buf: [u8; 96] = [0; 96];
@@ -567,6 +578,22 @@ mod test {
         let bf = BlindingFactor::new(&mut rng);
         let mut blind_sig = Signature::new(&mut rng, &kp, &msg).blind(bf);
         blind_sig.randomize(&mut rng);
+        let sig = blind_sig.unblind(bf);
+
+        assert!(
+            sig.verify(kp.public_key(), &msg),
+            "Signature didn't verify!!"
+        );
+    }
+
+    #[test]
+    fn blind_and_randomize_signature_works() {
+        let mut rng = rng();
+        let kp = KeyPair::new(&mut rng);
+        let msg = Message::<3>::random(&mut rng);
+
+        let bf = BlindingFactor::new(&mut rng);
+        let blind_sig = Signature::new(&mut rng, &kp, &msg).blind_and_randomize(&mut rng, bf);
         let sig = blind_sig.unblind(bf);
 
         assert!(

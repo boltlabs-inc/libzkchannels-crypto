@@ -171,11 +171,9 @@ impl Config {
     /**
     Activate a channel with the given ID. This is called as part of zkAbacus.Activate.
 
-    **Usage**: The [`BlindedState`] *must* be associated with a valid [`EstablishProof`]. This
+    **Usage**: The [`VerifiedBlindedState`] *must* be associated with a valid [`EstablishProof`]. This
     should only be called _after_ the merchant has successfully run [`initialize()`](Config::initialize())
     with the given `state_commitment`.
-
-    Note: this warning should go away after the refactor, and the BlindedState replaced with a VerifiedBlindedState.
     */
     pub fn activate(
         &self,

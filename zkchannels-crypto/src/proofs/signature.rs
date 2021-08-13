@@ -53,9 +53,8 @@ impl<const N: usize> SignatureProofBuilder<N> {
         );
 
         // Blind and randomize signature
-        let mut blinded_signature =
-            signature.blind(commitment_proof_builder.message_blinding_factor());
-        blinded_signature.randomize(rng);
+        let blinded_signature =
+            signature.blind_and_randomize(rng, commitment_proof_builder.message_blinding_factor());
 
         Self {
             blinded_signature,

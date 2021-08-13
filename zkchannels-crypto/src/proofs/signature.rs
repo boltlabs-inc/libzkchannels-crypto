@@ -57,6 +57,7 @@ use crate::{
     },
     BlindingFactor,
 };
+use core::ops::Neg;
 use serde::{Deserialize, Serialize};
 
 /// Fully constructed proof of knowledge of a signature.
@@ -187,10 +188,15 @@ impl<const N: usize> SignatureProof<N> {
 
         // commitment proof matches blinded signature
         let sig = self.blinded_signature.0;
-        let commitment_proof_matches_signature = pairing(
-            &sig.sigma1(),
-            &(params.x2 + self.message_commitment.to_element()).into(),
-        ) == pairing(&sig.sigma2(), &params.g2);
+        let commitment_proof_matches_signature = multi_miller_loop(&[
+            (
+                &sig.sigma1(),
+                &(G2Affine::from(params.x2 + self.message_commitment.to_element()).into()),
+            ),
+            (&sig.sigma2(), &params.g2.neg().into()),
+        ])
+        .final_exponentiation()
+            == Gt::identity();
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }

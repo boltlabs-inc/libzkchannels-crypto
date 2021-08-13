@@ -96,13 +96,9 @@ impl<const N: usize> SignatureRequestProof<N> {
         challenge: Challenge,
     ) -> Option<VerifiedBlindedMessage> {
         // commitment proof is valid
-        match self
-            .commitment_proof
+        self.commitment_proof
             .verify_knowledge_of_opening_of_commitment(&params.to_pedersen_parameters(), challenge)
-        {
-            true => Some(VerifiedBlindedMessage(self.commitment_proof.commitment())),
-            false => None,
-        }
+            .then(|| VerifiedBlindedMessage(self.commitment_proof.commitment()))
     }
 
     /// Get the response scalars corresponding to the message to verify conjunctions of proofs.

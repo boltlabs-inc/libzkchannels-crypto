@@ -95,8 +95,7 @@ impl Config {
     }
 
     /// The parameters for constructing range constraints.
-    #[allow(unused_qualifications)]
-    pub fn range_constraint_parameters(&self) -> &crate::RangeConstraintParameters {
+    pub fn range_constraint_parameters(&self) -> &RangeConstraintParameters {
         &self.range_constraint_parameters
     }
 }
@@ -128,9 +127,9 @@ pub struct Requested {
 #[non_exhaustive]
 pub struct RequestMessage {
     /// Commitment to the initial close state.
-    pub close_state_commitment: CloseStateCommitment,
+    pub close_state_commitment: BlindedCloseState,
     /// Commitment to the initial state.
-    pub state_commitment: StateCommitment,
+    pub state_commitment: BlindedState,
     /// Proof that channel is being correctly established.
     pub proof: EstablishProof,
 }

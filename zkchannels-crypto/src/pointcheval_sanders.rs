@@ -241,13 +241,15 @@ impl Signature {
         };
     }
 
-    /// Blind a [`Signature`] using the given [`BlindingFactor`].
-    pub fn blind(self, bf: BlindingFactor) -> BlindedSignature {
+    /// Blind and Randomize a [`Signature`] using the given [`BlindingFactor`].
+    pub fn blind_and_randomize(self, rng: &mut impl Rng, bf: BlindingFactor) -> BlindedSignature {
         let Signature { sigma1, sigma2 } = self;
-        BlindedSignature(Signature {
+        let mut blinded_signature = Signature {
             sigma1,
             sigma2: (sigma2 + (sigma1 * bf.as_scalar())).into(),
-        })
+        };
+        blinded_signature.randomize(rng);
+        BlindedSignature(blinded_signature)
     }
 
     /// Convert to a bytewise representation
@@ -565,8 +567,7 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let mut blind_sig = Signature::new(&mut rng, &kp, &msg).blind(bf);
-        blind_sig.randomize(&mut rng);
+        let blind_sig = Signature::new(&mut rng, &kp, &msg).blind_and_randomize(&mut rng, bf);
         let sig = blind_sig.unblind(bf);
 
         assert!(

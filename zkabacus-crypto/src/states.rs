@@ -13,11 +13,12 @@ goes as follows:
 4. the customer unblinds the output.
 
 To produce a [`PayToken`], the customer blinds the [`State`] with a [`PayTokenBlindingFactor`].
-This produces a [`StateCommitment`], which the merchant signs to produce a [`BlindedPayToken`].
+This produces a [`BlindedState`], which the merchant verifies with a proof to get a
+[`VerifiedBlindedState`]. Then, they blindly sign that to produce a [`BlindedPayToken`].
 
 To produce a [`CloseStateSignature`], the customer blinds the [`CloseState`] with a
-[`CloseStateBlindingFactor`]. This produces a [`CloseStateCommitment`], which the merchant signs
-to produce a [`CloseStateBlindedSignature`].
+[`CloseStateBlindingFactor`]. This produces a [`BlindedCloseState`], which the merchant verifies
+to receive a [`VerifiedBlindedCloseState`], and signs to produce a [`CloseStateBlindedSignature`].
 
 The customer must blind the input and unblind the output with the _same_ blinding factor.
 */
@@ -300,18 +301,6 @@ impl State {
         self.revocation_secret
     }
 
-    /// Form a commitment (and corresponding blinding factor) to the `State`'s
-    /// [`RevocationLock`].
-    pub fn commit_to_revocation(
-        &self,
-        rng: &mut impl Rng,
-        param: &customer::Config,
-    ) -> (RevocationLockCommitment, RevocationLockBlindingFactor) {
-        let blinding_factor = RevocationLockBlindingFactor::new(rng);
-        let commitment = self.revocation_lock().commit(param, &blinding_factor);
-        (commitment, blinding_factor)
-    }
-
     /// Get the [`CloseState`] corresponding to this `State`.
     ///
     /// This is typically called by the customer.
@@ -348,27 +337,10 @@ impl State {
         })
     }
 
-    /// Form a commitment (and corresponding blinding factor) to the [`State`] - that is, to the
-    /// tuple (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
+    /// Get the message representation of a State.
+    /// This is the tuple (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
     ///
     /// Note that this _does not_ include the revocation secret!
-    ///
-    /// This is typically called by the customer.
-    pub fn commit<'a>(
-        &'a self,
-        rng: &mut impl Rng,
-        param: &customer::Config,
-    ) -> (StateCommitment, PayTokenBlindingFactor) {
-        let msg = self.to_message();
-        let blinding_factor = BlindingFactor::new(rng);
-        let blinded_state = msg.blind(param.merchant_public_key(), blinding_factor);
-        (
-            StateCommitment(blinded_state),
-            PayTokenBlindingFactor(blinding_factor),
-        )
-    }
-
-    /// Get the message representation of a State.
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
             self.channel_id.to_scalar(),
@@ -381,25 +353,10 @@ impl State {
 }
 
 impl CloseState {
-    /// Form a commitment (and corresponding blinding factor) to the [`CloseState`] and a constant,
-    /// fixed close tag.
-    ///
-    /// This is typically called by the customer.
-    pub(crate) fn commit<'a>(
-        &'a self,
-        rng: &mut impl Rng,
-        param: &customer::Config,
-    ) -> (CloseStateCommitment, CloseStateBlindingFactor) {
-        let msg = self.to_message();
-        let blinding_factor = BlindingFactor::new(rng);
-        let blinded_close_state = msg.blind(param.merchant_public_key(), blinding_factor);
-        (
-            CloseStateCommitment(blinded_close_state),
-            CloseStateBlindingFactor(blinding_factor),
-        )
-    }
-
     /// Get the message representation of a CloseState.
+    /// This is the tuple (channel_id, CLOSE, revocation_lock, customer_balance, merchant_balance).
+    ///
+    /// Here, CLOSE is a constant, fixed close tag.
     pub(crate) fn to_message(&self) -> Message<5> {
         Message::new([
             self.channel_id.to_scalar(),
@@ -431,21 +388,29 @@ impl CloseState {
     }
 }
 
-/// Commitment to a State: (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
-///
-/// Note that there is no direct verification function on `StateCommitment`s. They are
-/// used to generate [`BlindedPayToken`]s.
+/// Blinded representation of a State:
+/// (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
+/// The underlying State cannot be derived from this value.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct StateCommitment(pub(crate) BlindedMessage);
+pub struct BlindedState(pub(crate) BlindedMessage);
 
-/// Commitment to a CloseState and a constant, fixed close tag.
+/// Blinded representation of a State that has been verified correct via a proof.
+#[derive(Debug)]
+#[allow(missing_copy_implementations)]
+pub struct VerifiedBlindedState(pub(crate) VerifiedBlindedMessage);
+
+/// Blinded representation of a CloseState and a constant, fixed close tag.
 ///
-/// Note that there is no direct verification function on `CloseStateCommitment`s. They are
-/// used to generate [`CloseStateBlindedSignature`]s.
+/// The underlying CloseState cannot be derived from this value.
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateCommitment(pub(crate) BlindedMessage);
+pub struct BlindedCloseState(pub(crate) BlindedMessage);
+
+/// Blinded representation of a State that has been verified correct via a proof.
+#[derive(Debug)]
+#[allow(missing_copy_implementations)]
+pub struct VerifiedBlindedCloseState(pub(crate) VerifiedBlindedMessage);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -457,20 +422,20 @@ pub struct CloseStateSignature(pub(crate) Signature);
 #[allow(missing_copy_implementations)]
 pub struct CloseStateBlindedSignature(pub(crate) BlindedSignature);
 
-/// Blinding factor for a [`CloseStateCommitment`] and corresponding [`CloseStateBlindedSignature`].
+/// Blinding factor for a [`BlindedCloseState`] and corresponding [`CloseStateBlindedSignature`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub(crate) struct CloseStateBlindingFactor(pub(crate) BlindingFactor);
 
 impl CloseStateBlindedSignature {
-    /// Produce a [`CloseStateBlindedSignature`] by blindly signing the given [`CloseStateCommitment`].
+    /// Produce a [`CloseStateBlindedSignature`] by blindly signing the given [`VerifiedBlindedCloseState`].
     ///
     /// This is typically called by the merchant.
     pub(crate) fn sign(
         rng: &mut impl Rng,
         param: &merchant::Config,
-        com: CloseStateCommitment,
+        com: VerifiedBlindedCloseState,
     ) -> CloseStateBlindedSignature {
-        CloseStateBlindedSignature(BlindedSignature::new(param.signing_keypair(), rng, &com.0))
+        CloseStateBlindedSignature(BlindedSignature::new(param.signing_keypair(), rng, com.0))
     }
 
     /// Unblind a [`CloseStateBlindedSignature`] to get an (unblinded) [`CloseStateSignature`]
@@ -512,20 +477,20 @@ pub struct PayToken(pub(crate) Signature);
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct BlindedPayToken(BlindedSignature);
 
-/// Blinding factor for a [`StateCommitment`] and corresponding [`BlindedPayToken`]
+/// Blinding factor for a [`BlindedState`] and corresponding [`BlindedPayToken`]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PayTokenBlindingFactor(pub(crate) BlindingFactor);
 
 impl BlindedPayToken {
-    /// Produce a [`BlindedPayToken`] by blindly signing the given [`StateCommitment`].
+    /// Produce a [`BlindedPayToken`] by blindly signing the given [`VerifiedBlindedState`].
     ///
     /// This is typically called by the merchant.
     pub(crate) fn sign(
         rng: &mut impl Rng,
         param: &merchant::Config,
-        com: &StateCommitment,
+        com: VerifiedBlindedState,
     ) -> Self {
-        BlindedPayToken(BlindedSignature::new(param.signing_keypair(), rng, &com.0))
+        BlindedPayToken(BlindedSignature::new(param.signing_keypair(), rng, com.0))
     }
 
     /// Unblind a [`BlindedPayToken`] to get an (unblinded) [`PayToken`].

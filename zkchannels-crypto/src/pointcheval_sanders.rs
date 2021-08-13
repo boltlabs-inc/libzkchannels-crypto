@@ -14,6 +14,7 @@ use crate::{
     BlindingFactor,
 };
 use arrayvec::ArrayVec;
+use core::ops::Neg;
 use ff::Field;
 use serde::*;
 use std::iter;
@@ -196,18 +197,27 @@ impl<const N: usize> PublicKey<N> {
         }
 
         // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
-        let lhs = self.x2
-            + self
-                .y2s
-                .iter()
-                .zip(msg.iter())
-                .map(|(yi, mi)| yi * mi)
-                .sum::<G2Projective>();
+        let intermediate = G2Affine::from(
+            self.x2
+                + self
+                    .y2s
+                    .iter()
+                    .zip(msg.iter())
+                    .map(|(yi, mi)| yi * mi)
+                    .sum::<G2Projective>(),
+        );
 
-        let verify_pairing = pairing(&sig.sigma1, &lhs.into());
-        let signature_pairing = pairing(&sig.sigma2, &self.g2);
+        multi_miller_loop(&[
+            (&sig.sigma1, &intermediate.into()),
+            (&sig.sigma2, &self.g2.neg().into()),
+        ])
+        .final_exponentiation()
+            == Gt::identity()
 
-        verify_pairing == signature_pairing
+        //let verify_pairing = pairing(&sig.sigma1, &lhs.into());
+        //let signature_pairing = pairing(&sig.sigma2, &self.g2);
+
+        //verify_pairing == signature_pairing
     }
 
     /// Blind a message using the given blinding factor.

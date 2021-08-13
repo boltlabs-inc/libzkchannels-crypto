@@ -96,7 +96,9 @@ mod common {
     //! Common types used internally.
 
     pub use crate::{BlindingFactor, Message};
-    pub use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
+    pub use bls12_381::{
+        multi_miller_loop, pairing, G1Affine, G1Projective, G2Affine, G2Projective, Gt, Scalar,
+    };
     pub use group::{Group, GroupEncoding};
 
     /// A trait synonym for a cryptographically secure random number generator. This trait is

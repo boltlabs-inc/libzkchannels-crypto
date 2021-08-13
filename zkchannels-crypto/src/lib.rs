@@ -97,7 +97,7 @@ mod common {
 
     pub use crate::{BlindingFactor, Message};
     pub use bls12_381::{
-        multi_miller_loop, pairing, G1Affine, G1Projective, G2Affine, G2Projective, Gt, Scalar,
+        multi_miller_loop, G1Affine, G1Projective, G2Affine, G2Projective, Gt, Scalar,
     };
     pub use group::{Group, GroupEncoding};
 

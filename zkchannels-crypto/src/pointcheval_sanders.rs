@@ -213,11 +213,6 @@ impl<const N: usize> PublicKey<N> {
         ])
         .final_exponentiation()
             == Gt::identity()
-
-        //let verify_pairing = pairing(&sig.sigma1, &lhs.into());
-        //let signature_pairing = pairing(&sig.sigma2, &self.g2);
-
-        //verify_pairing == signature_pairing
     }
 
     /// Blind a message using the given blinding factor.

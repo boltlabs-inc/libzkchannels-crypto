@@ -57,7 +57,7 @@ use crate::{
     },
     BlindingFactor,
 };
-use core::ops::Neg;
+use std::ops::Neg;
 use serde::{Deserialize, Serialize};
 
 /// Fully constructed proof of knowledge of a signature.

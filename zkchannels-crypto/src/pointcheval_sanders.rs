@@ -14,7 +14,7 @@ use crate::{
     BlindingFactor,
 };
 use arrayvec::ArrayVec;
-use core::ops::Neg;
+use std::ops::Neg;
 use ff::Field;
 use serde::*;
 use std::iter;

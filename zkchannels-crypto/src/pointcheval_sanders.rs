@@ -14,10 +14,10 @@ use crate::{
     BlindingFactor,
 };
 use arrayvec::ArrayVec;
-use std::ops::Neg;
 use ff::Field;
 use serde::*;
 use std::iter;
+use std::ops::Neg;
 
 /// Pointcheval-Sanders secret key for multi-message operations.
 ///

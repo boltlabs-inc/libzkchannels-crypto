@@ -57,9 +57,9 @@ use crate::{
     },
     BlindingFactor,
 };
+use group::Curve;
 use serde::{Deserialize, Serialize};
 use std::ops::Neg;
-use group::Curve;
 
 /// Fully constructed proof of knowledge of a signature.
 #[derive(Debug, Clone, Serialize, Deserialize)]

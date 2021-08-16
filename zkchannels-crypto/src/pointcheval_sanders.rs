@@ -15,10 +15,9 @@ use crate::{
 };
 use arrayvec::ArrayVec;
 use ff::Field;
+use group::Curve;
 use serde::*;
 use std::{iter, ops::Neg};
-use group::Curve;
-
 
 /// Pointcheval-Sanders secret key for multi-message operations.
 ///
@@ -198,14 +197,13 @@ impl<const N: usize> PublicKey<N> {
         }
 
         // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
-        let intermediate = 
-            self.x2
-                + self
-                    .y2s
-                    .iter()
-                    .zip(msg.iter())
-                    .map(|(yi, mi)| yi * mi)
-                    .sum::<G2Projective>();
+        let intermediate = self.x2
+            + self
+                .y2s
+                .iter()
+                .zip(msg.iter())
+                .map(|(yi, mi)| yi * mi)
+                .sum::<G2Projective>();
 
         multi_miller_loop(&[
             (&sig.sigma1, &intermediate.to_affine().into()),

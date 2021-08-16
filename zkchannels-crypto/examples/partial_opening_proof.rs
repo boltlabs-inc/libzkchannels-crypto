@@ -72,7 +72,7 @@ impl PartialOpeningProof {
         // 3. Make sure the commitment proof is valid.
         let proof_validates = self
             .commitment_proof
-            .verify_knowledge_of_opening_of_commitment(pedersen_params, challenge);
+            .verify_knowledge_of_opening(pedersen_params, challenge);
 
         public_value_matches_expected && public_value_matches_proof && proof_validates
     }

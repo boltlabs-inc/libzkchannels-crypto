@@ -181,12 +181,12 @@ impl EstablishProof {
         // Check that the state proof verifies.
         let state_proof_verifies = self
             .state_proof
-            .verify_knowledge_of_blinded_message(params.signing_keypair().public_key(), challenge);
+            .verify_knowledge_of_opening(params.signing_keypair().public_key(), challenge);
 
         // Check that the close state proof verifies.
         let close_state_proof_verifies = self
             .close_state_proof
-            .verify_knowledge_of_blinded_message(params.signing_keypair().public_key(), challenge);
+            .verify_knowledge_of_opening(params.signing_keypair().public_key(), challenge);
 
         // Retrieve response scalars for the message tuples in the new state and new close state.
         let state_response_scalars = self.state_proof.conjunction_response_scalars();
@@ -505,18 +505,15 @@ impl PayProof {
 
         let old_revlock_proof_verifies = self
             .old_revocation_lock_proof
-            .verify_knowledge_of_opening_of_commitment(
-                params.revocation_commitment_parameters(),
-                challenge,
-            );
+            .verify_knowledge_of_opening(params.revocation_commitment_parameters(), challenge);
 
         let state_proof_verifies = self
             .state_proof
-            .verify_knowledge_of_blinded_message(params.signing_keypair().public_key(), challenge);
+            .verify_knowledge_of_opening(params.signing_keypair().public_key(), challenge);
 
         let close_state_proof_verifies = self
             .close_state_proof
-            .verify_knowledge_of_blinded_message(params.signing_keypair().public_key(), challenge);
+            .verify_knowledge_of_opening(params.signing_keypair().public_key(), challenge);
 
         // Retrieve response scalars for the message tuples in the state, close state, and old pay
         // token (old state). These are used to check constraints.

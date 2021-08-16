@@ -70,7 +70,7 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
         proof.conjunction_response_scalars()[pos]
     ));
     // Verify commitment proof is valid.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
 
     // Verify that the range constraint *doesn't* pass with a different response scalar.
     for i in 0..N {
@@ -236,8 +236,7 @@ fn range_constraint_test_extremes() {
         verif_challenge,
         com_proof.conjunction_response_scalars()[1],
     );
-    let com_verifies =
-        com_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge);
+    let com_verifies = com_proof.verify_knowledge_of_opening(&params, verif_challenge);
 
     assert!(zero_verifies && max_verifies && com_verifies);
 }
@@ -301,7 +300,7 @@ fn run_range_constraint_fails_with_wrong_input<const N: usize>() {
         .with(&proof)
         .finish();
     // Verify commitment proof is valid.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
 
     // Failure expected: verify range constraint is *not* valid with respect to the response scalar
     // from the commitment proof.
@@ -359,7 +358,7 @@ fn run_range_constraint_fails_if_unlinked<const N: usize>() {
         .with(&proof)
         .finish();
     // Commitment proof should still verify.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
     // Range constraint should fail, since the commitment proof isn't built correctly w.r.t it.
     let range_value_response_scalar = proof.conjunction_response_scalars()[pos];
     assert!(!range_constraint.verify_range_constraint(
@@ -422,7 +421,7 @@ fn run_range_constraint_value_revealed<const N: usize>() {
         .with(&proof)
         .finish();
     // Range constraint and commitment proof must verify.
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
     let range_value_response_scalar = proof.conjunction_response_scalars()[pos];
     assert!(range_constraint.verify_range_constraint(
         &rp_params,

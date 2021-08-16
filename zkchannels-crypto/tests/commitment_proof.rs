@@ -46,7 +46,7 @@ fn run_commitment_proof_verifies<const N: usize>() {
 
     // Proof must verify with the original commit.
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let bad_proof = modify_proof::<N>(&proof, &bad_bf_com);
     let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !bad_proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
+        !bad_proof.verify_knowledge_of_opening(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong blinding factor."
     );
 
@@ -111,7 +111,7 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let bad_proof = modify_proof::<N>(&proof, &bad_params_com);
     let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
+        !proof.verify_knowledge_of_opening(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong parameters."
     );
 
@@ -125,7 +125,7 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let bad_proof = modify_proof::<N>(&proof, &bad_msg_com);
     let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, verif_challenge),
+        !proof.verify_knowledge_of_opening(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong message."
     );
 }
@@ -178,7 +178,7 @@ fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
         challenge.to_scalar(),
         "Accidentally generated matching challenge."
     );
-    assert!(!proof.verify_knowledge_of_opening_of_commitment(&params, bad_challenge));
+    assert!(!proof.verify_knowledge_of_opening(&params, bad_challenge));
 }
 
 #[test]
@@ -238,8 +238,8 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
 
     // Verify both proofs.
     let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
-    assert!(proof1.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
-    assert!(proof2.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(proof1.verify_knowledge_of_opening(&params, verif_challenge));
+    assert!(proof2.verify_knowledge_of_opening(&params, verif_challenge));
 
     // Verify linear equation.
     assert_eq!(
@@ -289,7 +289,7 @@ fn run_commitment_proof_with_public_value<const N: usize>() {
 
     // Verify underlying proof.
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
 
     // Verify response scalars are correctly formed against the public msg. The commitment_scalar for the public value is revealed alongside the proof
     let response_scalars = proof.conjunction_response_scalars();
@@ -355,8 +355,8 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
 
     // Verify both proofs.
     let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
-    assert!(proof1.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
-    assert!(proof2.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(proof1.verify_knowledge_of_opening(&params, verif_challenge));
+    assert!(proof2.verify_knowledge_of_opening(&params, verif_challenge));
 
     // Verify linear equation.
     assert_eq!(
@@ -425,7 +425,7 @@ fn commitment_proof_fails_on_random_commit<
     // Proof must not verify with the wrong commitment. This uses the "correct" challenge - e.g.
     // the one that was used to create the proof to make sure we test commitment correctness.
     assert!(
-        !bad_proof.verify_knowledge_of_opening_of_commitment(&pedersen_params, challenge),
+        !bad_proof.verify_knowledge_of_opening(&pedersen_params, challenge),
         "Proof verified on totally random commitment."
     );
 }

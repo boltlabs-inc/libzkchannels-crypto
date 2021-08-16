@@ -90,14 +90,14 @@ impl<const N: usize> SignatureRequestProof<N> {
     /// Returns a blind-signable [`VerifiedBlindedMessage`] if so, or `None` if the proof is not valid.
     ///
     /// This verifies that the internal commitment proof is valid.
-    pub fn verify_knowledge_of_blinded_message(
+    pub fn verify_knowledge_of_opening(
         &self,
         params: &PublicKey<N>,
         challenge: Challenge,
     ) -> Option<VerifiedBlindedMessage> {
         // commitment proof is valid
         self.commitment_proof
-            .verify_knowledge_of_opening_of_commitment(&params.to_pedersen_parameters(), challenge)
+            .verify_knowledge_of_opening(&params.to_pedersen_parameters(), challenge)
             .then(|| VerifiedBlindedMessage(self.commitment_proof.commitment()))
     }
 

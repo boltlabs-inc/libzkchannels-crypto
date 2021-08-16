@@ -111,11 +111,7 @@ impl<const N: usize> SignatureProof<N> {
         // commitment proof is valid
         let valid_commitment_proof = self
             .commitment_proof
-            .verify_knowledge_of_opening_of_commitment(
-                &params.to_pedersen_parameters(),
-                //        &PedersenParameters::<G2Projective, N>::from_public_key(params),
-                challenge,
-            );
+            .verify_knowledge_of_opening(&params.to_pedersen_parameters(), challenge);
 
         // commitment proof matches blinded signature
         let commitment_proof_matches_signature =

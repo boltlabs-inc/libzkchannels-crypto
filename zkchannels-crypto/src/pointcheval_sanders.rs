@@ -319,19 +319,6 @@ impl BlindedMessage {
         let pedersen_params = public_key.to_pedersen_parameters();
         BlindedMessage(msg.commit(&pedersen_params, bf))
     }
-
-    /// Extract the internal commitment object.
-    /// Note: this function should be obsoleted when the refactor is complete.
-    pub fn to_commitment(self) -> Commitment<G1Projective> {
-        self.0
-    }
-
-    /// Extract the group element corresponding to the internal commitment object. This is shorthand
-    /// for `self.to_commitment().to_element()`.
-    /// Note: this function should be obsoleted when the refactor is complete.
-    pub fn to_g1(self) -> G1Projective {
-        self.to_commitment().to_element()
-    }
 }
 
 /// A `VerifiedBlindedMessage` is a `BlindedMessage` for which a prover has provided a
@@ -527,7 +514,7 @@ mod test {
         let bf = BlindingFactor::new(&mut rng);
         let blinded_msg = msg.blind(kp.public_key(), bf);
         // Manually generate a verified blinded message - this skips the proof step.
-        let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.to_commitment());
+        let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.0);
 
         let blind_sig = BlindedSignature::new(&kp, &mut rng, verified_blinded_msg);
         let sig = blind_sig.unblind(bf);
@@ -547,7 +534,7 @@ mod test {
         let bf = BlindingFactor::new(&mut rng);
         let blinded_msg = msg.blind(kp.public_key(), bf);
         // Manually generate a verified blinded message - this skips the proof step.
-        let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.to_commitment());
+        let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.0);
 
         let blind_sig = BlindedSignature::new(&kp, &mut rng, verified_blinded_msg);
 

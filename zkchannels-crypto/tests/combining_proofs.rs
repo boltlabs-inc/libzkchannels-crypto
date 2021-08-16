@@ -70,7 +70,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
         .with(&com_proof)
         .finish();
     // Verify commitment proof is valid.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     // Verify signature proof is valid.
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Verify they are on the same message - response scalars must match.
@@ -141,7 +141,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
         .with(&sig_proof)
         .finish();
     // Commitment proof must be valid.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     // Signature proof must be valid.
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Proofs must be on the same message - e.g. have matching response scalars.
@@ -216,7 +216,7 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
         .with(&com_proof)
         .finish();
     // Both proofs must verify.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // The response scalars must have the expected relationship.
     assert_eq!(

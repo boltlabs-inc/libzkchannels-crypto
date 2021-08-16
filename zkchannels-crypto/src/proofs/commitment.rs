@@ -33,7 +33,7 @@ pub struct CommitmentProof<G: Group<Scalar = Scalar>, const N: usize> {
 
 impl<G: Group<Scalar = Scalar>, const N: usize> CommitmentProof<G, N> {
     /// Verify knowledge of the opening of a commitment.
-    pub fn verify_knowledge_of_opening_of_commitment(
+    pub fn verify_knowledge_of_opening(
         &self,
         pedersen_params: &PedersenParameters<G, N>,
         challenge: Challenge,

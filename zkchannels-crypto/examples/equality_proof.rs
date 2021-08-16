@@ -51,7 +51,7 @@ impl RepeatedMessageProof {
         let challenge = ChallengeBuilder::new().with(&self.proof).finish();
         let proof_verifies = self
             .proof
-            .verify_knowledge_of_opening_of_commitment(pedersen_parameters, challenge);
+            .verify_knowledge_of_opening(pedersen_parameters, challenge);
 
         responses_match && proof_verifies
     }

@@ -59,6 +59,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::ops::Neg;
+use group::Curve;
 
 /// Fully constructed proof of knowledge of a signature.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,7 +192,7 @@ impl<const N: usize> SignatureProof<N> {
         let commitment_proof_matches_signature = multi_miller_loop(&[
             (
                 &sig.sigma1(),
-                &(G2Affine::from(params.x2 + self.message_commitment.to_element()).into()),
+                &(((params.x2 + self.message_commitment.to_element()).to_affine()).into()),
             ),
             (&sig.sigma2(), &params.g2.neg().into()),
         ])

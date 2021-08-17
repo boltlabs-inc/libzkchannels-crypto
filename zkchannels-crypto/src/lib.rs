@@ -119,10 +119,10 @@ mod common {
     use std::{iter::Sum, ops::Mul};
 
     pub use crate::{BlindingFactor, Message};
+    pub use arrayvec::ArrayVec;
     pub use bls12_381::{
         multi_miller_loop, G1Affine, G1Projective, G2Affine, G2Projective, Gt, Scalar,
     };
-    pub use arrayvec::ArrayVec;
     pub use group::{Group, GroupEncoding};
 
     /// A trait synonym for a cryptographically secure random number generator. This trait is

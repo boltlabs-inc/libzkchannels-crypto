@@ -287,7 +287,7 @@ impl Signature {
 
         // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
         let intermediate = public_key.x2
-            + public_key 
+            + public_key
                 .y2s
                 .iter()
                 .zip(msg.iter())
@@ -301,7 +301,6 @@ impl Signature {
         .final_exponentiation()
             == Gt::identity()
     }
-
 }
 
 impl ChallengeInput for Signature {

@@ -116,26 +116,16 @@ impl<const N: usize> SignatureProof<N> {
             .verify_knowledge_of_opening(&params.to_pedersen_parameters(), challenge);
 
         // commitment proof matches blinded signature
-        //let sig = self.blinded_signature.0;
         let commitment_proof_matches_signature = multi_miller_loop(&[
             (
                 &self.blinded_signature.sigma1(),
-                &(((params.x2 + self.commitment_proof.commitment().to_element()).to_affine()).into()),
+                &(((params.x2 + self.commitment_proof.commitment().to_element()).to_affine())
+                    .into()),
             ),
             (&self.blinded_signature.sigma2(), &params.g2.neg().into()),
         ])
         .final_exponentiation()
             == Gt::identity();
-            /*
-=======k
-
-        let commitment_proof_matches_signature =
-            pairing(
-                &self.blinded_signature.sigma1(),
-                &(params.x2 + self.commitment_proof.commitment().to_element()).into(),
-            ) == pairing(&self.blinded_signature.sigma2(), &params.g2);
->>>>>>> main
-*/
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }

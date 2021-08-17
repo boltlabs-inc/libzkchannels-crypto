@@ -9,7 +9,7 @@ A pair ([`RevocationLock`], [`RevocationSecret`]) satisfies two properties:
 with only negligible probability (e.g. basically never).
 
 */
-use crate::{customer, merchant, types::*, Rng, Verification};
+use crate::{merchant, types::*, Rng, Verification};
 use ff::Field;
 use serde::*;
 use sha3::{Digest, Sha3_256};
@@ -51,13 +51,6 @@ pub struct RevocationLockCommitment(pub(crate) Commitment<G1Projective>);
 #[allow(missing_copy_implementations)]
 pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 
-impl RevocationLockBlindingFactor {
-    /// Generate a blinding factor uniformly at random.
-    pub(crate) fn new(rng: &mut impl Rng) -> Self {
-        Self(BlindingFactor::new(rng))
-    }
-}
-
 impl RevocationSecret {
     /// Create a new, random revocation secret.
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
@@ -79,12 +72,6 @@ impl RevocationSecret {
         ]);
         RevocationLock(scalar)
     }
-
-    /// Convert a revocation secret to its canonical `Scalar` representation.
-    #[allow(unused)]
-    fn to_scalar(&self) -> Scalar {
-        self.0
-    }
 }
 
 impl RevocationLock {
@@ -93,16 +80,9 @@ impl RevocationLock {
         Verification::from(self.0 == rs.revocation_lock().0)
     }
 
-    /// Form a commitment to the revocation lock.
-    pub(crate) fn commit(
-        &self,
-        params: &customer::Config,
-        revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
-    ) -> RevocationLockCommitment {
-        RevocationLockCommitment(params.revocation_commitment_parameters.commit(
-            &Message::from(self.to_scalar()),
-            revocation_lock_blinding_factor.0,
-        ))
+    // Convert a revocation lock to its canonical [`Message`] representation.
+    pub(crate) fn to_message(&self) -> Message<1> {
+        Message::from(self.to_scalar())
     }
 
     /// Convert a revocation lock to its canonical `Scalar` representation.
@@ -111,30 +91,28 @@ impl RevocationLock {
     }
 }
 
-#[allow(unused)]
 impl RevocationLockCommitment {
     /// Validate the [`RevocationLockCommitment`] against the given parameters and blinding factor.
     ///
-    /// This function decommits the commitment _and_ confirms that the [`RevocationLock`] is
+    /// This function verifies the opening of the commitment _and_ confirms that the [`RevocationLock`] is
     /// derived from the [`RevocationSecret`].
-    pub(crate) fn verify(
+    pub(crate) fn verify_revocation_pair(
         &self,
         parameters: &merchant::Config,
         revocation_secret: &RevocationSecret,
         revocation_lock: &RevocationLock,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Verification {
-        let verify_pair = revocation_lock.verify(revocation_secret);
-        let verify_commitment = parameters.revocation_commitment_parameters.decommit(
-            &Message::from(revocation_lock.to_scalar()),
+        let pair_is_valid = revocation_lock.verify(revocation_secret);
+        let opening_is_valid = self.0.verify_opening(
+            parameters.revocation_commitment_parameters(),
             revocation_lock_blinding_factor.0,
-            self.0,
+            &Message::from(revocation_lock.to_scalar()),
         );
 
-        if matches!(verify_pair, Verification::Verified) && verify_commitment {
-            Verification::Verified
-        } else {
-            Verification::Failed
+        match (pair_is_valid, opening_is_valid) {
+            (Verification::Verified, true) => Verification::Verified,
+            _ => Verification::Failed,
         }
     }
 }

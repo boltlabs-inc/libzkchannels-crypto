@@ -9,7 +9,7 @@ use zkchannels_crypto::{
     pedersen::PedersenParameters,
     pointcheval_sanders::KeyPair,
     proofs::{ChallengeBuilder, CommitmentProofBuilder, SignatureProofBuilder},
-    BlindingFactor, Message,
+    Message,
 };
 
 #[test]
@@ -31,12 +31,10 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
 
     // Form signature on message.
     let kp = KeyPair::<N>::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Form commitment on message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Construct proof - commitment phase.
     // Use matching commitment scalars for each message item.
@@ -55,7 +53,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
         .into_inner()
         .expect("length mismatch impossible");
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &ccs, &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg, &ccs, &params);
 
     // Form challenge from both proofs.
     let challenge = ChallengeBuilder::new()
@@ -65,14 +63,14 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
 
     // Complete proofs - response phase.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg, bf, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&sig_proof)
         .with(&com_proof)
         .finish();
     // Verify commitment proof is valid.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     // Verify signature proof is valid.
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Verify they are on the same message - response scalars must match.
@@ -100,17 +98,19 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
     let msg = Message::<N>::random(&mut rng);
     // Form signature on message
     let kp = KeyPair::<N>::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Form commitment to message.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Construct proof - commitment phase.
     // Use matching commitment scalars for each message item.
-    let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+    let com_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg.clone(),
+        &[None; N],
+        &params,
+    );
     let ccs = com_proof_builder
         .conjunction_commitment_scalars()
         .iter()
@@ -120,7 +120,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
         .expect("length mismatch impossible");
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
         &mut rng,
-        msg.clone(),
+        msg,
         sig,
         &ccs,
         kp.public_key(),
@@ -134,14 +134,14 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
 
     // Complete proofs.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg, bf, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&com_proof)
         .with(&sig_proof)
         .finish();
     // Commitment proof must be valid.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     // Signature proof must be valid.
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // Proofs must be on the same message - e.g. have matching response scalars.
@@ -182,16 +182,14 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
 
     // Sign [a].
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Commit to [a + public_value].
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg2, bf);
 
     // Proof commitment phase: use the same commitment scalar for both messages.
     let com_proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg2, &[None; N], &params);
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[first_pos] =
         Some(com_proof_builder.conjunction_commitment_scalars()[second_pos]);
@@ -211,14 +209,14 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
 
     // Complete proofs - response phase.
     let sig_proof = sig_proof_builder.generate_proof_response(challenge);
-    let com_proof = com_proof_builder.generate_proof_response(&msg2, bf, challenge);
+    let com_proof = com_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
         .with(&sig_proof)
         .with(&com_proof)
         .finish();
     // Both proofs must verify.
-    assert!(com_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     // The response scalars must have the expected relationship.
     assert_eq!(

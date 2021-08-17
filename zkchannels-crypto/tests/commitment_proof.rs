@@ -3,14 +3,20 @@ mod test_utils;
 use arrayvec::ArrayVec;
 use bls12_381::*;
 use ff::Field;
-use group::{Group, GroupEncoding};
 use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
-    pedersen::Commitment,
     pedersen::PedersenParameters,
     proofs::{ChallengeBuilder, CommitmentProofBuilder},
-    BlindingFactor, Message, SerializeElement,
+    Message,
+};
+
+#[cfg(feature = "bincode")]
+use {
+    group::{Group, GroupEncoding},
+    zkchannels_crypto::{
+        pedersen::Commitment, proofs::CommitmentProof, BlindingFactor, SerializeElement,
+    },
 };
 
 #[test]
@@ -31,21 +37,20 @@ fn run_commitment_proof_verifies<const N: usize>() {
 
     // Form commmitment.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Build proof.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg, &[None; N], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof = proof_builder.generate_proof_response(challenge);
 
     // Proof must verify with the original commit.
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn commitment_proof_fails_on_wrong_commit() {
     run_commitment_proof_fails_on_wrong_commit::<1>();
     run_commitment_proof_fails_on_wrong_commit::<2>();
@@ -55,6 +60,7 @@ fn commitment_proof_fails_on_wrong_commit() {
     run_commitment_proof_fails_on_wrong_commit::<13>();
 }
 
+#[cfg(feature = "bincode")]
 fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
 
@@ -62,101 +68,81 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     let msg = Message::<N>::random(&mut rng);
 
     // Form the "correct" commmitment.
-    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
+    let pedersen_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
     // Build proof.
-    let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg.clone(),
+        &[None; N],
+        &pedersen_params,
+    );
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof_builder_for_bad_params = proof_builder.clone();
+    let proof_builder_for_bad_com = proof_builder.clone();
+    let proof = proof_builder.generate_proof_response(challenge);
 
     // Proof must not verify on a commitment with the wrong blinding factor.
     let bad_bf = BlindingFactor::new(&mut rng);
-    let bad_bf_com = params.commit(&msg, bad_bf);
+    let bad_bf_com = msg.commit(&pedersen_params, bad_bf);
     assert_ne!(
-        com, bad_bf_com,
+        proof.commitment(),
+        bad_bf_com,
         "Unfortunate RNG seed: Accidentally generated matching messages."
     );
-    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    let bad_proof = modify_proof::<N>(&proof, &bad_bf_com);
+    let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&params, bad_bf_com, verif_challenge),
+        !bad_proof.verify_knowledge_of_opening(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong blinding factor."
     );
 
     // Proof must not verify on a commitment with the wrong parameters.
     let bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bad_params_com = bad_params.commit(&msg, bf);
+    let bad_params_com = msg.commit(
+        &bad_params,
+        proof_builder_for_bad_params.message_blinding_factor(),
+    );
     assert_ne!(
-        com, bad_params_com,
+        proof.commitment(),
+        bad_params_com,
         "Unfortunate RNG seed: Accidentally generated matching messages."
     );
+    let bad_proof = modify_proof::<N>(&proof, &bad_params_com);
+    let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&params, bad_params_com, challenge),
+        !proof.verify_knowledge_of_opening(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong parameters."
     );
 
     // Proof must to verify on a commitment with the wrong message.
     let bad_msg = Message::<N>::random(&mut rng);
     assert_ne!(&*msg, &*bad_msg, "Accidentally generated matching messages");
-    let bad_msg_com = params.commit(&bad_msg, bf);
-    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    let bad_msg_com = bad_msg.commit(
+        &pedersen_params,
+        proof_builder_for_bad_com.message_blinding_factor(),
+    );
+    let bad_proof = modify_proof::<N>(&proof, &bad_msg_com);
+    let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&params, bad_msg_com, verif_challenge),
+        !proof.verify_knowledge_of_opening(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong message."
     );
 }
 
-#[test]
-fn commitment_proof_fails_on_bad_response_phase() {
-    run_commitment_proof_fails_on_bad_response_phase::<1>();
-    run_commitment_proof_fails_on_bad_response_phase::<2>();
-    run_commitment_proof_fails_on_bad_response_phase::<3>();
-    run_commitment_proof_fails_on_bad_response_phase::<5>();
-    run_commitment_proof_fails_on_bad_response_phase::<8>();
-    run_commitment_proof_fails_on_bad_response_phase::<13>();
-}
-
-fn run_commitment_proof_fails_on_bad_response_phase<const N: usize>() {
-    let mut rng = test_utils::seeded_rng();
-
-    // Generate message.
-    let msg = Message::<N>::random(&mut rng);
-
-    // Form commmitment.
-    let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
-
-    // Start proof, making a copy for each version of this test.
-    let proof_builder_for_msg =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
-    let challenge = ChallengeBuilder::new()
-        .with(&proof_builder_for_msg)
-        .finish();
-    let proof_builder_for_bf = proof_builder_for_msg.clone();
-
-    // Run response phase with wrong message.
-    let bad_msg = Message::<N>::random(&mut rng);
-    assert_ne!(
-        &*msg, &*bad_msg,
-        "Accidentally generated matching messages."
-    );
-    let proof = proof_builder_for_msg.generate_proof_response(&bad_msg, bf, challenge);
-    let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
-    assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge),
-        "Proof verified with bad message in response phase."
-    );
-
-    // Run response phase with wrong blinding factor.
-    let bad_bf = BlindingFactor::new(&mut rng);
-    let bad_bf_proof = proof_builder_for_bf.generate_proof_response(&msg, bad_bf, challenge);
-    assert!(
-        !bad_bf_proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge),
-        "Proof verified with bad blinding factor in response phase."
-    );
+#[cfg(feature = "bincode")]
+fn modify_proof<const N: usize>(
+    proof: &CommitmentProof<G1Projective, N>,
+    bad_bf_com: &Commitment<G1Projective>,
+) -> CommitmentProof<G1Projective, N> {
+    let mut ser_proof = bincode::serialize(&proof).unwrap();
+    let ser_com = bincode::serialize(&proof.commitment()).unwrap();
+    let pos = (0..ser_proof.len() - ser_com.len() + 1)
+        .find(|&i| ser_proof[i..i + ser_com.len()] == ser_com[..])
+        .unwrap();
+    let ser_bad_com = bincode::serialize(&bad_bf_com).unwrap();
+    ser_proof[pos..(pos + ser_bad_com.len())].clone_from_slice(&ser_bad_com[..]);
+    bincode::deserialize::<CommitmentProof<G1Projective, N>>(&ser_proof).unwrap()
 }
 
 #[test]
@@ -177,14 +163,12 @@ fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
 
     // Form commmitment.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Build proof using normally-generated challenge.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg, &[None; N], &params);
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof = proof_builder.generate_proof_response(challenge);
 
     // Proof must *not* verify with the wrong challenge.
     let random_bytes = rng.gen::<[u8; 32]>();
@@ -194,7 +178,7 @@ fn run_commitment_proof_fails_on_wrong_challenge<const N: usize>() {
         challenge.to_scalar(),
         "Accidentally generated matching challenge."
     );
-    assert!(!proof.verify_knowledge_of_opening_of_commitment(&params, com, bad_challenge));
+    assert!(!proof.verify_knowledge_of_opening(&params, bad_challenge));
 }
 
 #[test]
@@ -226,14 +210,10 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
 
     // Construct commitments.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf1 = BlindingFactor::new(&mut rng);
-    let com1 = params.commit(&msg1, bf1);
-    let bf2 = BlindingFactor::new(&mut rng);
-    let com2 = params.commit(&msg2, bf2);
 
     // Construct proofs - commitment phase.
     let proof_builder1 =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg1, &[None; N], &params);
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[second_pos] =
         Some(proof_builder1.conjunction_commitment_scalars()[first_pos]);
@@ -241,6 +221,7 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
     // Pass in the commitment scalar of the first position onto the third position.
     let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
+        msg2,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -252,16 +233,13 @@ fn run_commitment_proof_with_equality_relation<const N: usize>() {
         .finish();
 
     // Complete proofs - response phase.
-    let proof1 = proof_builder1.generate_proof_response(&msg1, bf1, challenge);
-    let proof2 = proof_builder2.generate_proof_response(&msg2, bf2, challenge);
+    let proof1 = proof_builder1.generate_proof_response(challenge);
+    let proof2 = proof_builder2.generate_proof_response(challenge);
 
     // Verify both proofs.
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof1.scalar_commitment())
-        .with(&proof2.scalar_commitment())
-        .finish();
-    assert!(proof1.verify_knowledge_of_opening_of_commitment(&params, com1, verif_challenge));
-    assert!(proof2.verify_knowledge_of_opening_of_commitment(&params, com2, verif_challenge));
+    let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
+    assert!(proof1.verify_knowledge_of_opening(&params, verif_challenge));
+    assert!(proof2.verify_knowledge_of_opening(&params, verif_challenge));
 
     // Verify linear equation.
     assert_eq!(
@@ -300,20 +278,18 @@ fn run_commitment_proof_with_public_value<const N: usize>() {
     let public_pos = real_rng.gen_range(0..N);
     let public_value = msg[public_pos];
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
-    let com = params.commit(&msg, bf);
 
     // Construct proof.
     let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg, &[None; N], &params);
     // Save commitment scalars for public elements (in this case, all of them).
     let commitment_scalars = proof_builder.conjunction_commitment_scalars().to_vec();
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof = proof_builder.generate_proof_response(challenge);
 
     // Verify underlying proof.
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
-    assert!(proof.verify_knowledge_of_opening_of_commitment(&params, com, verif_challenge));
+    assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
 
     // Verify response scalars are correctly formed against the public msg. The commitment_scalar for the public value is revealed alongside the proof
     let response_scalars = proof.conjunction_response_scalars();
@@ -354,20 +330,17 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
 
     // Construct commitments.
     let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-    let bf1 = BlindingFactor::new(&mut rng);
-    let com1 = params.commit(&msg1, bf1);
-    let bf2 = BlindingFactor::new(&mut rng);
-    let com2 = params.commit(&msg2, bf2);
 
     // Construct proof - commitment phase.
     let proof_builder1 =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; N], &params);
+        CommitmentProofBuilder::generate_proof_commitments(&mut rng, msg1, &[None; N], &params);
     // Commitment scalars for elements with linear relationships must match.
     let mut conjunction_commitment_scalars = [None; N];
     conjunction_commitment_scalars[second_pos] =
         Some(proof_builder1.conjunction_commitment_scalars()[first_pos]);
     let proof_builder2 = CommitmentProofBuilder::generate_proof_commitments(
         &mut rng,
+        msg2,
         &conjunction_commitment_scalars,
         &params,
     );
@@ -377,16 +350,13 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
         .with(&proof_builder1)
         .with(&proof_builder2)
         .finish();
-    let proof1 = proof_builder1.generate_proof_response(&msg1, bf1, challenge);
-    let proof2 = proof_builder2.generate_proof_response(&msg2, bf2, challenge);
+    let proof1 = proof_builder1.generate_proof_response(challenge);
+    let proof2 = proof_builder2.generate_proof_response(challenge);
 
     // Verify both proofs.
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof1.scalar_commitment())
-        .with(&proof2.scalar_commitment())
-        .finish();
-    assert!(proof1.verify_knowledge_of_opening_of_commitment(&params, com1, verif_challenge));
-    assert!(proof2.verify_knowledge_of_opening_of_commitment(&params, com2, verif_challenge));
+    let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
+    assert!(proof1.verify_knowledge_of_opening(&params, verif_challenge));
+    assert!(proof2.verify_knowledge_of_opening(&params, verif_challenge));
 
     // Verify linear equation.
     assert_eq!(
@@ -408,6 +378,7 @@ fn run_commitment_proof_with_linear_relation_public_addition<const N: usize>() {
     }
 }
 
+#[cfg(feature = "bincode")]
 fn commitment_proof_fails_on_random_commit<
     G: Group<Scalar = Scalar> + GroupEncoding + SerializeElement,
 >() {
@@ -417,46 +388,56 @@ fn commitment_proof_fails_on_random_commit<
     let msg = Message::<3>::random(&mut rng);
 
     // Form the "correct" commmitment.
-    let params = PedersenParameters::<G, 3>::new(&mut rng);
-    let bf = BlindingFactor::new(&mut rng);
+    let pedersen_params = PedersenParameters::<G, 3>::new(&mut rng);
 
     // Build proof.
-    let proof_builder =
-        CommitmentProofBuilder::generate_proof_commitments(&mut rng, &[None; 3], &params);
+    let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+        &mut rng,
+        msg,
+        &[None; 3],
+        &pedersen_params,
+    );
     let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
-    let proof = proof_builder.generate_proof_response(&msg, bf, challenge);
+    let proof = proof_builder.generate_proof_response(challenge);
 
     // Generate a bad commitment by deserializing it from a random element in G.
-    let mut bytes = Vec::<u8>::new();
+    let mut bad_com_bytes = Vec::<u8>::new();
     SerializeElement::serialize(
         &G::random(&mut rng),
-        &mut bincode::Serializer::new(&mut bytes, bincode::options()),
+        &mut bincode::Serializer::new(&mut bad_com_bytes, bincode::options()),
     )
     .unwrap();
-    let bad_com: Commitment<G> = bincode::deserialize(&bytes).unwrap();
-    // Make sure new commitment isn't accidentally the correct one.
-    assert_ne!(
-        params.commit(&msg, bf),
-        bad_com,
-        "Unfortunate RNG seed: Accidentally generated the correct commitment."
-    );
 
-    // Proof must not verify
-    let verif_challenge = ChallengeBuilder::new()
-        .with(&proof.scalar_commitment())
-        .finish();
+    // Serialize and deserialize the proof, replacing the good commitment with the bad one.
+    let proof_bytes = bincode::serialize(&proof).unwrap();
+    let bad_proof_bytes: Vec<_> = bad_com_bytes
+        .iter()
+        .chain(proof_bytes.iter().skip(bad_com_bytes.len()))
+        .copied()
+        .collect();
+    assert_ne!(
+        proof_bytes, bad_proof_bytes,
+        "Unfortunate RNG seed: Accidentally generated the correct commitment"
+    );
+    let bad_proof: CommitmentProof<G, 3> =
+        bincode::deserialize(bad_proof_bytes.as_slice()).unwrap();
+
+    // Proof must not verify with the wrong commitment. This uses the "correct" challenge - e.g.
+    // the one that was used to create the proof to make sure we test commitment correctness.
     assert!(
-        !proof.verify_knowledge_of_opening_of_commitment(&params, bad_com, verif_challenge),
+        !bad_proof.verify_knowledge_of_opening(&pedersen_params, challenge),
         "Proof verified on totally random commitment."
     );
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn commitment_proof_fails_on_random_commit_g1() {
     commitment_proof_fails_on_random_commit::<G1Projective>()
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn commitment_proof_fails_on_random_commit_g2() {
     commitment_proof_fails_on_random_commit::<G2Projective>()
 }

@@ -29,6 +29,8 @@ use crate::common::*;
 use ::serde::*;
 use arrayvec::ArrayVec;
 use ff::Field;
+use pedersen::{Commitment, PedersenParameters};
+use pointcheval_sanders::{BlindedMessage, KeyPair, PublicKey, Signature};
 use std::{iter, ops::Deref};
 
 /// Fixed-length message type used across schemes.
@@ -60,6 +62,25 @@ impl<const N: usize> Message<N> {
                 .into_inner()
                 .expect("length mismatch impossible"),
         ))
+    }
+
+    /// Form a Pedersen commitment to the message using the provided Pedersen parameters and blinding factor.
+    pub fn commit<G: Group<Scalar = Scalar>>(
+        &self,
+        pedersen_params: &PedersenParameters<G, N>,
+        bf: BlindingFactor,
+    ) -> Commitment<G> {
+        Commitment::new(self, pedersen_params, bf)
+    }
+
+    /// Form a Pointcheval Sanders blinded message from the message, using the Pointcheval Sanders blind signing public key and blinding factor.
+    pub fn blind(&self, public_key: &PublicKey<N>, bf: BlindingFactor) -> BlindedMessage {
+        BlindedMessage::new(public_key, self, bf)
+    }
+
+    /// Sign a message using Pointcheval Sanders.
+    pub fn sign(&self, rng: &mut impl Rng, kp: &KeyPair<N>) -> Signature {
+        Signature::new(rng, kp, self)
     }
 }
 
@@ -95,10 +116,13 @@ impl BlindingFactor {
 mod common {
     //! Common types used internally.
 
+    use std::{iter::Sum, ops::Mul};
+
     pub use crate::{BlindingFactor, Message};
     pub use bls12_381::{
         multi_miller_loop, G1Affine, G1Projective, G2Affine, G2Projective, Gt, Scalar,
     };
+    pub use arrayvec::ArrayVec;
     pub use group::{Group, GroupEncoding};
 
     /// A trait synonym for a cryptographically secure random number generator. This trait is
@@ -118,6 +142,29 @@ mod common {
             }
         }
     }
+
+    /// Map a function over a fixed-size array.
+    pub fn map_array<T, X, F, const N: usize>(ts: &[T; N], f: F) -> [X; N]
+    where
+        F: Fn(&T) -> X + Sized,
+        X: core::fmt::Debug,
+    {
+        ts.iter()
+            .map(f)
+            .collect::<ArrayVec<X, N>>()
+            .into_inner()
+            .expect("lengths guaranteed to match")
+    }
+
+    /// Computes the sum of the product of the elements in the two arrays.
+    /// In practice, the type T will be either a Group<Scalar = Scalar> or a Scalar.
+    pub fn inner_product<'b, T, X, const N: usize>(ts: &'b [T; N], us: &'b [Scalar; N]) -> X
+    where
+        X: Sum<X> + core::fmt::Debug,
+        T: 'b + Mul<&'b Scalar, Output = X> + Copy,
+    {
+        ts.iter().zip(us.iter()).map(|(&t, u)| t * u).sum::<X>()
+    }
 }
 
 #[cfg(test)]
@@ -129,5 +176,40 @@ mod test {
 
     pub fn rng() -> impl Rng {
         rand::rngs::StdRng::from_seed(TEST_RNG_SEED)
+    }
+
+    #[test]
+    fn map_arithmetic_on_array() {
+        let arr = [0, 1, 2, 3, 4, 5, 6];
+        let double_array = map_array(&arr, |x| x * 2);
+        assert_eq!(double_array, [0, 2, 4, 6, 8, 10, 12])
+    }
+
+    #[test]
+    fn small_inner_product_g1() {
+        let units = [G1Projective::identity(); 5];
+        let scalars = [
+            Scalar::one(),
+            Scalar::from(2),
+            Scalar::from(3),
+            Scalar::from(4),
+            Scalar::from(5),
+        ];
+        let ip = inner_product(&units, &scalars);
+        assert_eq!(ip, G1Projective::identity() * Scalar::from(15))
+    }
+
+    #[test]
+    fn small_inner_product_g2() {
+        let units = [G2Projective::identity(); 5];
+        let scalars = [
+            Scalar::one(),
+            Scalar::from(2),
+            Scalar::from(3),
+            Scalar::from(4),
+            Scalar::from(5),
+        ];
+        let ip = inner_product(&units, &scalars);
+        assert_eq!(ip, G2Projective::identity() * Scalar::from(25))
     }
 }

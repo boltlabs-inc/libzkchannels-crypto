@@ -1,85 +1,4 @@
-//! Schnorr-style constraints that a value lies within the range `[0, 2^63)`.
-//!
-//! **This range constraint cannot be used alone!** It is only meaningful when used in conjunction with a
-//! [`CommitmentProof`](crate::proofs::CommitmentProof) or [`SignatureProof`], to show that the
-//! message _in that proof_ lies within the given range.
-//!
-//! These are Camenish, Chaabouni, and shelat-style range constraints \[1\] built using standard Schnorr.
-//! They prove a value is in range `[0, u^l)`, for some parameters `u` and `l`. This implementation
-//! selects `u`, `l` to produce constraints for the range `[0, 2^63)` It also uses single-message
-//! Pointcheval-Sanders signatures \[2\] instead of the signature scheme in \[1\]. It uses the
-//! pairing group defined in BLS12-381 \[3\]. Note that this implementation only supports the range
-//! `[0, 2^63]`; \[1\] provides a technique to show a value lies in an arbitrary interval `[a,b]`,
-//! but that is not supported here.
-//!
-//! ## Intuition
-//! The prover writes the value in `u`-ary. That is, a value `B` is written `B0 .. Bl`, where each
-//! `Bi` is in the range `[0,u)`. These have the property that `B = sum( u^i * Bi )`.
-//!
-//! The prover shows they know a signature on each digit and that the digits are a correct `u`-ary
-//! representation of the corresponding value. Signatures on each possible digit are provided by the
-//! verifier: they use a one-time-use range constraint key to sign the values 0 to `u` and publish them.
-//!
-//! This module provides tools to produce a PoK over the digit signatures for a given value.
-//! However, it alone *does not* show that the `u`-ary representation matches a meaningful value!
-//! This step requires a conjunction with a [`CommitmentProof`](crate::proofs::CommitmentProof) or
-//! [`SignatureProof`].
-//!
-//! This type of constraint requires additional parameters (a range constraint public key) and a more
-//! computationally intensive setup phase by the verifier (to generate `u` signatures). Luckily,
-//! this only has to be done once over the lifetime of _all_ range constraints. It is important that the
-//! verifier does not reuse the range constraint key for any other operations, especially signing
-//! operations: the security of the constraint depends on the fact that the digit signatures can _only_
-//! be on valid `u`-ary digits.
-//!
-//! ## Expected use
-//! Suppose you wish to show that the `j`th message element in a
-//! [`CommitmentProof`](crate::proofs::CommitmentProof) is within the given range.
-//!
-//! 1. *Initiate the range constraint.* Call [`RangeConstraintBuilder::generate_constraint_commitments()`], passing
-//!     the value you wish to show is in a range.
-//!
-//! 2. *Link to the commitment proof*. The resulting [`RangeConstraintBuilder`] contains a field called
-//!     `commitment_scalar`. Place this element in the `j`th index of
-//!     `conjunction_commitment_scalars` and use it to [generate the CommitmentProof`
-//!     commitments](crate::proofs::CommitmentProofBuilder::generate_proof_commitments()).
-//!
-//! 3. *Generate a challenge*. In an interactive proof, the prover obtains a random challenge from
-//!     the verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform
-//!     an interactive proof into a non-interactive proof; see [`Challenge`] for details.
-//!
-//! 4. *Complete the constraint and the proof*. Call the `generate_proof_response()` function for the [commitment
-//!     proof](crate::proofs::CommitmentProofBuilder::generate_proof_response()) and the [range
-//!     constraint](RangeConstraintBuilder::generate_constraint_response()).
-//!
-//! To verify a range proof, the verifier must check the following:
-//!
-//! 1. The commitment proof is correctly constructed.
-//! 2. The range constraint digits are correctly constructed.
-//! 3. The value in the commitment proof corresponds to the digits in the range constraint.
-//!
-//! To do so, the verifier should first reconstruct the challenge. Verify 1 using the standard
-//! commitment proof [verification
-//! function](crate::proofs::CommitmentProof::verify_knowledge_of_opening_of_commitment()). To
-//! verify 2 and 3, retrieve the `j`th response scalar using
-//! [`CommitmentProof::conjunction_response_scalars()`](crate::proofs::CommitmentProof::conjunction_response_scalars())
-//! and pass it to [`verify_range_constraint()`](RangeConstraint::verify_range_constraint())
-//!
-//! The approach for a signature proof is similar.
-//!
-//! ## References
-//!
-//! 1. Jan Camenisch, Rafik Chaabouni, and abhi shelat. Efficient protocols for set membership and
-//!    range proofs. In Josef Pieprzyk, editor, Advances in Cryptology - ASIACRYPT 2008, pages
-//!    234–252, Berlin, Heidelberg, 2008. Springer Berlin Heidelberg.
-//!
-//! 2. David Pointcheval and Olivier Sanders. Short Randomizable Signatures. In Kazue Sako, editor,
-//!    Topics in Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International
-//!    Publishing, Cham, 2016.
-//!
-//! 3. Dan Boneh, Sergey Gorbunov, Riad S. Wahby, Hoeteck Wee, and Zhenfei Zhang. BLS Signatures,
-//!    revision 4. Internet draft, Internet Engineering Task Force, 2020.
-//!    <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04>
+//! Constraint that a message lies within the range `[0, 2^63)`.
 
 use crate::{
     common::*,
@@ -101,9 +20,17 @@ const RP_PARAMETER_U: u64 = 128;
 /// Number of digits used in the range constraint.
 const RP_PARAMETER_L: usize = 9;
 
-/// Parameters for use in a [`RangeConstraint`].
+/// Parameters used to create and verify a [`RangeConstraint`].
 ///
-/// These should be generated by a trusted party (e.g. the verifier) and can be shared with any potential provers.
+/// **Usage**: These should be generated by a trusted party (e.g. the verifier) and can be shared
+/// with any potential provers. They are computatationally intesive to generate but can be reused
+/// to generate any number of [`RangeConstraint`]s.
+///
+/// These parameters contain Pointcheval-Sanders [`Signature`]s on on each possible `u`-ary digit
+/// --- here, the values 0 to 128.
+/// The signatures are formed with a Pointcheval-Sanders key; the secret part is discarded after
+/// generation.
+/// This follows the work of Camenish, Chaabouni, and shelat. See [`RangeConstraint`] for citation.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RangeConstraintParameters {
     /// A signature on every `u`-ary digit
@@ -130,7 +57,7 @@ impl RangeConstraintParameters {
 
         let keypair = KeyPair::<1>::new(rng);
         let digit_signatures = (0..RP_PARAMETER_U)
-            .map(|i| keypair.sign(&mut *rng, &Scalar::from(i).into()))
+            .map(|i| Signature::new(rng, &keypair, &Scalar::from(i).into()))
             .collect::<ArrayVec<_, RP_PARAMETER_U_AS_USIZE>>();
 
         Self {
@@ -147,10 +74,11 @@ impl RangeConstraintParameters {
 
 /// A partially-built [`RangeConstraint`].
 ///
-/// It contains the output of the PoK of signatures setup phase and the Schnorr commitment phase.
+/// It represents the output of the setup and commitment phases of the proofs of knowledge of
+/// [signatures](SignatureProof) on the digits of the constrained value.
 #[derive(Debug)]
 pub struct RangeConstraintBuilder {
-    /// Partially-constructed PoK of the opening of signatures on each of the digits of the value.
+    /// Partially-constructed proofs of knowledge of the opening of signatures on each digit.
     ///
     /// Uses Box to avoid stack overflows (since U is large).
     digit_proof_builders: Box<[SignatureProofBuilder<1>; RP_PARAMETER_L]>,
@@ -158,9 +86,52 @@ pub struct RangeConstraintBuilder {
     commitment_scalar: Scalar,
 }
 
-/// Constraint on knowledge of a value that its `u`-ary representation falls within the given range.
+/// Constraint on knowledge of a value in the range `[0, 2^63)`.
 /// This is **not** a complete range proof unless supplied in conjunction with a
-/// [`CommitmentProof`](crate::proofs::CommitmentProof) or a [`SignatureProof`].
+/// [`CommitmentProof`](crate::proofs::CommitmentProof), a [`SignatureProof`], or a
+/// [`SignatureRequestProof`](crate::proofs::SignatureRequestProof).
+///
+/// # Algorithm
+/// This is a Camenish, Chaabouni, and shelat-style range constraint \[2\] built using standard
+/// Schnorr. It replaces the signature scheme in \[2\] with single-message Pointcheval-Sanders
+/// signatures \[1\], and uses the pairing in BLS12-381 \[3\].
+/// It does not support the techniques in \[2\] for constraints over an arbitrary interval, and
+/// the parameters are fixed as `u = 128` and `l = 9`.
+///
+/// Since the range constraint is formed using a set of [`SignatureProof`]s, it follows the
+/// standard Schnorr 3-phase procedure: commit, challenge, response.
+/// The [`RangeConstraintBuilder`] type has functions to execute the
+/// [commitment](RangeConstraintBuilder::generate_constraint_commitments()) and
+/// [response](RangeConstraintBuilder::generate_constraint_response()) phases.
+///
+/// # Intuition
+/// The prover writes the value in `u`-ary. That is, a value `B` is written `B0 .. Bl`, where each
+/// `Bi` is in the range `[0,u)`. These have the property that `B = sum( u^i * Bi )`.
+///
+/// The prover proves knowledge of a signature on each digit and proves that the digits are a
+/// correct `u`-ary representation of the value.
+/// [Signatures on each possible digit](RangeConstraintParameters) are provided by a party trusted
+/// by the verifier: this party publishes signatures on the values 0 to `u`.
+/// The signing key is discarded after use so it cannot produce signatures on invalid digits.
+///
+/// A `RangeConstraint` describes a proof of knowledge of the digit signatures for a given value.
+/// However, it alone *does not* show that the digits match a meaningful value!
+/// This step requires a conjunction with a `Proof` type
+/// (see module-level documentation for additional details).
+///
+/// # References
+/// 1. David Pointcheval and Olivier Sanders. Short Randomizable Signatures. In Kazue Sako, editor,
+///    Topics in Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International
+///    Publishing, Cham, 2016.
+///
+/// 2. Jan Camenisch, Rafik Chaabouni, and abhi shelat. Efficient protocols for set membership and
+///    range proofs. In Josef Pieprzyk, editor, Advances in Cryptology - ASIACRYPT 2008, pages
+///    234–252, Berlin, Heidelberg, 2008. Springer Berlin Heidelberg.
+///
+/// 3. Dan Boneh, Sergey Gorbunov, Riad S. Wahby, Hoeteck Wee, and Zhenfei Zhang. BLS Signatures,
+///    revision 4. Internet draft, Internet Engineering Task Force, 2020.
+///    <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04>
+///
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RangeConstraint {
     /// Complete PoKs of the opening of a signature on each digit of the value.

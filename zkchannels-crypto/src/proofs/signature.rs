@@ -1,71 +1,21 @@
-//! Proofs of knowledge of a signature - that is, a proof that one knows the underlying message.
-//!
-//! These are Schnorr zero-knowledge proofs that use a commitment and response phase to show that
-//! the prover knows the opening of a signature, without revealing the underlying [`Message`].
-//!
-//! ## Intuition
-//! This is a Schnorr-style implementation of the efficient protocol from Pointcheval-Sanders \[1\],
-//! which defines a randomizable, blindable signature scheme. The proof itself is based on the
-//! Schnorr proof of knowledge of the opening of a commitment \[2\], but adds an additional
-//! preparation step to adapt it for signatures.
-//!
-//! The protocol has four phases to prove knowledge of a signature.
-//!
-//! 0. *Setup*. The prover blinds and randomizes the signature and forms a commitment to the
-//!     underlying message. They use the same blinding factor to blind the signature and to form the
-//!     commitment.
-//!
-//! 1. *Commit*. The prover chooses random commitment scalars for each element in the message tuple
-//!     and for the blinding factor. They form a commitment to the commitment scalars. The outputs
-//!     of steps 0 and 1 is described by [`SignatureProofBuilder`].
-//!
-//! 2. *Challenge*. In an interactive proof, the prover obtains a random challenge from the
-//!     verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform an
-//!     interactive proof into a non-interactive proof; see [`Challenge`] for details.
-//!
-//! 3. *Response*. The prover constructs response scalars, which mask each element of the message
-//!     tuple and the blinding factor with the corresponding commitment scalar and the challenge.
-//!
-//! Note that steps 1-3 are identical to those for a [commitment
-//! proof](crate::proofs::CommitmentProof). The [`SignatureProof`] consists of the commitment to the
-//! commitment scalars; the response scalars; the blinded, randomized signature; and the commitment
-//! to the message tuple from step 0.
-//!
-//! Given the proof, the verifier checks the following:
-//! 1. The underlying commitment proof is consistent (i.e. with the commitment to commitment
-//!     scalars, the challenge, and the responses scalars).
-//! 2. The (blinded, randomized) signature is valid.
-//! 3. The signature is consistent with the commitment to the message.
-//!
-//! A malicious prover cannot produce a valid, consistent set of objects without knowing the
-//! underlying message.
-//!
-//! ## References
-//! 1. David Pointcheval and Olivier Sanders. Short Randomizable Signatures. In Kazue Sako, editor,
-//!    Topics in Cryptology - CT-RSA 2016, volume 9610, pages 111–126. Springer International
-//!    Publishing, Cham, 2016.
-//!
-//! 2. C. P. Schnorr. Efficient signature generation by smart cards. Journal of Cryptology,
-//!    4(3):161–174, Jan 1991.
+//! Proof of knowledge of a Pointcheval Sanders signature.
 
 use crate::{
     common::*,
-    pedersen::Commitment,
+    pedersen::ToPedersenParameters,
     pointcheval_sanders::{BlindedSignature, PublicKey, Signature},
     proofs::{
         Challenge, ChallengeBuilder, ChallengeInput, CommitmentProof, CommitmentProofBuilder,
     },
-    BlindingFactor,
 };
 use group::Curve;
 use serde::{Deserialize, Serialize};
 use std::ops::Neg;
 
 /// Fully constructed proof of knowledge of a signature.
+/// (that is, of a [`Signature`] and the underlying [`Message`] tuple).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignatureProof<const N: usize> {
-    /// Commitment to the signed message.
-    message_commitment: Commitment<G2Projective>,
     /// Blinded, randomized version of the signature.
     blinded_signature: BlindedSignature,
     /// Proof of knowledge of opening of the `message_commitment`.
@@ -77,12 +27,6 @@ pub struct SignatureProof<const N: usize> {
 /// Built up to (but not including) the challenge phase of a Schnorr proof.
 #[derive(Debug, Clone)]
 pub struct SignatureProofBuilder<const N: usize> {
-    /// Underlying message in the signature.
-    message: Message<N>,
-    /// Commitment to the message.
-    message_commitment: Commitment<G2Projective>,
-    /// Blinding factor for the `message_commitment`.
-    message_blinding_factor: BlindingFactor,
     /// Randomized and blinded version of the original signature.
     blinded_signature: BlindedSignature,
     /// Commitment phase output for the underlying proof of knowledge of the opening of the `message_commitment`.
@@ -90,11 +34,11 @@ pub struct SignatureProofBuilder<const N: usize> {
 }
 
 impl<const N: usize> SignatureProofBuilder<N> {
-    /// Run the commitment phase of a Schnorr-style signature proof.
+    /// Run the commitment phase of a Schnorr-style signature proof
+    /// to prove knowledge of the message tuple `message` and the `signature`.
     ///
     /// The `conjunction_commitment_scalars` argument allows the caller to choose particular
-    /// commitment scalars in the case that they need to satisfy some sort of constraint, for
-    /// example when implementing equality or linear combination constraints on top of the proof.
+    /// commitment scalars to create additional constraints.
     pub fn generate_proof_commitments(
         rng: &mut impl Rng,
         message: Message<N>,
@@ -102,27 +46,19 @@ impl<const N: usize> SignatureProofBuilder<N> {
         conjunction_commitment_scalars: &[Option<Scalar>; N],
         params: &PublicKey<N>,
     ) -> Self {
-        // Run commitment phase for PoK of opening of commitment to message.
-        let params = params.to_g2_pedersen_parameters();
+        // Commitment phase of PoK of the message tuple (using signature parameters).
         let commitment_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
+            message,
             conjunction_commitment_scalars,
-            &params,
+            &params.to_pedersen_parameters(),
         );
 
-        // Run signature proof setup phase:
         // Blind and randomize signature
-        let message_blinding_factor = BlindingFactor::new(rng);
-        let mut blinded_signature = BlindedSignature::blind(signature, message_blinding_factor);
-        blinded_signature.randomize(rng);
-
-        // Form commitment to blinding factor + message
-        let message_commitment = params.commit(&message, message_blinding_factor);
+        let blinded_signature =
+            signature.blind_and_randomize(rng, commitment_proof_builder.message_blinding_factor());
 
         Self {
-            message,
-            message_commitment,
-            message_blinding_factor,
             blinded_signature,
             commitment_proof_builder,
         }
@@ -138,16 +74,13 @@ impl<const N: usize> SignatureProofBuilder<N> {
     }
 
     /// Executes the response phase of a Schnorr-style signature proof to complete the proof.
-    pub fn generate_proof_response(self, challenge_scalar: Challenge) -> SignatureProof<N> {
+    pub fn generate_proof_response(self, challenge: Challenge) -> SignatureProof<N> {
         // Run response phase for PoK of opening of commitment to message
-        let commitment_proof = self.commitment_proof_builder.generate_proof_response(
-            &self.message,
-            self.message_blinding_factor,
-            challenge_scalar,
-        );
+        let commitment_proof = self
+            .commitment_proof_builder
+            .generate_proof_response(challenge);
 
         SignatureProof {
-            message_commitment: self.message_commitment,
             blinded_signature: self.blinded_signature,
             commitment_proof,
         }
@@ -156,7 +89,6 @@ impl<const N: usize> SignatureProofBuilder<N> {
 
 impl<const N: usize> ChallengeInput for SignatureProofBuilder<N> {
     fn consume(&self, builder: &mut ChallengeBuilder) {
-        builder.consume(&self.message_commitment);
         builder.consume(&self.blinded_signature);
         builder.consume(&self.commitment_proof_builder);
     }
@@ -181,23 +113,29 @@ impl<const N: usize> SignatureProof<N> {
         // commitment proof is valid
         let valid_commitment_proof = self
             .commitment_proof
-            .verify_knowledge_of_opening_of_commitment(
-                &params.to_g2_pedersen_parameters(),
-                self.message_commitment,
-                challenge,
-            );
+            .verify_knowledge_of_opening(&params.to_pedersen_parameters(), challenge);
 
         // commitment proof matches blinded signature
-        let sig = self.blinded_signature.0;
+        //let sig = self.blinded_signature.0;
         let commitment_proof_matches_signature = multi_miller_loop(&[
             (
-                &sig.sigma1(),
-                &(((params.x2 + self.message_commitment.to_element()).to_affine()).into()),
+                &self.blinded_signature.sigma1(),
+                &(((params.x2 + self.commitment_proof.commitment().to_element()).to_affine()).into()),
             ),
-            (&sig.sigma2(), &params.g2.neg().into()),
+            (&self.blinded_signature.sigma2(), &params.g2.neg().into()),
         ])
         .final_exponentiation()
             == Gt::identity();
+            /*
+=======k
+
+        let commitment_proof_matches_signature =
+            pairing(
+                &self.blinded_signature.sigma1(),
+                &(params.x2 + self.commitment_proof.commitment().to_element()).into(),
+            ) == pairing(&self.blinded_signature.sigma2(), &params.g2);
+>>>>>>> main
+*/
 
         valid_signature && valid_commitment_proof && commitment_proof_matches_signature
     }
@@ -212,7 +150,6 @@ impl<const N: usize> SignatureProof<N> {
 
 impl<const N: usize> ChallengeInput for SignatureProof<N> {
     fn consume(&self, builder: &mut ChallengeBuilder) {
-        builder.consume(&self.message_commitment);
         builder.consume(&self.blinded_signature);
         builder.consume(&self.commitment_proof);
     }

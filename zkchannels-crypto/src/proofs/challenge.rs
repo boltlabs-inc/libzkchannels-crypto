@@ -7,7 +7,7 @@
 use crate::common::*;
 use group::GroupEncoding;
 use sha3::{Digest, Sha3_256};
-use std::convert::TryFrom;
+use std::{convert::TryFrom, ops::Mul};
 
 /// A trait implemented by types which can feed their public components into a [`ChallengeBuilder`].
 pub trait ChallengeInput {
@@ -59,6 +59,13 @@ impl Challenge {
     /// Retrieve the internal scalar value.
     pub fn to_scalar(self) -> Scalar {
         self.0
+    }
+}
+
+impl Mul<Scalar> for Challenge {
+    type Output = Scalar;
+    fn mul(self, rhs: Scalar) -> Self::Output {
+        self.0 * rhs
     }
 }
 

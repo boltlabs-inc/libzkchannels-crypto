@@ -1,16 +1,18 @@
 mod test_utils;
 
 use arrayvec::ArrayVec;
-use bls12_381::{G1Projective, Scalar};
+use bls12_381::Scalar;
 use ff::Field;
-use group::Group;
 use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
     pointcheval_sanders::{KeyPair, Signature},
     proofs::{ChallengeBuilder, SignatureProofBuilder},
-    Message, SerializeElement,
+    Message,
 };
+
+#[cfg(feature = "bincode")]
+use {bls12_381::G1Projective, group::Group, zkchannels_crypto::SerializeElement};
 
 #[test]
 fn signature_proof_verifies() {
@@ -28,7 +30,7 @@ fn run_signature_proof_verifies<const N: usize>() {
     // Generate message and form signature.
     let msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -63,7 +65,7 @@ fn run_signature_proof_fails_with_wrong_message<const N: usize>() {
     let msg = Message::<N>::random(&mut rng);
     let bad_msg = Message::<N>::random(&mut rng);
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof with the wrong message.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -100,7 +102,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_signature<const N: usize>
     let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message with the wrong parameters.
-    let sig = bad_kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &bad_kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -137,7 +139,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_proof<const N: usize>() {
     let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof with the wrong parameters.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -174,7 +176,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_verification<const N: usi
     let bad_kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -210,7 +212,7 @@ fn run_signature_proof_fails_with_wrong_challenge<const N: usize>() {
     let kp = KeyPair::new(&mut rng);
 
     // Sign message.
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -258,8 +260,8 @@ fn run_signature_proof_equality_relation<const N: usize>() {
 
     // Sign the messages
     let kp = KeyPair::new(&mut rng);
-    let sig1 = kp.sign(&mut rng, &msg);
-    let sig2 = kp.sign(&mut rng, &msg2);
+    let sig1 = msg.sign(&mut rng, &kp);
+    let sig2 = msg2.sign(&mut rng, &kp);
 
     // Form proofs - commitment phase. The commitment scalars for the matching elements must match.
     let sig_proof_builder1 = SignatureProofBuilder::generate_proof_commitments(
@@ -332,7 +334,7 @@ fn run_signature_proof_public_value<const N: usize>() {
     let pos = rng.gen_range(0..N);
     let public_value = msg[pos];
     let kp = KeyPair::new(&mut rng);
-    let sig = kp.sign(&mut rng, &msg);
+    let sig = msg.sign(&mut rng, &kp);
 
     // Construct proof.
     let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
@@ -386,8 +388,8 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
 
     // Form signatures on messages.
     let kp = KeyPair::new(&mut rng);
-    let sig1 = kp.sign(&mut rng, &msg);
-    let sig2 = kp.sign(&mut rng, &msg2);
+    let sig1 = msg.sign(&mut rng, &kp);
+    let sig2 = msg2.sign(&mut rng, &kp);
 
     // Proof commitment phase: use matching commitment scalars for message values with linear relationship.
     let sig_proof_builder1 = SignatureProofBuilder::generate_proof_commitments(
@@ -432,6 +434,7 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn signature_proof_from_random_sig() {
     let mut rng = test_utils::seeded_rng();
 
@@ -446,6 +449,7 @@ fn signature_proof_from_random_sig() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn signature_proof_from_sig_with_identities() {
     let mut rng = test_utils::seeded_rng();
 
@@ -461,6 +465,7 @@ fn signature_proof_from_sig_with_identities() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn signature_proof_from_sig_with_identity_first() {
     let mut rng = test_utils::seeded_rng();
 
@@ -476,6 +481,7 @@ fn signature_proof_from_sig_with_identity_first() {
 }
 
 #[test]
+#[cfg(feature = "bincode")]
 fn signature_proof_from_sig_with_identity_second() {
     let mut rng = test_utils::seeded_rng();
 
@@ -489,6 +495,7 @@ fn signature_proof_from_sig_with_identity_second() {
     build_proof_on_invalid_signature(&mut rng, bad_sig);
 }
 
+#[cfg(feature = "bincode")]
 fn build_proof_on_invalid_signature(rng: &mut impl zkchannels_crypto::Rng, sig: Signature) {
     let msg = Message::<5>::random(rng);
     let kp = KeyPair::new(rng);

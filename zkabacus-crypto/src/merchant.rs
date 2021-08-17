@@ -100,13 +100,12 @@ impl Config {
     }
 
     /// Extract public configuration for customers.
-    #[allow(unused_qualifications)]
     pub fn extract_customer_config_parts(
         &self,
     ) -> (
         crate::PublicKey,
         crate::CommitmentParameters,
-        crate::RangeConstraintParameters,
+        RangeConstraintParameters,
     ) {
         (
             self.signing_keypair.public_key().clone(),
@@ -151,43 +150,40 @@ impl Config {
         merchant_balance: MerchantBalance,
         proof: EstablishProof,
         context: &Context,
-    ) -> Option<(crate::ClosingSignature, StateCommitment)> {
+    ) -> Option<(crate::ClosingSignature, VerifiedBlindedState)> {
         // Collect items used to verify the proof.
         let public_values = EstablishProofPublicValues {
             channel_id: *channel_id,
             merchant_balance,
             customer_balance,
         };
-        // Verify that proof is consistent with the expected inputs.
-        match proof.verify(self, &public_values, context) {
-            // If so, blindly sign the close state.
-            Verified => {
-                let (state_commitment, close_state_commitment) = proof.extract_commitments();
-                Some((
-                    CloseStateBlindedSignature::sign(rng, self, close_state_commitment),
-                    state_commitment,
-                ))
-            }
-            Failed => None,
-        }
+        // If the proof verifies consistently with the expected inputs, blind-sign the close state
+        proof
+            .verify(self, &public_values, context)
+            .map(|(blinded_state, blinded_close_state)| {
+                (
+                    CloseStateBlindedSignature::sign(rng, self, blinded_close_state),
+                    blinded_state,
+                )
+            })
     }
 
     /**
     Activate a channel with the given ID. This is called as part of zkAbacus.Activate.
 
-    **Usage**: The [`StateCommitment`] *must* be associated with a valid [`EstablishProof`]. This
+    **Usage**: The [`VerifiedBlindedState`] *must* be associated with a valid [`EstablishProof`]. This
     should only be called _after_ the merchant has successfully run [`initialize()`](Config::initialize())
     with the given `state_commitment`.
     */
     pub fn activate(
         &self,
         rng: &mut impl Rng,
-        state_commitment: StateCommitment,
+        blinded_state: VerifiedBlindedState,
     ) -> crate::PayToken {
         // Blindly sign the pay token.
         // Note that this should _only_ be called after the merchant has received a valid
         // `EstablishProof` that is consistent with the `state_commitment`.
-        BlindedPayToken::sign(rng, self, &state_commitment)
+        BlindedPayToken::sign(rng, self, blinded_state)
     }
 
     /**
@@ -215,22 +211,18 @@ impl Config {
             amount,
         };
         // Verify that proof is consistent with the expected inputs.
-        match pay_proof.verify(self, &public_values, context) {
-            // If so, blindly sign the close state.
-            Verified => {
-                let (revocation_lock_commitment, state_commitment, close_state_commitment) =
-                    pay_proof.extract_commitments();
-                Some((
+        pay_proof.verify(self, &public_values, context).map(
+            |(blinded_state, blinded_close_state, revocation_lock_commitment)| {
+                (
                     Unrevoked {
                         config: self,
                         revocation_lock_commitment,
-                        state_commitment,
+                        blinded_state,
                     },
-                    CloseStateBlindedSignature::sign(rng, self, close_state_commitment),
-                ))
-            }
-            Failed => None,
-        }
+                    CloseStateBlindedSignature::sign(rng, self, blinded_close_state),
+                )
+            },
+        )
     }
 
     /// Validate closing information: make sure the [`CloseStateSignature`] is on the given
@@ -257,7 +249,7 @@ This is an intermediary state in zkAbacus.Pay.
 pub struct Unrevoked<'a> {
     config: &'a Config,
     revocation_lock_commitment: RevocationLockCommitment,
-    state_commitment: StateCommitment,
+    blinded_state: VerifiedBlindedState,
 }
 
 impl<'a> Unrevoked<'a> {
@@ -279,7 +271,7 @@ impl<'a> Unrevoked<'a> {
         revocation_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Result<crate::PayToken, Unrevoked<'a>> {
         // Verify that the provided parameters are consistent and they match the stored commitment.
-        match self.revocation_lock_commitment.verify(
+        match self.revocation_lock_commitment.verify_revocation_pair(
             self.config,
             revocation_secret,
             revocation_lock,
@@ -288,11 +280,7 @@ impl<'a> Unrevoked<'a> {
             // If so, blindly sign the pay token.
             // Note that the merchant should _only_ call this function after receiving
             // a valid [`PayProof`] that is consistent with the given `state_commitment`.
-            Verified => Ok(BlindedPayToken::sign(
-                rng,
-                self.config,
-                &self.state_commitment,
-            )),
+            Verified => Ok(BlindedPayToken::sign(rng, self.config, self.blinded_state)),
             Failed => Err(self),
         }
     }

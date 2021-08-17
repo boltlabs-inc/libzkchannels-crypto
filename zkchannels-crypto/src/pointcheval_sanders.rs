@@ -8,7 +8,7 @@
 
 use crate::{
     common::*,
-    pedersen::{Commitment, PedersenParameters},
+    pedersen::{Commitment, PedersenParameters, ToPedersenParameters},
     proofs::{ChallengeBuilder, ChallengeInput},
     serde::SerializeElement,
     BlindingFactor,
@@ -96,26 +96,6 @@ impl<const N: usize> SecretKey<N> {
             x1,
         }
     }
-
-    pub fn sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Signature {
-        // select h randomly from G1*.
-        let h: G1Projective = random_non_identity(&mut *rng);
-
-        // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
-        let scalar_combination = self.x
-            + self
-                .ys
-                .iter()
-                .zip(msg.iter())
-                .map(|(yi, mi)| yi * mi)
-                .sum::<Scalar>();
-
-        Signature {
-            sigma1: h.into(),
-            // sigma2 = h * [scalar_combination]
-            sigma2: (h * scalar_combination).into(),
-        }
-    }
 }
 
 impl<const N: usize> PublicKey<N> {
@@ -133,22 +113,10 @@ impl<const N: usize> PublicKey<N> {
         let g2: G2Projective = random_non_identity(&mut *rng);
 
         // y1i = g1 * [yi] (point multiplication with the secret key)
-        let y1s = sk
-            .ys
-            .iter()
-            .map(|yi| (g1 * yi).into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
+        let y1s = map_array(sk.ys.as_ref(), |yi| (g1 * yi).into());
 
         // y2i = g2 * [yi] (point multiplication with the secret key)
-        let y2s = sk
-            .ys
-            .iter()
-            .map(|yi| (g2 * yi).into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
+        let y2s = map_array(sk.ys.as_ref(), |yi| (g2 * yi).into());
 
         PublicKey {
             g1: g1.into(),
@@ -158,64 +126,6 @@ impl<const N: usize> PublicKey<N> {
             x2: (g2 * sk.x).into(),
             y2s: Box::new(y2s),
         }
-    }
-
-    /// Represent the G2 elements of `PublicKey` as [`PedersenParameters`].
-    pub(crate) fn to_g2_pedersen_parameters(&self) -> PedersenParameters<G2Projective, N> {
-        let gs = self
-            .y2s
-            .iter()
-            .map(|y2| y2.into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
-        PedersenParameters {
-            h: self.g2.into(),
-            gs: Box::new(gs),
-        }
-    }
-
-    /// Represent the G1 elements of `PublicKey` as [`PedersenParameters`].
-    pub fn to_g1_pedersen_parameters(&self) -> PedersenParameters<G1Projective, N> {
-        let gs = self
-            .y1s
-            .iter()
-            .map(|y1| y1.into())
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("lengths guaranteed to match");
-        PedersenParameters {
-            h: self.g1.into(),
-            gs: Box::new(gs),
-        }
-    }
-
-    /// Verify a signature on a given message.
-    pub fn verify(&self, msg: &Message<N>, sig: &Signature) -> bool {
-        if !sig.is_well_formed() {
-            return false;
-        }
-
-        // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
-        let intermediate = self.x2
-            + self
-                .y2s
-                .iter()
-                .zip(msg.iter())
-                .map(|(yi, mi)| yi * mi)
-                .sum::<G2Projective>();
-
-        multi_miller_loop(&[
-            (&sig.sigma1, &intermediate.to_affine().into()),
-            (&sig.sigma2, &self.g2.neg().into()),
-        ])
-        .final_exponentiation()
-            == Gt::identity()
-    }
-
-    /// Blind a message using the given blinding factor.
-    pub fn blind_message(&self, msg: &Message<N>, bf: BlindingFactor) -> BlindedMessage {
-        BlindedMessage(self.to_g1_pedersen_parameters().commit(msg, bf))
     }
 
     /// Convert the public key to a byte representation.
@@ -250,6 +160,24 @@ impl<const N: usize> ChallengeInput for PublicKey<N> {
     }
 }
 
+impl<const N: usize> ToPedersenParameters<G1Projective, N> for PublicKey<N> {
+    fn to_pedersen_parameters(&self) -> PedersenParameters<G1Projective, N> {
+        PedersenParameters::from_generators(
+            self.g1.into(),
+            map_array(self.y1s.as_ref(), |y1| y1.into()),
+        )
+    }
+}
+
+impl<const N: usize> ToPedersenParameters<G2Projective, N> for PublicKey<N> {
+    fn to_pedersen_parameters(&self) -> PedersenParameters<G2Projective, N> {
+        PedersenParameters::from_generators(
+            self.g2.into(),
+            map_array(self.y2s.as_ref(), |y2| y2.into()),
+        )
+    }
+}
+
 impl<const N: usize> KeyPair<N> {
     /// Generate a new `KeyPair` of a given length.
     ///
@@ -269,24 +197,6 @@ impl<const N: usize> KeyPair<N> {
     pub fn public_key(&self) -> &PublicKey<N> {
         &self.pk
     }
-
-    /// Sign a message.
-    pub fn sign(&self, rng: &mut impl Rng, msg: &Message<N>) -> Signature {
-        self.sk.sign(rng, msg)
-    }
-
-    /// Sign a blinded message.
-    ///
-    /// **Warning**: this should *only* be used if the signer has verified a proof of knowledge of
-    /// the opening of the `BlindedMessage`.
-    pub fn blind_sign(&self, rng: &mut impl Rng, msg: &BlindedMessage) -> BlindedSignature {
-        let u = Scalar::random(rng);
-
-        BlindedSignature(Signature {
-            sigma1: (self.public_key().g1 * u).into(),
-            sigma2: ((self.sk.x1 + msg.to_g1()) * u).into(),
-        })
-    }
 }
 
 /// A signature on a message, generated using Pointcheval-Sanders.
@@ -305,6 +215,24 @@ pub struct Signature {
 }
 
 impl Signature {
+    pub(crate) fn new<const N: usize>(
+        rng: &mut impl Rng,
+        signing_key: &KeyPair<N>,
+        msg: &Message<N>,
+    ) -> Self {
+        // select h randomly from G1*.
+        let h: G1Projective = random_non_identity(&mut *rng);
+
+        // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
+        let scalar_combination = signing_key.sk.x + inner_product(signing_key.sk.ys.as_ref(), msg);
+
+        Signature {
+            sigma1: h.into(),
+            // sigma2 = h * [scalar_combination]
+            sigma2: (h * scalar_combination).into(),
+        }
+    }
+
     /// Randomize a signature in place.
     pub fn randomize(&mut self, rng: &mut impl Rng) {
         let r = Scalar::random(rng);
@@ -312,6 +240,17 @@ impl Signature {
             sigma1: (self.sigma1 * r).into(),
             sigma2: (self.sigma2 * r).into(),
         };
+    }
+
+    /// Blind and Randomize a [`Signature`] using the given [`BlindingFactor`].
+    pub fn blind_and_randomize(self, rng: &mut impl Rng, bf: BlindingFactor) -> BlindedSignature {
+        let Signature { sigma1, sigma2 } = self;
+        let mut blinded_signature = Signature {
+            sigma1,
+            sigma2: (sigma2 + (sigma1 * bf.as_scalar())).into(),
+        };
+        blinded_signature.randomize(rng);
+        BlindedSignature(blinded_signature)
     }
 
     /// Convert to a bytewise representation
@@ -339,6 +278,30 @@ impl Signature {
     pub fn sigma2(self) -> G1Affine {
         self.sigma2
     }
+
+    /// Verify a signature on a message with respect to a given public key.
+    pub fn verify<const N: usize>(&self, public_key: &PublicKey<N>, msg: &Message<N>) -> bool {
+        if !self.is_well_formed() {
+            return false;
+        }
+
+        // x + sum( yi * [mi] ), for the public key (x, y1, ...) and message [m1], [m2]...
+        let intermediate = public_key.x2
+            + public_key 
+                .y2s
+                .iter()
+                .zip(msg.iter())
+                .map(|(yi, mi)| yi * mi)
+                .sum::<G2Projective>();
+
+        multi_miller_loop(&[
+            (&self.sigma1, &intermediate.to_affine().into()),
+            (&self.sigma2, &public_key.g2.neg().into()),
+        ])
+        .final_exponentiation()
+            == Gt::identity()
+    }
+
 }
 
 impl ChallengeInput for Signature {
@@ -353,20 +316,46 @@ impl ChallengeInput for Signature {
 /// Mathematically, this is a commitment produced using the G1 generators of the [`PublicKey`] as
 /// the parameters;
 /// programmatically, a `BlindedMessage` can be constructed using
-/// [`PublicKey::blind_message`].
+/// [`Message::blind()`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindedMessage(pub(crate) Commitment<G1Projective>);
+pub struct BlindedMessage(Commitment<G1Projective>);
 
 impl BlindedMessage {
+    pub(crate) fn new<const N: usize>(
+        public_key: &PublicKey<N>,
+        msg: &Message<N>,
+        bf: BlindingFactor,
+    ) -> Self {
+        let pedersen_params = public_key.to_pedersen_parameters();
+        BlindedMessage(msg.commit(&pedersen_params, bf))
+    }
+}
+
+/// A `VerifiedBlindedMessage` is a `BlindedMessage` for which a prover has provided a
+/// [`SignatureRequestProof`](crate::proofs::SignatureRequestProof) that verifies.
+#[derive(Debug, Clone)]
+#[allow(missing_copy_implementations)]
+pub struct VerifiedBlindedMessage(pub(crate) Commitment<G1Projective>);
+
+impl VerifiedBlindedMessage {
+    /// Blind-sign a verified blinded message.
+    pub fn blind_sign<const N: usize>(
+        self,
+        signing_key: &KeyPair<N>,
+        rng: &mut impl Rng,
+    ) -> BlindedSignature {
+        BlindedSignature::new(signing_key, rng, self)
+    }
+
     /// Extract the internal commitment object.
-    pub fn to_commitment(self) -> Commitment<G1Projective> {
+    pub(crate) fn into_commitment(self) -> Commitment<G1Projective> {
         self.0
     }
 
     /// Extract the group element corresponding to the internal commitment object. This is shorthand
     /// for `self.to_commitment().to_element()`.
-    pub fn to_g1(self) -> G1Projective {
-        self.to_commitment().to_element()
+    pub(crate) fn into_g1(self) -> G1Projective {
+        self.into_commitment().to_element()
     }
 }
 
@@ -380,15 +369,20 @@ impl ChallengeInput for BlindedMessage {
 ///
 /// This has the same representation as a regular [`Signature`], but different semantics.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct BlindedSignature(pub(crate) Signature);
+pub struct BlindedSignature(Signature);
 
 impl BlindedSignature {
-    /// Blind a [`Signature`] using the given [`BlindingFactor`].
-    pub fn blind(sig: Signature, bf: BlindingFactor) -> Self {
-        let Signature { sigma1, sigma2 } = sig;
-        Self(Signature {
-            sigma1,
-            sigma2: (sigma2 + (sigma1 * bf.as_scalar())).into(),
+    /// Sign a verified blinded message.
+    pub fn new<const N: usize>(
+        signing_key: &KeyPair<N>,
+        rng: &mut impl Rng,
+        msg: VerifiedBlindedMessage,
+    ) -> Self {
+        let u = Scalar::random(rng);
+
+        BlindedSignature(Signature {
+            sigma1: (signing_key.public_key().g1 * u).into(),
+            sigma2: ((signing_key.sk.x1 + msg.into_g1()) * u).into(),
         })
     }
 
@@ -420,6 +414,16 @@ impl BlindedSignature {
     pub fn as_bytes(&self) -> [u8; 96] {
         self.0.as_bytes()
     }
+
+    /// Extract the sigma_1 or `h` component.
+    pub(crate) fn sigma1(self) -> G1Affine {
+        self.0.sigma1
+    }
+
+    /// Extract the sigma_2 or `H` component.
+    pub(crate) fn sigma2(self) -> G1Affine {
+        self.0.sigma2
+    }
 }
 
 impl ChallengeInput for BlindedSignature {
@@ -439,10 +443,9 @@ mod test {
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
-        let sig = kp.sign(&mut rng, &msg);
-
+        let sig = Signature::new(&mut rng, &kp, &msg);
         assert!(
-            kp.public_key().verify(&msg, &sig),
+            sig.verify(kp.public_key(), &msg),
             "Signature didn't verify!! {:?}, {:?}",
             kp,
             msg
@@ -455,7 +458,7 @@ mod test {
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
-        let sig = kp.sign(&mut rng, &msg);
+        let sig = Signature::new(&mut rng, &kp, &msg);
         let bad_msg = Message::<3>::random(&mut rng);
 
         assert_ne!(
@@ -463,7 +466,7 @@ mod test {
             "RNG failed to generate a different message."
         );
         assert!(
-            !kp.public_key().verify(&bad_msg, &sig),
+            !sig.verify(kp.public_key(), &bad_msg),
             "Signature verified on the wrong message!",
         );
     }
@@ -475,10 +478,10 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bad_kp = KeyPair::new(&mut rng);
-        let bad_sig = bad_kp.sign(&mut rng, &msg);
+        let bad_sig = Signature::new(&mut rng, &bad_kp, &msg);
 
         assert!(
-            !kp.public_key().verify(&msg, &bad_sig),
+            !bad_sig.verify(kp.public_key(), &msg),
             "Signature from a different keypair verified!",
         );
     }
@@ -495,7 +498,7 @@ mod test {
         };
 
         assert!(
-            !kp.public_key().verify(&msg, &bad_sig),
+            !bad_sig.verify(kp.public_key(), &msg),
             "Bad signature with sigma1 = 1 verified!"
         );
     }
@@ -506,10 +509,10 @@ mod test {
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
-        let mut sig = kp.sign(&mut rng, &msg);
+        let mut sig = Signature::new(&mut rng, &kp, &msg);
         sig.randomize(&mut rng);
 
-        assert!(kp.public_key().verify(&msg, &sig))
+        assert!(sig.verify(kp.public_key(), &msg))
     }
 
     #[test]
@@ -519,12 +522,15 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let blinded_msg = kp.public_key().blind_message(&msg, bf);
-        let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
+        let blinded_msg = msg.blind(kp.public_key(), bf);
+        // Manually generate a verified blinded message - this skips the proof step.
+        let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.0);
+
+        let blind_sig = BlindedSignature::new(&kp, &mut rng, verified_blinded_msg);
         let sig = blind_sig.unblind(bf);
 
         assert!(
-            kp.public_key().verify(&msg, &sig),
+            sig.verify(kp.public_key(), &msg),
             "Signature didn't verify!!"
         );
     }
@@ -536,14 +542,17 @@ mod test {
         let msg = Message::<3>::random(&mut rng);
 
         let bf = BlindingFactor::new(&mut rng);
-        let blinded_msg = kp.public_key().blind_message(&msg, bf);
-        let blind_sig = kp.blind_sign(&mut rng, &blinded_msg);
+        let blinded_msg = msg.blind(kp.public_key(), bf);
+        // Manually generate a verified blinded message - this skips the proof step.
+        let verified_blinded_msg = VerifiedBlindedMessage(blinded_msg.0);
+
+        let blind_sig = BlindedSignature::new(&kp, &mut rng, verified_blinded_msg);
 
         let bad_bf = BlindingFactor::new(&mut rng);
         let sig = blind_sig.unblind(bad_bf);
 
         assert!(
-            !kp.public_key().verify(&msg, &sig),
+            !sig.verify(kp.public_key(), &msg),
             "Signature verified!! (with wrong blinding factor, *not* good, *do not* want this)"
         );
     }
@@ -554,14 +563,12 @@ mod test {
         let kp = KeyPair::new(&mut rng);
         let msg = Message::<3>::random(&mut rng);
 
-        let sig = kp.sign(&mut rng, &msg);
         let bf = BlindingFactor::new(&mut rng);
-        let mut blind_sig = BlindedSignature::blind(sig, bf);
-        blind_sig.randomize(&mut rng);
+        let blind_sig = Signature::new(&mut rng, &kp, &msg).blind_and_randomize(&mut rng, bf);
         let sig = blind_sig.unblind(bf);
 
         assert!(
-            kp.public_key().verify(&msg, &sig),
+            sig.verify(kp.public_key(), &msg),
             "Signature didn't verify!!"
         );
     }

@@ -58,8 +58,8 @@ pub type CommitmentParameters = zkchannels_crypto::pedersen::PedersenParameters<
 pub type KeyPair = zkchannels_crypto::pointcheval_sanders::KeyPair<5>;
 
 pub use states::{
-    BlindedCloseState, BlindedState, ChannelId, CloseState, CloseStateSignature, CustomerBalance,
-    CustomerRandomness, MerchantBalance, MerchantRandomness,
+    BlindedCloseState, ChannelId, CloseState, CloseStateSignature, CustomerBalance,
+    CustomerRandomness, MerchantBalance, MerchantRandomness, VerifiedBlindedState,
 };
 
 pub use revlock::RevocationLock;

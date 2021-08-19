@@ -94,7 +94,6 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     );
     let bad_proof = modify_proof::<N>(&proof, &bad_bf_com);
     let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
-    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     assert!(
         !bad_proof.verify_knowledge_of_opening(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong blinding factor."
@@ -127,7 +126,6 @@ fn run_commitment_proof_fails_on_wrong_commit<const N: usize>() {
     );
     let bad_proof = modify_proof::<N>(&proof, &bad_msg_com);
     let verif_challenge = ChallengeBuilder::new().with(&bad_proof).finish();
-    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     assert!(
         !proof.verify_knowledge_of_opening(&pedersen_params, verif_challenge),
         "Proof verified on commitment with wrong message."

@@ -45,7 +45,7 @@ fn run_signature_request_proof_verifies<const N: usize>() {
     // Proof must verify with the original commit.
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     let verified_blinded_message =
-        proof.verify_knowledge_of_blinded_message(keypair.public_key(), verif_challenge);
+        proof.verify_knowledge_of_opening(keypair.public_key(), verif_challenge);
     assert!(verified_blinded_message.is_some());
     let blinded_signature = verified_blinded_message
         .unwrap()
@@ -92,7 +92,7 @@ fn run_signature_request_proof_fails_on_wrong_challenge<const N: usize>() {
         "Accidentally generated matching challenge."
     );
     assert!(proof
-        .verify_knowledge_of_blinded_message(keypair.public_key(), bad_challenge)
+        .verify_knowledge_of_opening(keypair.public_key(), bad_challenge)
         .is_none());
 }
 
@@ -158,12 +158,11 @@ fn run_signature_request_proof_with_equality_relation<const N: usize>() {
 
     // Verify both proofs.
     let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
-    assert!(proof1.verify_knowledge_of_opening_of_commitment(
+    assert!(proof1.verify_knowledge_of_opening(
         &params.public_key().to_pedersen_parameters(),
         verif_challenge
     ));
-    let verif_blind_msg2 =
-        proof2.verify_knowledge_of_blinded_message(params.public_key(), verif_challenge);
+    let verif_blind_msg2 = proof2.verify_knowledge_of_opening(params.public_key(), verif_challenge);
     assert!(verif_blind_msg2.is_some());
 
     // Verify linear equation.
@@ -223,8 +222,7 @@ fn run_signature_request_proof_with_public_value<const N: usize>() {
 
     // Verify underlying proof.
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
-    let verif_blind_msg =
-        proof.verify_knowledge_of_blinded_message(params.public_key(), verif_challenge);
+    let verif_blind_msg = proof.verify_knowledge_of_opening(params.public_key(), verif_challenge);
     assert!(verif_blind_msg.is_some());
 
     // Verify response scalars are correctly formed against the public msg. The commitment_scalar for the public value is revealed alongside the proof
@@ -300,12 +298,11 @@ fn run_signature_request_proof_with_linear_relation_public_addition<const N: usi
 
     // Verify both proofs.
     let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
-    assert!(proof1.verify_knowledge_of_opening_of_commitment(
+    assert!(proof1.verify_knowledge_of_opening(
         &params.public_key().to_pedersen_parameters(),
         verif_challenge
     ));
-    let verif_blind_msg2 =
-        proof2.verify_knowledge_of_blinded_message(params.public_key(), verif_challenge);
+    let verif_blind_msg2 = proof2.verify_knowledge_of_opening(params.public_key(), verif_challenge);
     assert!(verif_blind_msg2.is_some());
 
     // Verify linear equation.

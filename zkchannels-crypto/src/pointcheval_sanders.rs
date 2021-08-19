@@ -281,6 +281,7 @@ impl<const N: usize> KeyPair<N> {
 
 /// A signature on a message, generated using Pointcheval-Sanders.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "SignatureShadow")]
 pub struct Signature {
     /// First part of a signature.
     ///
@@ -292,6 +293,25 @@ pub struct Signature {
     /// In some papers, this is denoted `H`.
     #[serde(with = "SerializeElement")]
     sigma2: G1Affine,
+}
+
+#[derive(Debug, Deserialize)]
+struct SignatureShadow {
+    #[serde(with = "SerializeElement")]
+    sigma1: G1Affine,
+    #[serde(with = "SerializeElement")]
+    sigma2: G1Affine,
+}
+
+impl std::convert::TryFrom<SignatureShadow> for Signature {
+    type Error = String;
+    fn try_from(shadow: SignatureShadow) -> Result<Self, Self::Error> {
+        let SignatureShadow { sigma1, sigma2 } = shadow;
+        if bool::from(sigma1.is_identity()) {
+            return Err("Invalid signature".to_string());
+        }
+        Ok(Signature { sigma1, sigma2 })
+    }
 }
 
 impl Signature {
@@ -653,6 +673,28 @@ mod test {
     }
 
     #[test]
+    fn signature_proof_from_sig_with_identities() {
+        let mut rng = rng();
+        let kp = KeyPair::<5>::new(&mut rng);
+        let msg = Message::<5>::random(&mut rng);
+        let mut bad_sig = Signature::new(&mut rng, &kp, &msg);
+        bad_sig.sigma1 = G1Affine::identity();
+        bad_sig.sigma2 = G1Affine::identity();
+        assert!(!bad_sig.is_well_formed());
+    }
+
+    #[test]
+    fn signature_proof_from_sig_with_identity_first() {
+        let mut rng = rng();
+        let kp = KeyPair::<5>::new(&mut rng);
+        let msg = Message::<5>::random(&mut rng);
+        let mut bad_sig = Signature::new(&mut rng, &kp, &msg);
+        bad_sig.sigma1 = G1Affine::identity();
+        assert!(!bad_sig.is_well_formed());
+    }
+
+    #[test]
+    #[cfg(feature = "bincode")]
     fn serialize_deserialize_public_key() {
         let mut rng = rng();
         let kp = KeyPair::<5>::new(&mut rng);
@@ -692,6 +734,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "bincode")]
     fn serialize_deserialize_secret_key() {
         let mut rng = rng();
         let kp = KeyPair::<5>::new(&mut rng);
@@ -716,5 +759,25 @@ mod test {
         }
         let ser_sk = bincode::serialize(&wrong_kp.sk).unwrap();
         assert!(bincode::deserialize::<SecretKey<5>>(&ser_sk).is_err());
+    }
+
+    #[test]
+    #[cfg(feature = "bincode")]
+    fn serialize_deserialize_signature() {
+        let mut rng = rng();
+        let kp = KeyPair::<5>::new(&mut rng);
+        let msg = Message::<5>::random(&mut rng);
+        let sig = Signature::new(&mut rng, &kp, &msg);
+
+        let ser_sig = bincode::serialize(&sig).unwrap();
+        let new_sig = bincode::deserialize::<Signature>(&ser_sig).unwrap();
+        assert_eq!(sig, new_sig);
+
+        // let mut wrong_kp = KeyPair::<5>::new(&mut rng);
+        // wrong_kp.sk.x = Scalar::zero();
+        let mut wrong_sig = sig;
+        wrong_sig.sigma1 = G1Affine::identity();
+        let ser_sig = bincode::serialize(&wrong_sig).unwrap();
+        assert!(bincode::deserialize::<Signature>(&ser_sig).is_err());
     }
 }

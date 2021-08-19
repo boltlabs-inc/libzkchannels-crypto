@@ -200,6 +200,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 }
 
 #[cfg(test)]
+#[cfg(feature = "bincode")]
 mod test {
     use super::*;
     use crate::test::rng;
@@ -220,15 +221,18 @@ mod test {
         let mut serializer = bincode::Serializer::new(&mut ser_commitment, bincode::options());
         SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
         let commitment = bincode::deserialize::<Commitment<G1Projective>>(&ser_commitment).unwrap();
+        let msg = Message::<N>::random(&mut rng);
+        let bf = BlindingFactor::new(&mut rng);
         let proof_builder = CommitmentProofBuilder {
+            msg,
+            commitment,
+            message_blinding_factor: bf,
             scalar_commitment: commitment,
             blinding_factor_commitment_scalar: Scalar::random(&mut rng),
             message_commitment_scalars: Box::new([Scalar::random(&mut rng); N]),
         };
-        let msg = Message::<N>::random(&mut rng);
-        let bf = BlindingFactor::new(&mut rng);
         let builder_challenge = ChallengeBuilder::new().with(&proof_builder).finish();
-        let proof = proof_builder.generate_proof_response(&msg, bf, builder_challenge);
+        let proof = proof_builder.generate_proof_response(builder_challenge);
         let proof_challenge = ChallengeBuilder::new().with(&proof).finish();
         assert_eq!(builder_challenge.to_scalar(), proof_challenge.to_scalar());
     }

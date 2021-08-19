@@ -148,17 +148,22 @@ impl<const N: usize> ChallengeInput for SignatureProof<N> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::pedersen::Commitment;
     use crate::test::rng;
     use crate::SerializeElement;
     use ff::Field;
 
     pub struct CommitmentProofBuilderWithPublicFields<G: Group<Scalar = Scalar>, const N: usize> {
+        pub msg: Message<N>,
+        pub commitment: Commitment<G>,
+        pub message_blinding_factor: BlindingFactor,
         pub scalar_commitment: Commitment<G>,
         pub blinding_factor_commitment_scalar: Scalar,
         pub message_commitment_scalars: Box<[Scalar; N]>,
     }
 
     #[test]
+    #[cfg(feature = "bincode")]
     fn test_signature_proof_challenge() {
         let mut rng = rng();
 
@@ -174,14 +179,14 @@ mod test {
         let signature = bincode::deserialize::<BlindedSignature>(&ser_signature).unwrap();
         let bf = BlindingFactor::new(&mut rng);
         let proof_builder = CommitmentProofBuilderWithPublicFields {
+            msg,
+            commitment,
+            message_blinding_factor: bf,
             scalar_commitment: commitment,
             blinding_factor_commitment_scalar: Scalar::random(&mut rng),
             message_commitment_scalars: Box::new([Scalar::random(&mut rng); 5]),
         };
-        let sig_proof_builder = SignatureProofBuilder {
-            message: msg,
-            message_commitment: commitment,
-            message_blinding_factor: bf,
+        let sig_proof_builder = SignatureProofBuilder::<5> {
             blinded_signature: signature,
             commitment_proof_builder: unsafe { std::mem::transmute(proof_builder) },
         };

@@ -310,6 +310,7 @@ impl ChallengeInput for RangeConstraint {
 }
 
 #[cfg(test)]
+#[cfg(feature = "bincode")]
 mod test {
     use super::*;
     use crate::pedersen::Commitment;
@@ -323,15 +324,15 @@ mod test {
     use std::iter;
 
     pub struct CommitmentProofBuilderWithPublicFields<G: Group<Scalar = Scalar>, const N: usize> {
+        pub msg: Message<N>,
+        pub commitment: Commitment<G>,
+        pub message_blinding_factor: BlindingFactor,
         pub scalar_commitment: Commitment<G>,
         pub blinding_factor_commitment_scalar: Scalar,
         pub message_commitment_scalars: Box<[Scalar; N]>,
     }
 
     pub struct SignatureProofBuilderWithPublicFields<const N: usize> {
-        pub message: Message<N>,
-        pub message_commitment: Commitment<G2Projective>,
-        pub message_blinding_factor: BlindingFactor,
         pub blinded_signature: BlindedSignature,
         pub commitment_proof_builder: CommitmentProofBuilder<G2Projective, N>,
     }
@@ -376,15 +377,15 @@ mod test {
         let signature = bincode::deserialize::<BlindedSignature>(&ser_signature).unwrap();
         let bf = BlindingFactor::new(&mut rng);
         let proof_builder = CommitmentProofBuilderWithPublicFields {
+            msg,
+            commitment,
+            message_blinding_factor: bf,
             scalar_commitment: commitment,
             blinding_factor_commitment_scalar: Scalar::random(&mut rng),
-            message_commitment_scalars: Box::new([Scalar::random(&mut rng); 1]),
+            message_commitment_scalars: Box::new([Scalar::random(&mut rng); 5]),
         };
         unsafe {
-            std::mem::transmute(SignatureProofBuilderWithPublicFields {
-                message: msg,
-                message_commitment: commitment,
-                message_blinding_factor: bf,
+            std::mem::transmute(SignatureProofBuilderWithPublicFields::<5> {
                 blinded_signature: signature,
                 commitment_proof_builder: std::mem::transmute(proof_builder),
             })

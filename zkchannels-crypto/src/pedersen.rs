@@ -85,7 +85,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeInput for Commitment<G>
 /// These are defined over the prime-order pairing groups from BLS12-381.
 /// Uses Box to avoid stack overflows with large parameter sets.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(bound = "G: SerializeG1")]
+#[serde(bound = "G: SerializeG1", try_from = "PedersenParametersShadow<G, N>")]
 pub struct PedersenParameters<G, const N: usize>
 where
     G: Group<Scalar = Scalar>,
@@ -94,6 +94,38 @@ where
     h: G,
     #[serde(with = "SerializeElement")]
     gs: Box<[G; N]>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(bound = "G: SerializeG1")]
+struct PedersenParametersShadow<G, const N: usize>
+where
+    G: Group<Scalar = Scalar>,
+{
+    #[serde(with = "SerializeElement")]
+    h: G,
+    #[serde(with = "SerializeElement")]
+    gs: Box<[G; N]>,
+}
+
+impl<G: Group<Scalar = Scalar>, const N: usize>
+    std::convert::TryFrom<PedersenParametersShadow<G, N>> for PedersenParameters<G, N>
+{
+    type Error = String;
+    fn try_from(shadow: PedersenParametersShadow<G, N>) -> Result<Self, Self::Error> {
+        let PedersenParametersShadow { h, gs } = shadow;
+
+        if bool::from(h.is_identity()) {
+            return Err("Wrong Pedersen Parameters".to_string());
+        }
+        for g in gs.iter() {
+            if bool::from(g.is_identity()) {
+                return Err("Wrong Pedersen Parameters".to_string());
+            }
+        }
+
+        Ok(PedersenParameters { h, gs })
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -165,6 +197,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::convert::TryFrom;
 
     fn commit_open<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();
@@ -294,5 +327,37 @@ mod test {
     #[test]
     fn commit_does_not_open_on_random_commit_g2() {
         commit_does_not_open_on_random_commit::<G2Projective>()
+    }
+
+    #[test]
+    #[cfg(feature = "bincode")]
+    fn serialize_deserialize_commit() {
+        let mut rng = crate::test::rng();
+        let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+
+        let ser_params = bincode::serialize(&params).unwrap();
+        let new_params =
+            bincode::deserialize::<PedersenParameters<G1Projective, 3>>(&ser_params).unwrap();
+        assert_eq!(params, new_params);
+
+        let mut bad_params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+        bad_params.h = G1Projective::identity();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, 3>>(&ser_params).is_err());
+
+        let mut bad_params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+        let mut gs = bad_params.gs.to_vec();
+        gs[0] = G1Projective::identity();
+        bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, 3>>(&ser_params).is_err());
+
+        let mut bad_params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+        let mut gs = bad_params.gs.to_vec();
+        let last_position = gs.len() - 1;
+        gs[last_position] = G1Projective::identity();
+        bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, 3>>(&ser_params).is_err());
     }
 }

@@ -32,6 +32,7 @@ const RP_PARAMETER_L: usize = 9;
 /// generation.
 /// This follows the work of Camenish, Chaabouni, and shelat. See [`RangeConstraint`] for citation.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "RangeConstraintParametersShadow")]
 pub struct RangeConstraintParameters {
     /// A signature on every `u`-ary digit
     ///
@@ -40,6 +41,33 @@ pub struct RangeConstraintParameters {
     digit_signatures: Box<[Signature; RP_PARAMETER_U as usize]>,
     /// Public key corresponding _exclusively with the signatures above.
     public_key: PublicKey<1>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RangeConstraintParametersShadow {
+    #[serde(with = "crate::serde::big_boxed_array")]
+    digit_signatures: Box<[Signature; RP_PARAMETER_U as usize]>,
+    public_key: PublicKey<1>,
+}
+
+impl std::convert::TryFrom<RangeConstraintParametersShadow> for RangeConstraintParameters {
+    type Error = String;
+    fn try_from(shadow: RangeConstraintParametersShadow) -> Result<Self, Self::Error> {
+        let RangeConstraintParametersShadow {
+            digit_signatures,
+            public_key,
+        } = shadow;
+        for (i, sig) in digit_signatures.iter().enumerate() {
+            if !sig.verify(&public_key, &Scalar::from(i as u64).into()) {
+                return Err("Invalid range constraint parameters.".to_string());
+            }
+        }
+
+        Ok(RangeConstraintParameters {
+            digit_signatures,
+            public_key,
+        })
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -274,5 +302,39 @@ impl ChallengeInput for RangeConstraint {
         for digit_proof in &*self.digit_proofs {
             builder.consume(digit_proof);
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::test::rng;
+    use std::convert::TryFrom;
+
+    #[test]
+    #[cfg(feature = "bincode")]
+    fn serialize_deserialize_range_constraint_parameters() {
+        let mut rng = rng();
+        let params = RangeConstraintParameters::new(&mut rng);
+
+        let ser_params = bincode::serialize(&params).unwrap();
+        let new_params = bincode::deserialize::<RangeConstraintParameters>(&ser_params).unwrap();
+        assert_eq!(params, new_params);
+
+        let mut bad_params = RangeConstraintParameters::new(&mut rng);
+        let mut sigs = bad_params.digit_signatures.to_vec();
+        sigs[0] = sigs[1];
+        bad_params.digit_signatures = Box::try_from(sigs.into_boxed_slice()).unwrap();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<RangeConstraintParameters>(&ser_params).is_err());
+
+        let mut bad_params = RangeConstraintParameters::new(&mut rng);
+        let mut sigs = bad_params.digit_signatures.to_vec();
+        let kp = KeyPair::<5>::new(&mut rng);
+        let msg = Message::<5>::random(&mut rng);
+        sigs[0] = Signature::new(&mut rng, &kp, &msg);
+        bad_params.digit_signatures = Box::try_from(sigs.into_boxed_slice()).unwrap();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<RangeConstraintParameters>(&ser_params).is_err());
     }
 }

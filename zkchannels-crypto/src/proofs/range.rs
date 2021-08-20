@@ -325,18 +325,22 @@ impl ChallengeInput for RangeConstraint {
 mod test {
     use super::*;
     use crate::test::rng;
+    use rand::Rng;
     use std::convert::TryFrom;
 
+    /// Test the validation code during deserialization of the range constraint parameters
     #[test]
     #[cfg(feature = "bincode")]
     fn serialize_deserialize_range_constraint_parameters() {
         let mut rng = rng();
         let params = RangeConstraintParameters::new(&mut rng);
 
+        // Check normal serialization/deserialization
         let ser_params = bincode::serialize(&params).unwrap();
         let new_params = bincode::deserialize::<RangeConstraintParameters>(&ser_params).unwrap();
         assert_eq!(params, new_params);
 
+        // Check validation when the first signature is a signature on the second element
         let mut bad_params = RangeConstraintParameters::new(&mut rng);
         let mut sigs = bad_params.digit_signatures.to_vec();
         sigs[0] = sigs[1];
@@ -344,11 +348,13 @@ mod test {
         let ser_params = bincode::serialize(&bad_params).unwrap();
         assert!(bincode::deserialize::<RangeConstraintParameters>(&ser_params).is_err());
 
+        // Check validation when a signature at random position is a random signature
         let mut bad_params = RangeConstraintParameters::new(&mut rng);
         let mut sigs = bad_params.digit_signatures.to_vec();
         let kp = KeyPair::<5>::new(&mut rng);
         let msg = Message::<5>::random(&mut rng);
-        sigs[0] = Signature::new(&mut rng, &kp, &msg);
+        let pos = rng.gen_range(0..RP_PARAMETER_U as usize);
+        sigs[pos] = Signature::new(&mut rng, &kp, &msg);
         bad_params.digit_signatures = Box::try_from(sigs.into_boxed_slice()).unwrap();
         let ser_params = bincode::serialize(&bad_params).unwrap();
         assert!(bincode::deserialize::<RangeConstraintParameters>(&ser_params).is_err());

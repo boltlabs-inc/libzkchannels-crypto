@@ -215,6 +215,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand::Rng;
     use std::convert::TryFrom;
 
     fn commit_open<G: Group<Scalar = Scalar>>() {
@@ -347,35 +348,59 @@ mod test {
         commit_does_not_open_on_random_commit::<G2Projective>()
     }
 
+    /// Test the validation code during deserialization of the Pedersen parameters
     #[test]
     #[cfg(feature = "bincode")]
-    fn serialize_deserialize_commit() {
-        let mut rng = crate::test::rng();
-        let params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+    fn serialize_deserialize_pedersen_params() {
+        run_serialize_deserialize_pedersen_params::<1>();
+        run_serialize_deserialize_pedersen_params::<2>();
+        run_serialize_deserialize_pedersen_params::<3>();
+        run_serialize_deserialize_pedersen_params::<5>();
+        run_serialize_deserialize_pedersen_params::<8>();
+        run_serialize_deserialize_pedersen_params::<13>();
+    }
 
+    #[cfg(feature = "bincode")]
+    fn run_serialize_deserialize_pedersen_params<const N: usize>() {
+        let mut rng = crate::test::rng();
+        let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+
+        // Check normal serialization/deserialization
         let ser_params = bincode::serialize(&params).unwrap();
         let new_params =
-            bincode::deserialize::<PedersenParameters<G1Projective, 3>>(&ser_params).unwrap();
+            bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).unwrap();
         assert_eq!(params, new_params);
 
-        let mut bad_params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+        // Check validation when h in the Pedersen parameters is the identity element
+        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
         bad_params.h = G1Projective::identity();
         let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<PedersenParameters<G1Projective, 3>>(&ser_params).is_err());
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
 
-        let mut bad_params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+        // Check validation when the first of the gs in the Pedersen parameters is the identity element
+        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
         let mut gs = bad_params.gs.to_vec();
         gs[0] = G1Projective::identity();
         bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
         let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<PedersenParameters<G1Projective, 3>>(&ser_params).is_err());
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
 
-        let mut bad_params = PedersenParameters::<G1Projective, 3>::new(&mut rng);
+        // Check validation when the last of the gs in the Pedersen parameters is the identity element
+        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
         let mut gs = bad_params.gs.to_vec();
         let last_position = gs.len() - 1;
         gs[last_position] = G1Projective::identity();
         bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
         let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<PedersenParameters<G1Projective, 3>>(&ser_params).is_err());
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
+
+        // Check validation when the random element of the gs in the Pedersen parameters is the identity element
+        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        let mut gs = bad_params.gs.to_vec();
+        let random_position = rng.gen_range(0..gs.len());
+        gs[random_position] = G1Projective::identity();
+        bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
     }
 }

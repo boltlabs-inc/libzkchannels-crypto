@@ -43,6 +43,9 @@ pub struct RangeConstraintParameters {
     public_key: PublicKey<1>,
 }
 
+/// Parameters for a [`RangeConstraint`] before validation.
+///
+/// Used during deserialization before validation checks have been done.
 #[derive(Debug, Deserialize)]
 struct UncheckedRangeConstraintParameters {
     #[serde(with = "crate::serde::big_boxed_array")]
@@ -52,21 +55,21 @@ struct UncheckedRangeConstraintParameters {
 
 impl std::convert::TryFrom<UncheckedRangeConstraintParameters> for RangeConstraintParameters {
     type Error = String;
+    /// During deserialization verify the signature inside the RangeConstraintParameters are valid signatures on the appropriate scalars
     fn try_from(unchecked: UncheckedRangeConstraintParameters) -> Result<Self, Self::Error> {
         let UncheckedRangeConstraintParameters {
             digit_signatures,
             public_key,
         } = unchecked;
-        for (i, sig) in digit_signatures.iter().enumerate() {
-            if !sig.verify(&public_key, &Scalar::from(i as u64).into()) {
-                return Err("Invalid range constraint parameters.".to_string());
-            }
-        }
 
-        Ok(RangeConstraintParameters {
+        let params = RangeConstraintParameters {
             digit_signatures,
             public_key,
-        })
+        };
+        if !params.is_well_formed() {
+            return Err("The signatures in the RangeConstraintParameters must be valid signatures on the appropriate scalars".to_string());
+        }
+        Ok(params)
     }
 }
 
@@ -97,6 +100,19 @@ impl RangeConstraintParameters {
     /// Return the public key used to form the `RangeConstraintParameters`.
     pub fn public_key(&self) -> &PublicKey<1> {
         &self.public_key
+    }
+
+    /// Check whether the range constraint parameters are well-formed.
+    ///
+    /// This checks that all signatures are valid on a correct scalar. This implementation uses only
+    /// checked APIs to ensure that all signatures and the public key are correctly formed.
+    pub fn is_well_formed(&self) -> bool {
+        for (i, sig) in self.digit_signatures.iter().enumerate() {
+            if !sig.verify(&self.public_key, &Scalar::from(i as u64).into()) {
+                return false;
+            }
+        }
+        true
     }
 }
 

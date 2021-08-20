@@ -85,7 +85,10 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeInput for Commitment<G>
 /// These are defined over the prime-order pairing groups from BLS12-381.
 /// Uses Box to avoid stack overflows with large parameter sets.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(bound = "G: SerializeG1", try_from = "UncheckedPedersenParameters<G, N>")]
+#[serde(
+    bound = "G: SerializeG1",
+    try_from = "UncheckedPedersenParameters<G, N>"
+)]
 pub struct PedersenParameters<G, const N: usize>
 where
     G: Group<Scalar = Scalar>,
@@ -96,6 +99,9 @@ where
     gs: Box<[G; N]>,
 }
 
+/// Pedersen parameters before validation.
+///
+/// Used during deserialization before validation checks have been done.
 #[derive(Debug, Deserialize)]
 #[serde(bound = "G: SerializeG1")]
 struct UncheckedPedersenParameters<G, const N: usize>
@@ -112,19 +118,15 @@ impl<G: Group<Scalar = Scalar>, const N: usize>
     std::convert::TryFrom<UncheckedPedersenParameters<G, N>> for PedersenParameters<G, N>
 {
     type Error = String;
+    /// During deserialization verify none of the elements of the Pedersen parameters are the identity element
     fn try_from(unchecked: UncheckedPedersenParameters<G, N>) -> Result<Self, Self::Error> {
         let UncheckedPedersenParameters { h, gs } = unchecked;
 
-        if bool::from(h.is_identity()) {
-            return Err("Wrong Pedersen Parameters".to_string());
+        let params = PedersenParameters { h, gs };
+        if !params.is_well_formed() {
+            return Err("Pedersen parameters must not contain the identity element".to_string());
         }
-        for g in gs.iter() {
-            if bool::from(g.is_identity()) {
-                return Err("Wrong Pedersen Parameters".to_string());
-            }
-        }
-
-        Ok(PedersenParameters { h, gs })
+        Ok(params)
     }
 }
 
@@ -167,6 +169,22 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
 
     pub(crate) fn gs(&self) -> &[G; N] {
         self.gs.as_ref()
+    }
+
+    /// Check whether the Pedersen parameters are well-formed.
+    ///
+    /// This checks that all elements are not the identity element. This implementation uses only
+    /// checked APIs to ensure that all elements of the Pedersen parameters are in the expected group.
+    pub fn is_well_formed(&self) -> bool {
+        if bool::from(self.h.is_identity()) {
+            return false;
+        }
+        for g in self.gs.iter() {
+            if bool::from(g.is_identity()) {
+                return false;
+            }
+        }
+        true
     }
 }
 

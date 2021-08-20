@@ -33,6 +33,9 @@ pub(crate) struct SecretKey<const N: usize> {
     pub x1: G1Affine,
 }
 
+/// Pointcheval-Sanders secret key before validation.
+///
+/// Used during deserialization before validation checks have been done.
 #[derive(Debug, Deserialize)]
 struct UncheckedSecretKey<const N: usize> {
     #[serde(with = "SerializeElement")]
@@ -45,18 +48,17 @@ struct UncheckedSecretKey<const N: usize> {
 
 impl<const N: usize> std::convert::TryFrom<UncheckedSecretKey<N>> for SecretKey<N> {
     type Error = String;
+    /// During deserialization verify none of the scalars of the secret key are zero, nor is the x1 element the identity element
     fn try_from(unchecked: UncheckedSecretKey<N>) -> Result<Self, Self::Error> {
         let UncheckedSecretKey { x, ys, x1 } = unchecked;
-        if x.is_zero() || bool::from(x1.is_identity()) {
-            return Err("Invalid secret key".to_string());
+
+        let sk = SecretKey { x, ys, x1 };
+        if !sk.is_well_formed() {
+            return Err(
+                "The secret key must not contain zero scalars nor the identity element".to_string(),
+            );
         }
-        for i in 0..N {
-            if ys[i].is_zero() {
-                return Err("Invalid secret key".to_string());
-            }
-        }
-        // Any other validations
-        Ok(SecretKey { x, ys, x1 })
+        Ok(sk)
     }
 }
 
@@ -83,6 +85,9 @@ pub struct PublicKey<const N: usize> {
     pub y2s: Box<[G2Affine; N]>,
 }
 
+/// Pointcheval-Sanders public key before validation.
+///
+/// Used during deserialization before validation checks have been done.
 #[derive(Debug, Deserialize)]
 struct UncheckedPublicKey<const N: usize> {
     /// G1 generator (g)
@@ -104,6 +109,7 @@ struct UncheckedPublicKey<const N: usize> {
 
 impl<const N: usize> std::convert::TryFrom<UncheckedPublicKey<N>> for PublicKey<N> {
     type Error = String;
+    /// During deserialization verify none of the elements of the public key are the identity element
     fn try_from(unchecked: UncheckedPublicKey<N>) -> Result<Self, Self::Error> {
         let UncheckedPublicKey {
             g1,
@@ -112,25 +118,21 @@ impl<const N: usize> std::convert::TryFrom<UncheckedPublicKey<N>> for PublicKey<
             x2,
             y2s,
         } = unchecked;
-        if bool::from(g1.is_identity())
-            || bool::from(g2.is_identity())
-            || bool::from(x2.is_identity())
-        {
-            return Err("Invalid public key".to_string());
-        }
-        for i in 0..N {
-            if bool::from(y1s[i].is_identity()) || bool::from(y2s[i].is_identity()) {
-                return Err("Invalid public key".to_string());
-            }
-        }
+
         // Any other validations
-        Ok(PublicKey {
+        let pk = PublicKey {
             g1,
             y1s,
             g2,
             x2,
             y2s,
-        })
+        };
+        if !pk.is_well_formed() {
+            return Err(
+                "The elements of the public key must not be the identity element".to_string(),
+            );
+        }
+        Ok(pk)
     }
 }
 
@@ -175,6 +177,22 @@ impl<const N: usize> SecretKey<N> {
             ys: Box::new(ys),
             x1,
         }
+    }
+
+    /// Check whether the secret key is well-formed.
+    ///
+    /// This checks that x and y scalars is not zero and x1 is not the identity element. This implementation uses only
+    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
+    pub fn is_well_formed(&self) -> bool {
+        if self.x.is_zero() || bool::from(self.x1.is_identity()) {
+            return false;
+        }
+        for y in self.ys.iter() {
+            if y.is_zero() {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -221,6 +239,25 @@ impl<const N: usize> PublicKey<N> {
             buf.extend_from_slice(y2.to_bytes().as_ref());
         }
         buf
+    }
+
+    /// Check whether the public key is well-formed.
+    ///
+    /// This checks that all elements are not the identity element. This implementation uses only
+    /// checked APIs to ensure that all elements of the public key are in the expected group.
+    pub fn is_well_formed(&self) -> bool {
+        if bool::from(self.g1.is_identity())
+            || bool::from(self.g2.is_identity())
+            || bool::from(self.x2.is_identity())
+        {
+            return false;
+        }
+        for (y1, y2) in self.y1s.iter().zip(self.y2s.iter()) {
+            if bool::from(y1.is_identity()) || bool::from(y2.is_identity()) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -295,6 +332,9 @@ pub struct Signature {
     sigma2: G1Affine,
 }
 
+/// Pointcheval-Sanders signature before validation.
+///
+/// Used during deserialization before validation checks have been done.
 #[derive(Debug, Deserialize)]
 struct UncheckedSignature {
     #[serde(with = "SerializeElement")]
@@ -305,12 +345,16 @@ struct UncheckedSignature {
 
 impl std::convert::TryFrom<UncheckedSignature> for Signature {
     type Error = String;
+    /// During deserialization verify that the first element of the signature is not the identity element
     fn try_from(unchecked: UncheckedSignature) -> Result<Self, Self::Error> {
         let UncheckedSignature { sigma1, sigma2 } = unchecked;
-        if bool::from(sigma1.is_identity()) {
-            return Err("Invalid signature".to_string());
+        let sig = Signature { sigma1, sigma2 };
+        if !sig.is_well_formed() {
+            return Err(
+                "The first element of a signature must not be the identity element".to_string(),
+            );
         }
-        Ok(Signature { sigma1, sigma2 })
+        Ok(sig)
     }
 }
 

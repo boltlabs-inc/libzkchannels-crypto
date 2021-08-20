@@ -32,7 +32,7 @@ const RP_PARAMETER_L: usize = 9;
 /// generation.
 /// This follows the work of Camenish, Chaabouni, and shelat. See [`RangeConstraint`] for citation.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(try_from = "RangeConstraintParametersShadow")]
+#[serde(try_from = "UncheckedRangeConstraintParameters")]
 pub struct RangeConstraintParameters {
     /// A signature on every `u`-ary digit
     ///
@@ -44,19 +44,19 @@ pub struct RangeConstraintParameters {
 }
 
 #[derive(Debug, Deserialize)]
-struct RangeConstraintParametersShadow {
+struct UncheckedRangeConstraintParameters {
     #[serde(with = "crate::serde::big_boxed_array")]
     digit_signatures: Box<[Signature; RP_PARAMETER_U as usize]>,
     public_key: PublicKey<1>,
 }
 
-impl std::convert::TryFrom<RangeConstraintParametersShadow> for RangeConstraintParameters {
+impl std::convert::TryFrom<UncheckedRangeConstraintParameters> for RangeConstraintParameters {
     type Error = String;
-    fn try_from(shadow: RangeConstraintParametersShadow) -> Result<Self, Self::Error> {
-        let RangeConstraintParametersShadow {
+    fn try_from(unchecked: UncheckedRangeConstraintParameters) -> Result<Self, Self::Error> {
+        let UncheckedRangeConstraintParameters {
             digit_signatures,
             public_key,
-        } = shadow;
+        } = unchecked;
         for (i, sig) in digit_signatures.iter().enumerate() {
             if !sig.verify(&public_key, &Scalar::from(i as u64).into()) {
                 return Err("Invalid range constraint parameters.".to_string());

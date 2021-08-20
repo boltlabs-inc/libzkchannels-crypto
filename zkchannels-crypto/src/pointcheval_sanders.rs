@@ -23,7 +23,7 @@ use std::{iter, ops::Neg};
 ///
 /// Uses Box to avoid stack overflows with large keys.
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(try_from = "SecretKeyShadow<N>")]
+#[serde(try_from = "UncheckedSecretKey<N>")]
 pub(crate) struct SecretKey<const N: usize> {
     #[serde(with = "SerializeElement")]
     pub x: Scalar,
@@ -34,7 +34,7 @@ pub(crate) struct SecretKey<const N: usize> {
 }
 
 #[derive(Debug, Deserialize)]
-struct SecretKeyShadow<const N: usize> {
+struct UncheckedSecretKey<const N: usize> {
     #[serde(with = "SerializeElement")]
     pub x: Scalar,
     #[serde(with = "SerializeElement")]
@@ -43,10 +43,10 @@ struct SecretKeyShadow<const N: usize> {
     pub x1: G1Affine,
 }
 
-impl<const N: usize> std::convert::TryFrom<SecretKeyShadow<N>> for SecretKey<N> {
+impl<const N: usize> std::convert::TryFrom<UncheckedSecretKey<N>> for SecretKey<N> {
     type Error = String;
-    fn try_from(shadow: SecretKeyShadow<N>) -> Result<Self, Self::Error> {
-        let SecretKeyShadow { x, ys, x1 } = shadow;
+    fn try_from(unchecked: UncheckedSecretKey<N>) -> Result<Self, Self::Error> {
+        let UncheckedSecretKey { x, ys, x1 } = unchecked;
         if x.is_zero() || bool::from(x1.is_identity()) {
             return Err("Invalid secret key".to_string());
         }
@@ -64,7 +64,7 @@ impl<const N: usize> std::convert::TryFrom<SecretKeyShadow<N>> for SecretKey<N> 
 ///
 /// Uses Box to avoid stack overflows with large keys.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(try_from = "PublicKeyShadow<N>")]
+#[serde(try_from = "UncheckedPublicKey<N>")]
 pub struct PublicKey<const N: usize> {
     /// G1 generator (g)
     #[serde(with = "SerializeElement")]
@@ -84,7 +84,7 @@ pub struct PublicKey<const N: usize> {
 }
 
 #[derive(Debug, Deserialize)]
-struct PublicKeyShadow<const N: usize> {
+struct UncheckedPublicKey<const N: usize> {
     /// G1 generator (g)
     #[serde(with = "SerializeElement")]
     pub g1: G1Affine,
@@ -102,16 +102,16 @@ struct PublicKeyShadow<const N: usize> {
     pub y2s: Box<[G2Affine; N]>,
 }
 
-impl<const N: usize> std::convert::TryFrom<PublicKeyShadow<N>> for PublicKey<N> {
+impl<const N: usize> std::convert::TryFrom<UncheckedPublicKey<N>> for PublicKey<N> {
     type Error = String;
-    fn try_from(shadow: PublicKeyShadow<N>) -> Result<Self, Self::Error> {
-        let PublicKeyShadow {
+    fn try_from(unchecked: UncheckedPublicKey<N>) -> Result<Self, Self::Error> {
+        let UncheckedPublicKey {
             g1,
             y1s,
             g2,
             x2,
             y2s,
-        } = shadow;
+        } = unchecked;
         if bool::from(g1.is_identity())
             || bool::from(g2.is_identity())
             || bool::from(x2.is_identity())
@@ -281,7 +281,7 @@ impl<const N: usize> KeyPair<N> {
 
 /// A signature on a message, generated using Pointcheval-Sanders.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(try_from = "SignatureShadow")]
+#[serde(try_from = "UncheckedSignature")]
 pub struct Signature {
     /// First part of a signature.
     ///
@@ -296,17 +296,17 @@ pub struct Signature {
 }
 
 #[derive(Debug, Deserialize)]
-struct SignatureShadow {
+struct UncheckedSignature {
     #[serde(with = "SerializeElement")]
     sigma1: G1Affine,
     #[serde(with = "SerializeElement")]
     sigma2: G1Affine,
 }
 
-impl std::convert::TryFrom<SignatureShadow> for Signature {
+impl std::convert::TryFrom<UncheckedSignature> for Signature {
     type Error = String;
-    fn try_from(shadow: SignatureShadow) -> Result<Self, Self::Error> {
-        let SignatureShadow { sigma1, sigma2 } = shadow;
+    fn try_from(unchecked: UncheckedSignature) -> Result<Self, Self::Error> {
+        let UncheckedSignature { sigma1, sigma2 } = unchecked;
         if bool::from(sigma1.is_identity()) {
             return Err("Invalid signature".to_string());
         }

@@ -85,7 +85,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeInput for Commitment<G>
 /// These are defined over the prime-order pairing groups from BLS12-381.
 /// Uses Box to avoid stack overflows with large parameter sets.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(bound = "G: SerializeG1", try_from = "PedersenParametersShadow<G, N>")]
+#[serde(bound = "G: SerializeG1", try_from = "UncheckedPedersenParameters<G, N>")]
 pub struct PedersenParameters<G, const N: usize>
 where
     G: Group<Scalar = Scalar>,
@@ -98,7 +98,7 @@ where
 
 #[derive(Debug, Deserialize)]
 #[serde(bound = "G: SerializeG1")]
-struct PedersenParametersShadow<G, const N: usize>
+struct UncheckedPedersenParameters<G, const N: usize>
 where
     G: Group<Scalar = Scalar>,
 {
@@ -109,11 +109,11 @@ where
 }
 
 impl<G: Group<Scalar = Scalar>, const N: usize>
-    std::convert::TryFrom<PedersenParametersShadow<G, N>> for PedersenParameters<G, N>
+    std::convert::TryFrom<UncheckedPedersenParameters<G, N>> for PedersenParameters<G, N>
 {
     type Error = String;
-    fn try_from(shadow: PedersenParametersShadow<G, N>) -> Result<Self, Self::Error> {
-        let PedersenParametersShadow { h, gs } = shadow;
+    fn try_from(unchecked: UncheckedPedersenParameters<G, N>) -> Result<Self, Self::Error> {
+        let UncheckedPedersenParameters { h, gs } = unchecked;
 
         if bool::from(h.is_identity()) {
             return Err("Wrong Pedersen Parameters".to_string());

@@ -2,37 +2,58 @@
 use crate::{types::*, Rng, CLOSE_SCALAR};
 use ff::Field;
 use serde::*;
-use std::ops::Not;
+use std::{convert::TryFrom, ops::Not};
 use subtle::ConstantTimeEq;
 use zkchannels_crypto::SerializeElement;
 
 /// A random nonce.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "UncheckedNonce")]
 pub struct Nonce(#[serde(with = "SerializeElement")] Scalar);
+
+#[derive(Debug, Deserialize)]
+struct UncheckedNonce(#[serde(with = "SerializeElement")] Scalar);
+
+impl UncheckedNonce {
+    /// Convert an unchecked nonce to its canonical `Scalar` representation.
+    fn as_scalar(&self) -> Scalar {
+        self.0
+    }
+
+    /// Generate a new cryptographically random unchecked nonce with the given random number
+    /// generator.
+    fn new(rng: &mut impl Rng) -> Self {
+        Self(Scalar::random(&mut *rng))
+    }
+}
+
+impl TryFrom<UncheckedNonce> for Nonce {
+    type Error = String;
+
+    /// Try to convert an unchecked nonce to a nonce.
+    fn try_from(unchecked: UncheckedNonce) -> Result<Self, Self::Error> {
+        let n = unchecked.as_scalar();
+        if n.ct_eq(&CLOSE_SCALAR).not().into() {
+            Ok(Self(n))
+        } else {
+            Err("The nonce cannot be the close scalar.".to_string())
+        }
+    }
+}
 
 impl Nonce {
     /// Generate a new cryptographically random nonce with the given random number generator.
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
-        let mut get_well_formed_nonce = || loop {
-            let n = Self(Scalar::random(&mut *rng));
-            if n.is_well_formed() {
+        loop {
+            if let Ok(n) = Nonce::try_from(UncheckedNonce::new(rng)) {
                 return n;
             }
-        };
-
-        // Try until a well-formed nonce is generated
-        get_well_formed_nonce()
+        }
     }
 
     /// Convert a nonce to its canonical `Scalar` representation.
     pub(crate) fn as_scalar(&self) -> Scalar {
         self.0
-    }
-
-    /// Returns true if and only if the scalar representation of the nonce
-    /// is not the domain separator [`CLOSE_SCALAR`].
-    pub fn is_well_formed(&self) -> bool {
-        self.as_scalar().ct_eq(&CLOSE_SCALAR).not().into()
     }
 }
 
@@ -46,15 +67,17 @@ mod test {
 
     // Sanity check on invalid nonce
     #[test]
-    fn close_scalar_as_nonce() {
+    #[cfg(feature = "bincode")]
+    fn run_serialize_deserialize_nonce() {
+        // Check validation when serialized unchecked nonce is the close scalar
         let bad_nonce = Nonce(CLOSE_SCALAR);
-        assert!(!bad_nonce.is_well_formed());
-    }
+        let serialized_bad_nonce = bincode::serialize(&bad_nonce).unwrap();
+        assert!(bincode::deserialize::<Nonce>(&serialized_bad_nonce).is_err());
 
-    // Sanity check on new nonce
-    #[test]
-    fn create_nonce() {
+        // Check normal serialization/deserializtion
         let nonce = Nonce::new(&mut thread_rng());
-        assert!(nonce.is_well_formed());
+        let serialized_nonce = bincode::serialize(&nonce).unwrap();
+        let deserialized_nonce = bincode::deserialize(&serialized_nonce).unwrap();
+        assert_eq!(nonce, deserialized_nonce);
     }
 }

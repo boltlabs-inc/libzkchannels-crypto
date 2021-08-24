@@ -20,4 +20,3 @@ serde = { version = "1", features = ["derive"] }
 sqlx = { version = "0.5.2", features = ["runtime-tokio-rustls"], optional = true }
 thiserror = "1"
 sha3 = "0.9.1"
-subtle = "2.4"

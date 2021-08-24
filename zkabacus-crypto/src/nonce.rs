@@ -2,8 +2,7 @@
 use crate::{types::*, Rng, CLOSE_SCALAR};
 use ff::Field;
 use serde::*;
-use std::{convert::TryFrom, ops::Not};
-use subtle::ConstantTimeEq;
+use std::convert::TryFrom;
 use zkchannels_crypto::SerializeElement;
 
 /// A random nonce.
@@ -33,7 +32,7 @@ impl TryFrom<UncheckedNonce> for Nonce {
     /// Try to convert an unchecked nonce to a nonce.
     fn try_from(unchecked: UncheckedNonce) -> Result<Self, Self::Error> {
         let n = unchecked.as_scalar();
-        if n.ct_eq(&CLOSE_SCALAR).not().into() {
+        if n != CLOSE_SCALAR {
             Ok(Self(n))
         } else {
             Err("The nonce cannot be the close scalar.".to_string())

@@ -572,7 +572,7 @@ impl ChallengeInput for BlindedSignature {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::proofs::SignatureProofBuilder;
+    use crate::proofs::{SignatureProof, SignatureProofBuilder};
     use crate::test::rng;
 
     #[test]
@@ -712,49 +712,70 @@ mod test {
     }
 
     /// Test if a proof fails when generated on a signature with the identity element at both positions.
+    /// Also test that serializing/deserializing such proof does not work.
     ///
-    /// This happens inside this module because using our code one cannot create these bad signatures from outside the module.
+    /// This test happens inside this module because using our code one cannot create these bad signatures from outside the module.
     #[test]
-    #[cfg(feature = "bincode")]
     fn signature_proof_from_sig_with_identities() {
+        run_signature_proof_from_sig_with_identities::<1>();
+        run_signature_proof_from_sig_with_identities::<2>();
+        run_signature_proof_from_sig_with_identities::<3>();
+        run_signature_proof_from_sig_with_identities::<5>();
+        run_signature_proof_from_sig_with_identities::<8>();
+        run_signature_proof_from_sig_with_identities::<13>();
+    }
+
+    #[cfg(feature = "bincode")]
+    fn run_signature_proof_from_sig_with_identities<const N: usize>() {
         let mut rng = rng();
-        let kp = KeyPair::<5>::new(&mut rng);
-        let msg = Message::<5>::random(&mut rng);
+        let kp = KeyPair::<N>::new(&mut rng);
+        let msg = Message::<N>::random(&mut rng);
         let mut bad_sig = Signature::new(&mut rng, &kp, &msg);
         bad_sig.sigma1 = G1Affine::identity();
         bad_sig.sigma2 = G1Affine::identity();
         assert!(!bad_sig.is_well_formed());
 
-        build_proof_on_invalid_signature(&mut rng, bad_sig);
+        build_proof_on_invalid_signature::<N>(bad_sig);
     }
 
     /// Test if a proof fails when generated on a signature with the identity element at the first position.
+    /// Also test that serializing/deserializing such proof does not work.
     ///
-    /// This happens inside this module because using our code one cannot create these bad signatures from outside the module.
+    /// This test happens inside this module because using our code one cannot create these bad signatures from outside the module.
     #[test]
-    #[cfg(feature = "bincode")]
     fn signature_proof_from_sig_with_identity_first() {
+        run_signature_proof_from_sig_with_identity_first::<1>();
+        run_signature_proof_from_sig_with_identity_first::<2>();
+        run_signature_proof_from_sig_with_identity_first::<3>();
+        run_signature_proof_from_sig_with_identity_first::<5>();
+        run_signature_proof_from_sig_with_identity_first::<8>();
+        run_signature_proof_from_sig_with_identity_first::<13>();
+    }
+
+    #[cfg(feature = "bincode")]
+    fn run_signature_proof_from_sig_with_identity_first<const N: usize>() {
         let mut rng = rng();
-        let kp = KeyPair::<5>::new(&mut rng);
-        let msg = Message::<5>::random(&mut rng);
+        let kp = KeyPair::<N>::new(&mut rng);
+        let msg = Message::<N>::random(&mut rng);
         let mut bad_sig = Signature::new(&mut rng, &kp, &msg);
         bad_sig.sigma1 = G1Affine::identity();
         assert!(!bad_sig.is_well_formed());
 
-        build_proof_on_invalid_signature(&mut rng, bad_sig);
+        build_proof_on_invalid_signature::<N>(bad_sig);
     }
 
     #[cfg(feature = "bincode")]
-    fn build_proof_on_invalid_signature(rng: &mut impl Rng, sig: Signature) {
-        let msg = Message::<5>::random(rng);
-        let kp = KeyPair::new(rng);
+    fn build_proof_on_invalid_signature<const N: usize>(sig: Signature) {
+        let mut rng = rng();
+        let msg = Message::<N>::random(&mut rng);
+        let kp = KeyPair::new(&mut rng);
 
         // Construct proof.
         let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
-            rng,
+            &mut rng,
             msg,
             sig,
-            &[None; 5],
+            &[None; N],
             kp.public_key(),
         );
         let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
@@ -763,6 +784,10 @@ mod test {
 
         // Proof must not verify, since the underlying sig is invalid.
         assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
+
+        // When serializing and deserializing, validation should not allow for this proof to be deserialized
+        let ser_proof = bincode::serialize(&proof).unwrap();
+        assert!(bincode::deserialize::<SignatureProof<N>>(&ser_proof).is_err());
     }
 
     /// Test the validation code during deserialization of the public key

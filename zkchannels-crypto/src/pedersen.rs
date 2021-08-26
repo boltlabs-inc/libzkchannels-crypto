@@ -36,6 +36,7 @@ use crate::{
 use arrayvec::ArrayVec;
 use group::Group;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use std::iter;
 
 /// A Pedersen commitment to a message.
@@ -114,19 +115,24 @@ where
     gs: Box<[G; N]>,
 }
 
-impl<G: Group<Scalar = Scalar>, const N: usize>
-    std::convert::TryFrom<UncheckedPedersenParameters<G, N>> for PedersenParameters<G, N>
+impl<G: Group<Scalar = Scalar>, const N: usize> TryFrom<UncheckedPedersenParameters<G, N>>
+    for PedersenParameters<G, N>
 {
     type Error = String;
     /// During deserialization verify none of the elements of the Pedersen parameters are the identity element
     fn try_from(unchecked: UncheckedPedersenParameters<G, N>) -> Result<Self, Self::Error> {
         let UncheckedPedersenParameters { h, gs } = unchecked;
 
-        let params = PedersenParameters { h, gs };
-        if !params.is_well_formed() {
+        if bool::from(h.is_identity()) {
             return Err("Pedersen parameters must not contain the identity element".to_string());
         }
-        Ok(params)
+        for g in gs.iter() {
+            if bool::from(g.is_identity()) {
+                return Err("Pedersen parameters must not contain the identity element".to_string());
+            }
+        }
+
+        Ok(PedersenParameters { h, gs })
     }
 }
 
@@ -139,15 +145,19 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
     /// These are chosen uniformly at random, such that no discrete logarithm relationships
     /// are known among the generators.
     pub fn new(rng: &mut impl Rng) -> Self {
-        let h: G = random_non_identity(&mut *rng);
-        let gs = iter::repeat_with(|| random_non_identity(&mut *rng))
-            .take(N)
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .expect("length mismatch impossible");
-        Self {
-            h,
-            gs: Box::new(gs),
+        loop {
+            let h: G = random_non_identity(&mut *rng);
+            let gs = iter::repeat_with(|| random_non_identity(&mut *rng))
+                .take(N)
+                .collect::<ArrayVec<_, N>>()
+                .into_inner()
+                .expect("length mismatch impossible");
+            if let Ok(params) = Self::try_from(UncheckedPedersenParameters {
+                h,
+                gs: Box::new(gs),
+            }) {
+                return params;
+            }
         }
     }
 
@@ -169,22 +179,6 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
 
     pub(crate) fn gs(&self) -> &[G; N] {
         self.gs.as_ref()
-    }
-
-    /// Check whether the Pedersen parameters are well-formed.
-    ///
-    /// This checks that all elements are not the identity element. This implementation uses only
-    /// checked APIs to ensure that all elements of the Pedersen parameters are in the expected group.
-    pub fn is_well_formed(&self) -> bool {
-        if bool::from(self.h.is_identity()) {
-            return false;
-        }
-        for g in self.gs.iter() {
-            if bool::from(g.is_identity()) {
-                return false;
-            }
-        }
-        true
     }
 }
 

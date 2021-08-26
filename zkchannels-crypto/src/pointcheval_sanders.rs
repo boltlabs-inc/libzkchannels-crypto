@@ -17,6 +17,7 @@ use arrayvec::ArrayVec;
 use ff::Field;
 use group::Curve;
 use serde::*;
+use std::convert::TryFrom;
 use std::{iter, ops::Neg};
 
 /// Pointcheval-Sanders secret key for multi-message operations.
@@ -46,19 +47,24 @@ struct UncheckedSecretKey<const N: usize> {
     pub x1: G1Affine,
 }
 
-impl<const N: usize> std::convert::TryFrom<UncheckedSecretKey<N>> for SecretKey<N> {
+impl<const N: usize> TryFrom<UncheckedSecretKey<N>> for SecretKey<N> {
     type Error = String;
     /// During deserialization verify none of the scalars of the secret key are zero, nor is the x1 element the identity element
     fn try_from(unchecked: UncheckedSecretKey<N>) -> Result<Self, Self::Error> {
         let UncheckedSecretKey { x, ys, x1 } = unchecked;
 
-        let sk = SecretKey { x, ys, x1 };
-        if !sk.is_well_formed() {
+        if x.is_zero() || bool::from(x1.is_identity()) {
             return Err(
                 "The secret key must not contain zero scalars nor the identity element".to_string(),
             );
         }
-        Ok(sk)
+        for y in ys.iter() {
+            if y.is_zero() {
+                return Err("The secret key must not contain zero scalars".to_string());
+            }
+        }
+
+        Ok(SecretKey { x, ys, x1 })
     }
 }
 
@@ -107,7 +113,7 @@ struct UncheckedPublicKey<const N: usize> {
     pub y2s: Box<[G2Affine; N]>,
 }
 
-impl<const N: usize> std::convert::TryFrom<UncheckedPublicKey<N>> for PublicKey<N> {
+impl<const N: usize> TryFrom<UncheckedPublicKey<N>> for PublicKey<N> {
     type Error = String;
     /// During deserialization verify none of the elements of the public key are the identity element
     fn try_from(unchecked: UncheckedPublicKey<N>) -> Result<Self, Self::Error> {
@@ -119,20 +125,29 @@ impl<const N: usize> std::convert::TryFrom<UncheckedPublicKey<N>> for PublicKey<
             y2s,
         } = unchecked;
 
-        // Any other validations
-        let pk = PublicKey {
+        if bool::from(g1.is_identity())
+            || bool::from(g2.is_identity())
+            || bool::from(x2.is_identity())
+        {
+            return Err(
+                "The elements of the public key must not be the identity element".to_string(),
+            );
+        }
+        for (y1, y2) in y1s.iter().zip(y2s.iter()) {
+            if bool::from(y1.is_identity()) || bool::from(y2.is_identity()) {
+                return Err(
+                    "The elements of the public key must not be the identity element".to_string(),
+                );
+            }
+        }
+
+        Ok(PublicKey {
             g1,
             y1s,
             g2,
             x2,
             y2s,
-        };
-        if !pk.is_well_formed() {
-            return Err(
-                "The elements of the public key must not be the identity element".to_string(),
-            );
-        }
-        Ok(pk)
+        })
     }
 }
 
@@ -158,41 +173,29 @@ impl<const N: usize> SecretKey<N> {
             "g1 must not be the identity element"
         );
 
-        let mut get_nonzero_scalar = || loop {
-            let r = Scalar::random(&mut *rng);
-            if !r.is_zero() {
-                return r;
-            }
-        };
+        loop {
+            let mut get_nonzero_scalar = || loop {
+                let r = Scalar::random(&mut *rng);
+                if !r.is_zero() {
+                    return r;
+                }
+            };
 
-        let x = get_nonzero_scalar();
-        let ys = iter::repeat_with(get_nonzero_scalar)
-            .take(N)
-            .collect::<ArrayVec<_, N>>()
-            .into_inner()
-            .unwrap();
-        let x1 = (g1 * x).into();
-        SecretKey {
-            x,
-            ys: Box::new(ys),
-            x1,
-        }
-    }
-
-    /// Check whether the secret key is well-formed.
-    ///
-    /// This checks that x and y scalars is not zero and x1 is not the identity element. This implementation uses only
-    /// checked APIs to ensure that both parts of the signature are in the expected group (G1).
-    pub fn is_well_formed(&self) -> bool {
-        if self.x.is_zero() || bool::from(self.x1.is_identity()) {
-            return false;
-        }
-        for y in self.ys.iter() {
-            if y.is_zero() {
-                return false;
+            let x = get_nonzero_scalar();
+            let ys = iter::repeat_with(get_nonzero_scalar)
+                .take(N)
+                .collect::<ArrayVec<_, N>>()
+                .into_inner()
+                .unwrap();
+            let x1 = (g1 * x).into();
+            if let Ok(sk) = SecretKey::try_from(UncheckedSecretKey {
+                x,
+                ys: Box::new(ys),
+                x1,
+            }) {
+                return sk;
             }
         }
-        true
     }
 }
 
@@ -207,22 +210,26 @@ impl<const N: usize> PublicKey<N> {
             "g1 must not be the identity element"
         );
 
-        // select g2 randomly from G2*.
-        let g2: G2Projective = random_non_identity(&mut *rng);
+        loop {
+            // select g2 randomly from G2*.
+            let g2: G2Projective = random_non_identity(&mut *rng);
 
-        // y1i = g1 * [yi] (point multiplication with the secret key)
-        let y1s = map_array(sk.ys.as_ref(), |yi| (g1 * yi).into());
+            // y1i = g1 * [yi] (point multiplication with the secret key)
+            let y1s = map_array(sk.ys.as_ref(), |yi| (g1 * yi).into());
 
-        // y2i = g2 * [yi] (point multiplication with the secret key)
-        let y2s = map_array(sk.ys.as_ref(), |yi| (g2 * yi).into());
+            // y2i = g2 * [yi] (point multiplication with the secret key)
+            let y2s = map_array(sk.ys.as_ref(), |yi| (g2 * yi).into());
 
-        PublicKey {
-            g1: g1.into(),
-            y1s: Box::new(y1s),
-            g2: (g2).into(),
-            // x2 = g * [x]
-            x2: (g2 * sk.x).into(),
-            y2s: Box::new(y2s),
+            if let Ok(pk) = PublicKey::try_from(UncheckedPublicKey {
+                g1: g1.into(),
+                y1s: Box::new(y1s),
+                g2: (g2).into(),
+                // x2 = g * [x]
+                x2: (g2 * sk.x).into(),
+                y2s: Box::new(y2s),
+            }) {
+                return pk;
+            }
         }
     }
 
@@ -239,25 +246,6 @@ impl<const N: usize> PublicKey<N> {
             buf.extend_from_slice(y2.to_bytes().as_ref());
         }
         buf
-    }
-
-    /// Check whether the public key is well-formed.
-    ///
-    /// This checks that all elements are not the identity element. This implementation uses only
-    /// checked APIs to ensure that all elements of the public key are in the expected group.
-    pub fn is_well_formed(&self) -> bool {
-        if bool::from(self.g1.is_identity())
-            || bool::from(self.g2.is_identity())
-            || bool::from(self.x2.is_identity())
-        {
-            return false;
-        }
-        for (y1, y2) in self.y1s.iter().zip(self.y2s.iter()) {
-            if bool::from(y1.is_identity()) || bool::from(y2.is_identity()) {
-                return false;
-            }
-        }
-        true
     }
 }
 
@@ -343,18 +331,19 @@ struct UncheckedSignature {
     sigma2: G1Affine,
 }
 
-impl std::convert::TryFrom<UncheckedSignature> for Signature {
+impl TryFrom<UncheckedSignature> for Signature {
     type Error = String;
     /// During deserialization verify that the first element of the signature is not the identity element
     fn try_from(unchecked: UncheckedSignature) -> Result<Self, Self::Error> {
         let UncheckedSignature { sigma1, sigma2 } = unchecked;
-        let sig = Signature { sigma1, sigma2 };
-        if !sig.is_well_formed() {
+
+        if bool::from(sigma1.is_identity()) {
             return Err(
                 "The first element of a signature must not be the identity element".to_string(),
             );
         }
-        Ok(sig)
+
+        Ok(Signature { sigma1, sigma2 })
     }
 }
 
@@ -364,16 +353,21 @@ impl Signature {
         signing_key: &KeyPair<N>,
         msg: &Message<N>,
     ) -> Self {
-        // select h randomly from G1*.
-        let h: G1Projective = random_non_identity(&mut *rng);
+        loop {
+            // select h randomly from G1*.
+            let h: G1Projective = random_non_identity(&mut *rng);
 
-        // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
-        let scalar_combination = signing_key.sk.x + inner_product(signing_key.sk.ys.as_ref(), msg);
+            // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
+            let scalar_combination =
+                signing_key.sk.x + inner_product(signing_key.sk.ys.as_ref(), msg);
 
-        Signature {
-            sigma1: h.into(),
-            // sigma2 = h * [scalar_combination]
-            sigma2: (h * scalar_combination).into(),
+            if let Ok(sig) = Signature::try_from(UncheckedSignature {
+                sigma1: h.into(),
+                // sigma2 = h * [scalar_combination]
+                sigma2: (h * scalar_combination).into(),
+            }) {
+                return sig;
+            }
         }
     }
 

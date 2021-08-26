@@ -7,6 +7,7 @@ use crate::{
 };
 use arrayvec::ArrayVec;
 use serde::*;
+use std::convert::TryFrom;
 use thiserror::Error;
 
 /// The error type returned when attempting to form a range constraint for a value outside the range.
@@ -53,7 +54,7 @@ struct UncheckedRangeConstraintParameters {
     public_key: PublicKey<1>,
 }
 
-impl std::convert::TryFrom<UncheckedRangeConstraintParameters> for RangeConstraintParameters {
+impl TryFrom<UncheckedRangeConstraintParameters> for RangeConstraintParameters {
     type Error = String;
     /// During deserialization verify the signature inside the RangeConstraintParameters are valid signatures on the appropriate scalars
     fn try_from(unchecked: UncheckedRangeConstraintParameters) -> Result<Self, Self::Error> {
@@ -61,15 +62,16 @@ impl std::convert::TryFrom<UncheckedRangeConstraintParameters> for RangeConstrai
             digit_signatures,
             public_key,
         } = unchecked;
+        for (i, sig) in digit_signatures.iter().enumerate() {
+            if !sig.verify(&public_key, &Scalar::from(i as u64).into()) {
+                return Err("The signatures in the RangeConstraintParameters must be valid signatures on the appropriate scalars".to_string());
+            }
+        }
 
-        let params = RangeConstraintParameters {
+        Ok(RangeConstraintParameters {
             digit_signatures,
             public_key,
-        };
-        if !params.is_well_formed() {
-            return Err("The signatures in the RangeConstraintParameters must be valid signatures on the appropriate scalars".to_string());
-        }
-        Ok(params)
+        })
     }
 }
 
@@ -85,34 +87,24 @@ impl RangeConstraintParameters {
     pub fn new(rng: &mut impl Rng) -> Self {
         // Workaround for not being able to use `as` in const type variables for now.
         const RP_PARAMETER_U_AS_USIZE: usize = RP_PARAMETER_U as usize;
+        loop {
+            let keypair = KeyPair::<1>::new(rng);
+            let digit_signatures = (0..RP_PARAMETER_U)
+                .map(|i| Signature::new(rng, &keypair, &Scalar::from(i).into()))
+                .collect::<ArrayVec<_, RP_PARAMETER_U_AS_USIZE>>();
 
-        let keypair = KeyPair::<1>::new(rng);
-        let digit_signatures = (0..RP_PARAMETER_U)
-            .map(|i| Signature::new(rng, &keypair, &Scalar::from(i).into()))
-            .collect::<ArrayVec<_, RP_PARAMETER_U_AS_USIZE>>();
-
-        Self {
-            digit_signatures: Box::new(digit_signatures.into_inner().expect("known length")),
-            public_key: keypair.public_key().clone(),
+            if let Ok(params) = Self::try_from(UncheckedRangeConstraintParameters {
+                digit_signatures: Box::new(digit_signatures.into_inner().expect("known length")),
+                public_key: keypair.public_key().clone(),
+            }) {
+                return params;
+            }
         }
     }
 
     /// Return the public key used to form the `RangeConstraintParameters`.
     pub fn public_key(&self) -> &PublicKey<1> {
         &self.public_key
-    }
-
-    /// Check whether the range constraint parameters are well-formed.
-    ///
-    /// This checks that all signatures are valid on a correct scalar. This implementation uses only
-    /// checked APIs to ensure that all signatures and the public key are correctly formed.
-    pub fn is_well_formed(&self) -> bool {
-        for (i, sig) in self.digit_signatures.iter().enumerate() {
-            if !sig.verify(&self.public_key, &Scalar::from(i as u64).into()) {
-                return false;
-            }
-        }
-        true
     }
 }
 

@@ -13,25 +13,12 @@ pub struct Nonce(#[serde(with = "SerializeElement")] Scalar);
 #[derive(Debug, Deserialize)]
 struct UncheckedNonce(#[serde(with = "SerializeElement")] Scalar);
 
-impl UncheckedNonce {
-    /// Convert an unchecked nonce to its canonical `Scalar` representation.
-    fn as_scalar(&self) -> Scalar {
-        self.0
-    }
-
-    /// Generate a new cryptographically random unchecked nonce with the given random number
-    /// generator.
-    fn new(rng: &mut impl Rng) -> Self {
-        Self(Scalar::random(&mut *rng))
-    }
-}
-
 impl TryFrom<UncheckedNonce> for Nonce {
     type Error = String;
 
     /// Try to convert an unchecked nonce to a nonce.
     fn try_from(unchecked: UncheckedNonce) -> Result<Self, Self::Error> {
-        let n = unchecked.as_scalar();
+        let n = unchecked.0;
         if n != CLOSE_SCALAR {
             Ok(Self(n))
         } else {
@@ -44,9 +31,9 @@ impl Nonce {
     /// Generate a new cryptographically random nonce with the given random number generator.
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
         loop {
-            if let Ok(n) = Nonce::try_from(UncheckedNonce::new(rng)) {
+            if let Ok(n) = Nonce::try_from(UncheckedNonce(Scalar::random(&mut *rng))){
                 return n;
-            }
+        }
         }
     }
 

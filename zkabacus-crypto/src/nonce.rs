@@ -31,9 +31,9 @@ impl Nonce {
     /// Generate a new cryptographically random nonce with the given random number generator.
     pub(crate) fn new(rng: &mut impl Rng) -> Self {
         loop {
-            if let Ok(n) = Nonce::try_from(UncheckedNonce(Scalar::random(&mut *rng))){
+            if let Ok(n) = Nonce::try_from(UncheckedNonce(Scalar::random(&mut *rng))) {
                 return n;
-        }
+            }
         }
     }
 

@@ -3,7 +3,7 @@ use bls12_381::{G1Projective, Scalar};
 use ff::Field;
 use rand::Rng;
 use std::iter;
-use zkchannels_crypto::pedersen::ToPedersenParameters;
+use zkchannels_crypto::pedersen::PedersenParameters;
 use zkchannels_crypto::pointcheval_sanders::KeyPair;
 use zkchannels_crypto::proofs::{
     ChallengeBuilder, CommitmentProofBuilder, SignatureRequestProofBuilder,
@@ -12,6 +12,7 @@ use zkchannels_crypto::Message;
 
 mod test_utils;
 
+/// Test of a signature request proof
 #[test]
 fn signature_request_proof_verifies() {
     run_signature_request_proof_verifies::<1>();
@@ -28,7 +29,7 @@ fn run_signature_request_proof_verifies<const N: usize>() {
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
 
-    // Form commmitment.
+    // Create keypair.
     let keypair = KeyPair::new(&mut rng);
 
     // Build proof.
@@ -42,7 +43,7 @@ fn run_signature_request_proof_verifies<const N: usize>() {
     let bf = proof_builder.message_blinding_factor();
     let proof = proof_builder.generate_proof_response(challenge);
 
-    // Proof must verify with the original commit.
+    // Proof must verify
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
     let verified_blinded_message =
         proof.verify_knowledge_of_opening(keypair.public_key(), verif_challenge);
@@ -54,6 +55,7 @@ fn run_signature_request_proof_verifies<const N: usize>() {
     assert!(signature.verify(keypair.public_key(), &msg));
 }
 
+/// Test of a signature request proof failing with a wrong challenge
 #[test]
 fn signature_request_proof_fails_on_wrong_challenge() {
     run_signature_request_proof_fails_on_wrong_challenge::<1>();
@@ -70,7 +72,7 @@ fn run_signature_request_proof_fails_on_wrong_challenge<const N: usize>() {
     // Generate message.
     let msg = Message::<N>::random(&mut rng);
 
-    // Form commmitment.
+    // Create keypair.
     let keypair = KeyPair::new(&mut rng);
 
     // Build proof using normally-generated challenge.
@@ -96,6 +98,7 @@ fn run_signature_request_proof_fails_on_wrong_challenge<const N: usize>() {
         .is_none());
 }
 
+/// Test of the conjunction of a signature request proof and a commitment proof with an equality relation
 #[test]
 fn signature_request_proof_with_equality_relation() {
     run_signature_request_proof_with_equality_relation::<1>();
@@ -123,21 +126,23 @@ fn run_signature_request_proof_with_equality_relation<const N: usize>() {
     msg2_vec[second_pos] = msg1[first_pos];
     let msg2 = Message::new(msg2_vec);
 
-    // Construct commitments.
+    // Create keypair.
     let params = KeyPair::new(&mut rng);
+    // Create Pedersen params
+    let pedersen_params = PedersenParameters::new(&mut rng);
 
     // Construct proofs - commitment phase.
     let proof_builder1 = CommitmentProofBuilder::<G1Projective, N>::generate_proof_commitments(
         &mut rng,
         msg1,
         &[None; N],
-        &params.public_key().to_pedersen_parameters(),
+        &pedersen_params,
     );
     let mut conjunction_commitment_scalars = [None; N];
+    // Set commitment scalars for the matching elements to be equal:
+    // Pass in the commitment scalar of the first position onto the second position.
     conjunction_commitment_scalars[second_pos] =
         Some(proof_builder1.conjunction_commitment_scalars()[first_pos]);
-    // Set commitment scalars for the matching elements to be equal:
-    // Pass in the commitment scalar of the first position onto the third position.
     let proof_builder2 = SignatureRequestProofBuilder::generate_proof_commitments(
         &mut rng,
         msg2.clone(),
@@ -158,10 +163,7 @@ fn run_signature_request_proof_with_equality_relation<const N: usize>() {
 
     // Verify both proofs.
     let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
-    assert!(proof1.verify_knowledge_of_opening(
-        &params.public_key().to_pedersen_parameters(),
-        verif_challenge
-    ));
+    assert!(proof1.verify_knowledge_of_opening(&pedersen_params, verif_challenge));
     let verif_blind_msg2 = proof2.verify_knowledge_of_opening(params.public_key(), verif_challenge);
     assert!(verif_blind_msg2.is_some());
 
@@ -170,7 +172,7 @@ fn run_signature_request_proof_with_equality_relation<const N: usize>() {
         proof1.conjunction_response_scalars()[first_pos],
         proof2.conjunction_response_scalars()[second_pos]
     );
-    // Verify the above was not an accident. (such as all elements are the same, or there are other equalities)
+    // Test if no other positions have an equal response scalar.
     for i in 0..N {
         for j in 0..N {
             if i != first_pos && j != second_pos {
@@ -187,6 +189,7 @@ fn run_signature_request_proof_with_equality_relation<const N: usize>() {
     assert!(signature.verify(params.public_key(), &msg2));
 }
 
+/// Test of the conjunction of a signature request proof and a commitment proof with an equality relation
 #[test]
 fn signature_request_proof_with_public_value() {
     run_signature_request_proof_with_public_value::<1>();
@@ -237,6 +240,9 @@ fn run_signature_request_proof_with_public_value<const N: usize>() {
     assert!(signature.verify(params.public_key(), &msg));
 }
 
+/// Test of the conjunction of a signature request proof and a commitment proof
+/// with a relation between a value in the commitment with addition of a public value
+/// equals a value of the message inside the signature
 #[test]
 fn signature_request_proof_with_linear_relation_public_addition() {
     run_signature_request_proof_with_linear_relation_public_addition::<1>();
@@ -266,15 +272,16 @@ fn run_signature_request_proof_with_linear_relation_public_addition<const N: usi
     msg2_vec[second_pos] = msg1[first_pos] + public_value;
     let msg2 = Message::new(msg2_vec);
 
-    // Construct commitments.
+    // Construct keypair.
     let params = KeyPair::new(&mut rng);
+    let pedersen_params = PedersenParameters::new(&mut rng);
 
     // Construct proof - commitment phase.
     let proof_builder1 = CommitmentProofBuilder::<G1Projective, N>::generate_proof_commitments(
         &mut rng,
         msg1,
         &[None; N],
-        &params.public_key().to_pedersen_parameters(),
+        &pedersen_params,
     );
     // Commitment scalars for elements with linear relationships must match.
     let mut conjunction_commitment_scalars = [None; N];
@@ -298,10 +305,7 @@ fn run_signature_request_proof_with_linear_relation_public_addition<const N: usi
 
     // Verify both proofs.
     let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
-    assert!(proof1.verify_knowledge_of_opening(
-        &params.public_key().to_pedersen_parameters(),
-        verif_challenge
-    ));
+    assert!(proof1.verify_knowledge_of_opening(&pedersen_params, verif_challenge));
     let verif_blind_msg2 = proof2.verify_knowledge_of_opening(params.public_key(), verif_challenge);
     assert!(verif_blind_msg2.is_some());
 
@@ -311,7 +315,7 @@ fn run_signature_request_proof_with_linear_relation_public_addition<const N: usi
             + verif_challenge.to_scalar() * public_value,
         proof2.conjunction_response_scalars()[second_pos]
     );
-    // Verify the above was not an accident. (such as all elements are the same, or there are other equalities)
+    // Test if no other positions have an equal response scalar.
     for i in 0..N {
         for j in 0..N {
             if i != first_pos && j != second_pos {

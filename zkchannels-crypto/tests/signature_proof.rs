@@ -450,38 +450,6 @@ fn signature_proof_from_random_sig() {
 
 #[test]
 #[cfg(feature = "bincode")]
-fn signature_proof_from_sig_with_identities() {
-    let mut rng = test_utils::seeded_rng();
-
-    // Deserialize bad signature (1, 1)
-    let mut bytes = Vec::<u8>::new();
-    let mut serializer = bincode::Serializer::new(&mut bytes, bincode::options());
-    SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
-    SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
-    let bad_sig: Signature = bincode::deserialize(&bytes).unwrap();
-    assert!(!bad_sig.is_well_formed());
-
-    build_proof_on_invalid_signature(&mut rng, bad_sig);
-}
-
-#[test]
-#[cfg(feature = "bincode")]
-fn signature_proof_from_sig_with_identity_first() {
-    let mut rng = test_utils::seeded_rng();
-
-    // Form bad signature (1, x)
-    let mut bytes = Vec::<u8>::new();
-    let mut serializer = bincode::Serializer::new(&mut bytes, bincode::options());
-    SerializeElement::serialize(&G1Projective::identity(), &mut serializer).unwrap();
-    SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
-    let bad_sig: Signature = bincode::deserialize(&bytes).unwrap();
-    assert!(!bad_sig.is_well_formed());
-
-    build_proof_on_invalid_signature(&mut rng, bad_sig);
-}
-
-#[test]
-#[cfg(feature = "bincode")]
 fn signature_proof_from_sig_with_identity_second() {
     let mut rng = test_utils::seeded_rng();
 

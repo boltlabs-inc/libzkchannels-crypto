@@ -36,6 +36,7 @@ use crate::{
 use arrayvec::ArrayVec;
 use group::Group;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use std::iter;
 
 /// A Pedersen commitment to a message.
@@ -85,7 +86,10 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeInput for Commitment<G>
 /// These are defined over the prime-order pairing groups from BLS12-381.
 /// Uses Box to avoid stack overflows with large parameter sets.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(bound = "G: SerializeG1")]
+#[serde(
+    bound = "G: SerializeG1",
+    try_from = "UncheckedPedersenParameters<G, N>"
+)]
 pub struct PedersenParameters<G, const N: usize>
 where
     G: Group<Scalar = Scalar>,
@@ -94,6 +98,42 @@ where
     h: G,
     #[serde(with = "SerializeElement")]
     gs: Box<[G; N]>,
+}
+
+/// Pedersen parameters before validation.
+///
+/// Used during deserialization before validation checks have been done.
+#[derive(Debug, Deserialize)]
+#[serde(bound = "G: SerializeG1")]
+struct UncheckedPedersenParameters<G, const N: usize>
+where
+    G: Group<Scalar = Scalar>,
+{
+    #[serde(with = "SerializeElement")]
+    h: G,
+    #[serde(with = "SerializeElement")]
+    gs: Box<[G; N]>,
+}
+
+impl<G: Group<Scalar = Scalar>, const N: usize> TryFrom<UncheckedPedersenParameters<G, N>>
+    for PedersenParameters<G, N>
+{
+    type Error = String;
+    /// During deserialization verify none of the elements of the Pedersen parameters are the identity element
+    fn try_from(unchecked: UncheckedPedersenParameters<G, N>) -> Result<Self, Self::Error> {
+        let UncheckedPedersenParameters { h, gs } = unchecked;
+
+        if bool::from(h.is_identity()) {
+            return Err("Pedersen parameters must not contain the identity element".to_string());
+        }
+        for g in gs.iter() {
+            if bool::from(g.is_identity()) {
+                return Err("Pedersen parameters must not contain the identity element".to_string());
+            }
+        }
+
+        Ok(PedersenParameters { h, gs })
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -111,7 +151,7 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
             .collect::<ArrayVec<_, N>>()
             .into_inner()
             .expect("length mismatch impossible");
-        Self {
+        PedersenParameters {
             h,
             gs: Box::new(gs),
         }
@@ -165,6 +205,8 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand::Rng;
+    use std::convert::TryFrom;
 
     fn commit_open<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();
@@ -294,5 +336,61 @@ mod test {
     #[test]
     fn commit_does_not_open_on_random_commit_g2() {
         commit_does_not_open_on_random_commit::<G2Projective>()
+    }
+
+    /// Test the validation code during deserialization of the Pedersen parameters
+    #[test]
+    #[cfg(feature = "bincode")]
+    fn serialize_deserialize_pedersen_params() {
+        run_serialize_deserialize_pedersen_params::<1>();
+        run_serialize_deserialize_pedersen_params::<2>();
+        run_serialize_deserialize_pedersen_params::<3>();
+        run_serialize_deserialize_pedersen_params::<5>();
+        run_serialize_deserialize_pedersen_params::<8>();
+        run_serialize_deserialize_pedersen_params::<13>();
+    }
+
+    #[cfg(feature = "bincode")]
+    fn run_serialize_deserialize_pedersen_params<const N: usize>() {
+        let mut rng = crate::test::rng();
+        let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+
+        // Check normal serialization/deserialization
+        let ser_params = bincode::serialize(&params).unwrap();
+        let new_params =
+            bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).unwrap();
+        assert_eq!(params, new_params);
+
+        // Check validation when h in the Pedersen parameters is the identity element
+        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        bad_params.h = G1Projective::identity();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
+
+        // Check validation when the first of the gs in the Pedersen parameters is the identity element
+        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        let mut gs = bad_params.gs.to_vec();
+        gs[0] = G1Projective::identity();
+        bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
+
+        // Check validation when the last of the gs in the Pedersen parameters is the identity element
+        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        let mut gs = bad_params.gs.to_vec();
+        let last_position = gs.len() - 1;
+        gs[last_position] = G1Projective::identity();
+        bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
+
+        // Check validation when the random element of the gs in the Pedersen parameters is the identity element
+        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        let mut gs = bad_params.gs.to_vec();
+        let random_position = rng.gen_range(0..gs.len());
+        gs[random_position] = G1Projective::identity();
+        bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
+        let ser_params = bincode::serialize(&bad_params).unwrap();
+        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
     }
 }

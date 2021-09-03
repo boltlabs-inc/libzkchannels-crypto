@@ -44,6 +44,7 @@ fn run_signature_proof_verifies<const N: usize>() {
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Proof must verify with the same challenge and keypair.
     assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
@@ -79,6 +80,7 @@ fn run_signature_proof_fails_with_wrong_message<const N: usize>() {
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
@@ -116,6 +118,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_signature<const N: usize>
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
@@ -153,6 +156,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_proof<const N: usize>() {
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Proof must not verify.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 }
@@ -190,6 +194,7 @@ fn run_signature_proof_fails_with_wrong_parameters_for_verification<const N: usi
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Proof must not verify against the wrong parameters.
     assert!(!proof.verify_knowledge_of_signature(bad_kp.public_key(), verif_challenge));
 }
@@ -227,6 +232,11 @@ fn run_signature_proof_fails_with_wrong_challenge<const N: usize>() {
     let bad_challenge = ChallengeBuilder::new()
         .with_bytes(&random_challenge_seed)
         .finish();
+    assert_ne!(
+        bad_challenge.to_scalar(),
+        challenge.to_scalar(),
+        "Accidentally generated matching challenge."
+    );
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
     // Proof must not verify against the wrong challenge.
@@ -293,6 +303,7 @@ fn run_signature_proof_equality_relation<const N: usize>() {
     let proof2 = sig_proof_builder2.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Proofs must verify.
     assert!(proof1.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     assert!(proof2.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
@@ -350,6 +361,7 @@ fn run_signature_proof_public_value<const N: usize>() {
     let proof = sig_proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Proof must verify.
     assert!(proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
 
@@ -421,6 +433,7 @@ fn run_signature_proof_linear_relation_public_addition<const N: usize>() {
     let proof2 = sig_proof_builder2.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new().with(&proof1).with(&proof2).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Both signature proofs must verify.
     assert!(proof1.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
     assert!(proof2.verify_knowledge_of_signature(kp.public_key(), verif_challenge));
@@ -479,6 +492,7 @@ fn build_proof_on_invalid_signature(rng: &mut impl zkchannels_crypto::Rng, sig: 
     let challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
     let proof = sig_proof_builder.generate_proof_response(challenge);
     let verif_challenge = ChallengeBuilder::new().with(&proof).finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
 
     // Proof must not verify, since the underlying sig is invalid.
     assert!(!proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));

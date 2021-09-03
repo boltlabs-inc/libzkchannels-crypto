@@ -316,6 +316,42 @@ mod test {
     use rand::Rng;
     use std::convert::TryFrom;
 
+    #[test]
+    fn test_range_constraint_challenge() {
+        run_test_range_constraint_challenge::<1>();
+        run_test_range_constraint_challenge::<2>();
+        run_test_range_constraint_challenge::<3>();
+        run_test_range_constraint_challenge::<5>();
+        run_test_range_constraint_challenge::<8>();
+        run_test_range_constraint_challenge::<13>();
+    }
+
+    fn run_test_range_constraint_challenge<const N: usize>() {
+        let mut rng = rng();
+
+        // Generate message
+        let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
+
+        // Proof commitment phase. Form range constraint on element
+        let rp_params = RangeConstraintParameters::new(&mut rng);
+        let range_constraint_builder = RangeConstraintBuilder::generate_constraint_commitments(
+            range_tested_value.into(),
+            &rp_params,
+            &mut rng,
+        )
+        .unwrap();
+
+        let builder_challenge = ChallengeBuilder::new()
+            .with(&range_constraint_builder)
+            .finish();
+        let constraint = range_constraint_builder.generate_constraint_response(builder_challenge);
+        let constraint_challenge = ChallengeBuilder::new().with(&constraint).finish();
+        assert_eq!(
+            builder_challenge.to_scalar(),
+            constraint_challenge.to_scalar()
+        );
+    }
+
     /// Test the validation code during deserialization of the range constraint parameters
     #[test]
     #[cfg(feature = "bincode")]

@@ -198,3 +198,42 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
         builder.consume(&self.scalar_commitment());
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::test::rng;
+
+    #[test]
+    fn test_commitment_proof_challenge() {
+        run_test_commitment_proof_challenge::<1>();
+        run_test_commitment_proof_challenge::<2>();
+        run_test_commitment_proof_challenge::<3>();
+        run_test_commitment_proof_challenge::<5>();
+        run_test_commitment_proof_challenge::<8>();
+        run_test_commitment_proof_challenge::<13>();
+    }
+
+    fn run_test_commitment_proof_challenge<const N: usize>() {
+        let mut rng = rng();
+
+        // Generate message.
+        let msg = Message::<N>::random(&mut rng);
+
+        // Pick the generators used in the commitment
+        let pedersen_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+
+        // Build proof.
+        let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            &mut rng,
+            msg,
+            &[None; N],
+            &pedersen_params,
+        );
+
+        let builder_challenge = ChallengeBuilder::new().with(&proof_builder).finish();
+        let proof = proof_builder.generate_proof_response(builder_challenge);
+        let proof_challenge = ChallengeBuilder::new().with(&proof).finish();
+        assert_eq!(builder_challenge.to_scalar(), proof_challenge.to_scalar());
+    }
+}

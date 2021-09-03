@@ -144,3 +144,43 @@ impl<const N: usize> ChallengeInput for SignatureProof<N> {
         builder.consume(&self.commitment_proof);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::pointcheval_sanders::KeyPair;
+    use crate::test::rng;
+
+    #[test]
+    fn test_signature_proof_challenge() {
+        run_test_signature_proof_challenge::<1>();
+        run_test_signature_proof_challenge::<2>();
+        run_test_signature_proof_challenge::<3>();
+        run_test_signature_proof_challenge::<5>();
+        run_test_signature_proof_challenge::<8>();
+        run_test_signature_proof_challenge::<13>();
+    }
+
+    fn run_test_signature_proof_challenge<const N: usize>() {
+        let mut rng = rng();
+
+        // Generate message and form signature.
+        let msg = Message::<N>::random(&mut rng);
+        let kp = KeyPair::new(&mut rng);
+        let sig = msg.sign(&mut rng, &kp);
+
+        // Construct proof.
+        let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+            &mut rng,
+            msg,
+            sig,
+            &[None; N],
+            kp.public_key(),
+        );
+
+        let builder_challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
+        let proof = sig_proof_builder.generate_proof_response(builder_challenge);
+        let proof_challenge = ChallengeBuilder::new().with(&proof).finish();
+        assert_eq!(builder_challenge.to_scalar(), proof_challenge.to_scalar());
+    }
+}

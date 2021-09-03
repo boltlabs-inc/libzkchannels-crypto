@@ -69,6 +69,7 @@ fn run_signature_commitment_proof_linear_relation<const N: usize>() {
         .with(&sig_proof)
         .with(&com_proof)
         .finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Verify commitment proof is valid.
     assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     // Verify signature proof is valid.
@@ -140,6 +141,7 @@ fn run_commitment_signature_proof_linear_relation<const N: usize>() {
         .with(&com_proof)
         .with(&sig_proof)
         .finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Commitment proof must be valid.
     assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     // Signature proof must be valid.
@@ -215,6 +217,7 @@ fn run_commitment_signature_proof_linear_relation_public_addition<const N: usize
         .with(&sig_proof)
         .with(&com_proof)
         .finish();
+    assert_eq!(challenge.to_scalar(), verif_challenge.to_scalar());
     // Both proofs must verify.
     assert!(com_proof.verify_knowledge_of_opening(&params, verif_challenge));
     assert!(sig_proof.verify_knowledge_of_signature(kp.public_key(), verif_challenge));

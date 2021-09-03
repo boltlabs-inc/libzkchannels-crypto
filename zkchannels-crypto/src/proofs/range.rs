@@ -310,12 +310,8 @@ impl ChallengeInput for RangeConstraint {
 }
 
 #[cfg(test)]
-#[cfg(feature = "bincode")]
 mod test {
     use super::*;
-    use crate::pedersen::Commitment;
-    use crate::pointcheval_sanders::BlindedSignature;
-    use crate::proofs::CommitmentProofBuilder;
     use crate::test::rng;
     use crate::SerializeElement;
     use ff::Field;
@@ -339,57 +335,39 @@ mod test {
 
     #[test]
     fn test_range_constraint_challenge() {
+        run_test_range_constraint_challenge::<1>();
+        run_test_range_constraint_challenge::<2>();
+        run_test_range_constraint_challenge::<3>();
+        run_test_range_constraint_challenge::<5>();
+        run_test_range_constraint_challenge::<8>();
+        run_test_range_constraint_challenge::<13>();
+    }
+
+    fn run_test_range_constraint_challenge<const N: usize>() {
         let mut rng = rng();
 
-        let signatures = iter::repeat_with(|| generate_signature_proof_builder(&mut rng))
-            .take(9)
-            .collect::<ArrayVec<_, 9>>()
-            .into_inner()
-            .unwrap();
+        // Generate message and signature.
+        let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
 
-        let range_constraint_builder = RangeConstraintBuilder {
-            digit_proof_builders: Box::new(signatures),
-            commitment_scalar: Scalar::random(&mut rng),
-        };
+        // Proof commitment phase. Form range constraint on element and use resulting commitment scalar in
+        // signature proof.
+        let rp_params = RangeConstraintParameters::new(&mut rng);
+        let range_constraint_builder = RangeConstraintBuilder::generate_constraint_commitments(
+            range_tested_value.into(),
+            &rp_params,
+            &mut rng,
+        )
+        .unwrap();
+
         let builder_challenge = ChallengeBuilder::new()
             .with(&range_constraint_builder)
             .finish();
         let constraint = range_constraint_builder.generate_constraint_response(builder_challenge);
         let constraint_challenge = ChallengeBuilder::new().with(&constraint).finish();
-        println!("{}", builder_challenge.to_scalar());
-        println!("{}", constraint_challenge.to_scalar());
         assert_eq!(
             builder_challenge.to_scalar(),
             constraint_challenge.to_scalar()
         );
-    }
-
-    fn generate_signature_proof_builder(mut rng: &mut impl Rng) -> SignatureProofBuilder<1> {
-        let msg = Message::<5>::random(&mut rng);
-        let mut ser_commitment = Vec::<u8>::new();
-        let mut serializer = bincode::Serializer::new(&mut ser_commitment, bincode::options());
-        SerializeElement::serialize(&G2Projective::random(&mut rng), &mut serializer).unwrap();
-        let commitment = bincode::deserialize::<Commitment<G2Projective>>(&ser_commitment).unwrap();
-        let mut ser_signature = Vec::<u8>::new();
-        let mut serializer = bincode::Serializer::new(&mut ser_signature, bincode::options());
-        SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
-        SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
-        let signature = bincode::deserialize::<BlindedSignature>(&ser_signature).unwrap();
-        let bf = BlindingFactor::new(&mut rng);
-        let proof_builder = CommitmentProofBuilderWithPublicFields {
-            msg,
-            commitment,
-            message_blinding_factor: bf,
-            scalar_commitment: commitment,
-            blinding_factor_commitment_scalar: Scalar::random(&mut rng),
-            message_commitment_scalars: Box::new([Scalar::random(&mut rng); 5]),
-        };
-        unsafe {
-            std::mem::transmute(SignatureProofBuilderWithPublicFields::<5> {
-                blinded_signature: signature,
-                commitment_proof_builder: std::mem::transmute(proof_builder),
-            })
-        }
     }
 
     /// Test the validation code during deserialization of the range constraint parameters

@@ -200,7 +200,6 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 }
 
 #[cfg(test)]
-#[cfg(feature = "bincode")]
 mod test {
     use super::*;
     use crate::test::rng;
@@ -217,20 +216,21 @@ mod test {
 
     fn run_test_commitment_proof_challenge<const N: usize>() {
         let mut rng = rng();
-        let mut ser_commitment = Vec::<u8>::new();
-        let mut serializer = bincode::Serializer::new(&mut ser_commitment, bincode::options());
-        SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
-        let commitment = bincode::deserialize::<Commitment<G1Projective>>(&ser_commitment).unwrap();
+
+        // Generate message.
         let msg = Message::<N>::random(&mut rng);
-        let bf = BlindingFactor::new(&mut rng);
-        let proof_builder = CommitmentProofBuilder {
+
+        // Form the "correct" commmitment.
+        let pedersen_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+
+        // Build proof.
+        let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            &mut rng,
             msg,
-            commitment,
-            message_blinding_factor: bf,
-            scalar_commitment: commitment,
-            blinding_factor_commitment_scalar: Scalar::random(&mut rng),
-            message_commitment_scalars: Box::new([Scalar::random(&mut rng); N]),
-        };
+            &[None; N],
+            &pedersen_params,
+        );
+
         let builder_challenge = ChallengeBuilder::new().with(&proof_builder).finish();
         let proof = proof_builder.generate_proof_response(builder_challenge);
         let proof_challenge = ChallengeBuilder::new().with(&proof).finish();

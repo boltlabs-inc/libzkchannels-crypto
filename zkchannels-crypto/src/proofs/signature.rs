@@ -148,48 +148,36 @@ impl<const N: usize> ChallengeInput for SignatureProof<N> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::pedersen::Commitment;
+    use crate::pointcheval_sanders::KeyPair;
     use crate::test::rng;
-    use crate::SerializeElement;
-    use ff::Field;
-
-    pub struct CommitmentProofBuilderWithPublicFields<G: Group<Scalar = Scalar>, const N: usize> {
-        pub msg: Message<N>,
-        pub commitment: Commitment<G>,
-        pub message_blinding_factor: BlindingFactor,
-        pub scalar_commitment: Commitment<G>,
-        pub blinding_factor_commitment_scalar: Scalar,
-        pub message_commitment_scalars: Box<[Scalar; N]>,
-    }
 
     #[test]
-    #[cfg(feature = "bincode")]
     fn test_signature_proof_challenge() {
+        run_test_signature_proof_challenge::<1>();
+        run_test_signature_proof_challenge::<2>();
+        run_test_signature_proof_challenge::<3>();
+        run_test_signature_proof_challenge::<5>();
+        run_test_signature_proof_challenge::<8>();
+        run_test_signature_proof_challenge::<13>();
+    }
+
+    fn run_test_signature_proof_challenge<const N: usize>() {
         let mut rng = rng();
 
-        let msg = Message::<5>::random(&mut rng);
-        let mut ser_commitment = Vec::<u8>::new();
-        let mut serializer = bincode::Serializer::new(&mut ser_commitment, bincode::options());
-        SerializeElement::serialize(&G2Projective::random(&mut rng), &mut serializer).unwrap();
-        let commitment = bincode::deserialize::<Commitment<G2Projective>>(&ser_commitment).unwrap();
-        let mut ser_signature = Vec::<u8>::new();
-        let mut serializer = bincode::Serializer::new(&mut ser_signature, bincode::options());
-        SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
-        SerializeElement::serialize(&G1Projective::random(&mut rng), &mut serializer).unwrap();
-        let signature = bincode::deserialize::<BlindedSignature>(&ser_signature).unwrap();
-        let bf = BlindingFactor::new(&mut rng);
-        let proof_builder = CommitmentProofBuilderWithPublicFields {
+        // Generate message and form signature.
+        let msg = Message::<N>::random(&mut rng);
+        let kp = KeyPair::new(&mut rng);
+        let sig = msg.sign(&mut rng, &kp);
+
+        // Construct proof.
+        let sig_proof_builder = SignatureProofBuilder::generate_proof_commitments(
+            &mut rng,
             msg,
-            commitment,
-            message_blinding_factor: bf,
-            scalar_commitment: commitment,
-            blinding_factor_commitment_scalar: Scalar::random(&mut rng),
-            message_commitment_scalars: Box::new([Scalar::random(&mut rng); 5]),
-        };
-        let sig_proof_builder = SignatureProofBuilder::<5> {
-            blinded_signature: signature,
-            commitment_proof_builder: unsafe { std::mem::transmute(proof_builder) },
-        };
+            sig,
+            &[None; N],
+            kp.public_key(),
+        );
+
         let builder_challenge = ChallengeBuilder::new().with(&sig_proof_builder).finish();
         let proof = sig_proof_builder.generate_proof_response(builder_challenge);
         let proof_challenge = ChallengeBuilder::new().with(&proof).finish();

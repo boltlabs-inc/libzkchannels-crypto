@@ -313,25 +313,8 @@ impl ChallengeInput for RangeConstraint {
 mod test {
     use super::*;
     use crate::test::rng;
-    use crate::SerializeElement;
-    use ff::Field;
     use rand::Rng;
     use std::convert::TryFrom;
-    use std::iter;
-
-    pub struct CommitmentProofBuilderWithPublicFields<G: Group<Scalar = Scalar>, const N: usize> {
-        pub msg: Message<N>,
-        pub commitment: Commitment<G>,
-        pub message_blinding_factor: BlindingFactor,
-        pub scalar_commitment: Commitment<G>,
-        pub blinding_factor_commitment_scalar: Scalar,
-        pub message_commitment_scalars: Box<[Scalar; N]>,
-    }
-
-    pub struct SignatureProofBuilderWithPublicFields<const N: usize> {
-        pub blinded_signature: BlindedSignature,
-        pub commitment_proof_builder: CommitmentProofBuilder<G2Projective, N>,
-    }
 
     #[test]
     fn test_range_constraint_challenge() {

@@ -173,28 +173,24 @@ impl<const N: usize> SecretKey<N> {
             "g1 must not be the identity element"
         );
 
-        loop {
-            let mut get_nonzero_scalar = || loop {
-                let r = Scalar::random(&mut *rng);
-                if !r.is_zero() {
-                    return r;
-                }
-            };
-
-            let x = get_nonzero_scalar();
-            let ys = iter::repeat_with(get_nonzero_scalar)
-                .take(N)
-                .collect::<ArrayVec<_, N>>()
-                .into_inner()
-                .unwrap();
-            let x1 = (g1 * x).into();
-            if let Ok(sk) = SecretKey::try_from(UncheckedSecretKey {
-                x,
-                ys: Box::new(ys),
-                x1,
-            }) {
-                return sk;
+        let mut get_nonzero_scalar = || loop {
+            let r = Scalar::random(&mut *rng);
+            if !r.is_zero() {
+                return r;
             }
+        };
+
+        let x = get_nonzero_scalar();
+        let ys = iter::repeat_with(get_nonzero_scalar)
+            .take(N)
+            .collect::<ArrayVec<_, N>>()
+            .into_inner()
+            .unwrap();
+        let x1 = (g1 * x).into();
+        SecretKey {
+            x,
+            ys: Box::new(ys),
+            x1,
         }
     }
 }
@@ -210,26 +206,22 @@ impl<const N: usize> PublicKey<N> {
             "g1 must not be the identity element"
         );
 
-        loop {
-            // select g2 randomly from G2*.
-            let g2: G2Projective = random_non_identity(&mut *rng);
+        // select g2 randomly from G2*.
+        let g2: G2Projective = random_non_identity(&mut *rng);
 
-            // y1i = g1 * [yi] (point multiplication with the secret key)
-            let y1s = map_array(sk.ys.as_ref(), |yi| (g1 * yi).into());
+        // y1i = g1 * [yi] (point multiplication with the secret key)
+        let y1s = map_array(sk.ys.as_ref(), |yi| (g1 * yi).into());
 
-            // y2i = g2 * [yi] (point multiplication with the secret key)
-            let y2s = map_array(sk.ys.as_ref(), |yi| (g2 * yi).into());
+        // y2i = g2 * [yi] (point multiplication with the secret key)
+        let y2s = map_array(sk.ys.as_ref(), |yi| (g2 * yi).into());
 
-            if let Ok(pk) = PublicKey::try_from(UncheckedPublicKey {
-                g1: g1.into(),
-                y1s: Box::new(y1s),
-                g2: (g2).into(),
-                // x2 = g * [x]
-                x2: (g2 * sk.x).into(),
-                y2s: Box::new(y2s),
-            }) {
-                return pk;
-            }
+        PublicKey {
+            g1: g1.into(),
+            y1s: Box::new(y1s),
+            g2: (g2).into(),
+            // x2 = g * [x]
+            x2: (g2 * sk.x).into(),
+            y2s: Box::new(y2s),
         }
     }
 
@@ -353,21 +345,16 @@ impl Signature {
         signing_key: &KeyPair<N>,
         msg: &Message<N>,
     ) -> Self {
-        loop {
-            // select h randomly from G1*.
-            let h: G1Projective = random_non_identity(&mut *rng);
+        // select h randomly from G1*.
+        let h: G1Projective = random_non_identity(&mut *rng);
 
-            // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
-            let scalar_combination =
-                signing_key.sk.x + inner_product(signing_key.sk.ys.as_ref(), msg);
+        // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
+        let scalar_combination = signing_key.sk.x + inner_product(signing_key.sk.ys.as_ref(), msg);
 
-            if let Ok(sig) = Signature::try_from(UncheckedSignature {
-                sigma1: h.into(),
-                // sigma2 = h * [scalar_combination]
-                sigma2: (h * scalar_combination).into(),
-            }) {
-                return sig;
-            }
+        Signature {
+            sigma1: h.into(),
+            // sigma2 = h * [scalar_combination]
+            sigma2: (h * scalar_combination).into(),
         }
     }
 

@@ -145,19 +145,15 @@ impl<G: Group<Scalar = Scalar>, const N: usize> PedersenParameters<G, N> {
     /// These are chosen uniformly at random, such that no discrete logarithm relationships
     /// are known among the generators.
     pub fn new(rng: &mut impl Rng) -> Self {
-        loop {
-            let h: G = random_non_identity(&mut *rng);
-            let gs = iter::repeat_with(|| random_non_identity(&mut *rng))
-                .take(N)
-                .collect::<ArrayVec<_, N>>()
-                .into_inner()
-                .expect("length mismatch impossible");
-            if let Ok(params) = Self::try_from(UncheckedPedersenParameters {
-                h,
-                gs: Box::new(gs),
-            }) {
-                return params;
-            }
+        let h: G = random_non_identity(&mut *rng);
+        let gs = iter::repeat_with(|| random_non_identity(&mut *rng))
+            .take(N)
+            .collect::<ArrayVec<_, N>>()
+            .into_inner()
+            .expect("length mismatch impossible");
+        PedersenParameters {
+            h,
+            gs: Box::new(gs),
         }
     }
 

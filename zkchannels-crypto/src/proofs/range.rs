@@ -87,18 +87,14 @@ impl RangeConstraintParameters {
     pub fn new(rng: &mut impl Rng) -> Self {
         // Workaround for not being able to use `as` in const type variables for now.
         const RP_PARAMETER_U_AS_USIZE: usize = RP_PARAMETER_U as usize;
-        loop {
-            let keypair = KeyPair::<1>::new(rng);
-            let digit_signatures = (0..RP_PARAMETER_U)
-                .map(|i| Signature::new(rng, &keypair, &Scalar::from(i).into()))
-                .collect::<ArrayVec<_, RP_PARAMETER_U_AS_USIZE>>();
+        let keypair = KeyPair::<1>::new(rng);
+        let digit_signatures = (0..RP_PARAMETER_U)
+            .map(|i| Signature::new(rng, &keypair, &Scalar::from(i).into()))
+            .collect::<ArrayVec<_, RP_PARAMETER_U_AS_USIZE>>();
 
-            if let Ok(params) = Self::try_from(UncheckedRangeConstraintParameters {
-                digit_signatures: Box::new(digit_signatures.into_inner().expect("known length")),
-                public_key: keypair.public_key().clone(),
-            }) {
-                return params;
-            }
+        RangeConstraintParameters {
+            digit_signatures: Box::new(digit_signatures.into_inner().expect("known length")),
+            public_key: keypair.public_key().clone(),
         }
     }
 

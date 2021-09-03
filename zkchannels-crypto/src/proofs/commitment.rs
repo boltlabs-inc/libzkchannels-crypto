@@ -220,7 +220,7 @@ mod test {
         // Generate message.
         let msg = Message::<N>::random(&mut rng);
 
-        // Form the "correct" commmitment.
+        // Pick the generators used in the commitment
         let pedersen_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
 
         // Build proof.

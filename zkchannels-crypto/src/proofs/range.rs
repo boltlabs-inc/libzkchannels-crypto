@@ -346,11 +346,10 @@ mod test {
     fn run_test_range_constraint_challenge<const N: usize>() {
         let mut rng = rng();
 
-        // Generate message and signature.
+        // Generate message
         let range_tested_value = rng.gen_range(0..i64::MAX) as u32;
 
-        // Proof commitment phase. Form range constraint on element and use resulting commitment scalar in
-        // signature proof.
+        // Proof commitment phase. Form range constraint on element
         let rp_params = RangeConstraintParameters::new(&mut rng);
         let range_constraint_builder = RangeConstraintBuilder::generate_constraint_commitments(
             range_tested_value.into(),

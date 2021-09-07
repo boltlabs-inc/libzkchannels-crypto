@@ -72,6 +72,11 @@ impl RevocationSecret {
         ]);
         RevocationLock(scalar)
     }
+
+    /// Encode the secret as bytes.
+    pub fn as_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
+    }
 }
 
 impl RevocationLock {

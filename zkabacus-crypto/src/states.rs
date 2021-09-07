@@ -445,6 +445,16 @@ impl CloseStateBlindedSignature {
     pub(crate) fn unblind(self, bf: CloseStateBlindingFactor) -> CloseStateSignature {
         CloseStateSignature(self.0.unblind(bf.0))
     }
+
+    /// Encode a [`crate::ClosingSignature`] as bytes representing the two parts of the signature.
+    ///
+    /// In particular, the output represents two [`G1Affine`] elements in uncompressed form.
+    pub fn as_bytes(&self) -> ([u8; 96], [u8; 96]) {
+        (
+            self.0.sigma1().to_uncompressed(),
+            self.0.sigma2().to_uncompressed(),
+        )
+    }
 }
 
 impl CloseStateSignature {

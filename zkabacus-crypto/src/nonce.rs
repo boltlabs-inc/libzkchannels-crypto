@@ -48,8 +48,8 @@ zkchannels_crypto::impl_sqlx_for_bincode_ty!(Nonce);
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use rand::thread_rng;
+    #[cfg(feature = "bincode")]
+    use {super::*, rand::thread_rng};
 
     // Sanity check on invalid nonce
     #[test]

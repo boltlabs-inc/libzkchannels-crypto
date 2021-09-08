@@ -6,13 +6,17 @@ use ff::Field;
 use rand::Rng;
 use std::iter;
 use zkchannels_crypto::{
-    pointcheval_sanders::{KeyPair, Signature},
+    pointcheval_sanders::KeyPair,
     proofs::{ChallengeBuilder, SignatureProofBuilder},
     Message,
 };
 
 #[cfg(feature = "bincode")]
-use {bls12_381::G1Projective, group::Group, zkchannels_crypto::SerializeElement};
+use {
+    bls12_381::G1Projective,
+    group::Group,
+    zkchannels_crypto::{pointcheval_sanders::Signature, SerializeElement},
+};
 
 #[test]
 fn signature_proof_verifies() {

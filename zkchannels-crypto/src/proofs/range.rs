@@ -314,6 +314,7 @@ mod test {
     use super::*;
     use crate::test::rng;
     use rand::Rng;
+    #[cfg(feature = "bincode")]
     use std::convert::TryFrom;
 
     #[test]

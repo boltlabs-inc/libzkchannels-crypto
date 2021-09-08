@@ -205,8 +205,8 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding, const N: usize> ChallengeInput
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::Rng;
-    use std::convert::TryFrom;
+    #[cfg(feature = "bincode")]
+    use {rand::Rng, std::convert::TryFrom};
 
     fn commit_open<G: Group<Scalar = Scalar>>() {
         let mut rng = crate::test::rng();

@@ -540,12 +540,12 @@ impl BlindedSignature {
     }
 
     /// Extract the sigma_1 or `h` component.
-    pub(crate) fn sigma1(self) -> G1Affine {
+    pub fn sigma1(self) -> G1Affine {
         self.0.sigma1
     }
 
     /// Extract the sigma_2 or `H` component.
-    pub(crate) fn sigma2(self) -> G1Affine {
+    pub fn sigma2(self) -> G1Affine {
         self.0.sigma2
     }
 }
@@ -559,8 +559,10 @@ impl ChallengeInput for BlindedSignature {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::proofs::{SignatureProof, SignatureProofBuilder};
     use crate::test::rng;
+
+    #[cfg(feature = "bincode")]
+    use crate::proofs::{SignatureProof, SignatureProofBuilder};
 
     #[test]
     fn verify_signed_message() {
@@ -703,6 +705,7 @@ mod test {
     ///
     /// This test happens inside this module because using our code one cannot create these bad signatures from outside the module.
     #[test]
+    #[cfg(feature = "bincode")]
     fn signature_proof_from_sig_with_identities() {
         run_signature_proof_from_sig_with_identities::<1>();
         run_signature_proof_from_sig_with_identities::<2>();
@@ -730,6 +733,7 @@ mod test {
     ///
     /// This test happens inside this module because using our code one cannot create these bad signatures from outside the module.
     #[test]
+    #[cfg(feature = "bincode")]
     fn signature_proof_from_sig_with_identity_first() {
         run_signature_proof_from_sig_with_identity_first::<1>();
         run_signature_proof_from_sig_with_identity_first::<2>();
@@ -779,6 +783,7 @@ mod test {
 
     /// Test the validation code during deserialization of the public key
     #[test]
+    #[cfg(feature = "bincode")]
     fn serialize_deserialize_public_key() {
         run_serialize_deserialize_public_key::<1>();
         run_serialize_deserialize_public_key::<2>();
@@ -835,6 +840,7 @@ mod test {
 
     /// Test the validation code during deserialization of the secret key
     #[test]
+    #[cfg(feature = "bincode")]
     fn serialize_deserialize_secret_key() {
         run_serialize_deserialize_secret_key::<1>();
         run_serialize_deserialize_secret_key::<2>();
@@ -877,6 +883,7 @@ mod test {
 
     /// Test the validation code during deserialization of the signature
     #[test]
+    #[cfg(feature = "bincode")]
     fn serialize_deserialize_signature() {
         run_serialize_deserialize_signature::<1>();
         run_serialize_deserialize_signature::<2>();

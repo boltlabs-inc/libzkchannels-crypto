@@ -73,9 +73,13 @@ impl RevocationSecret {
         RevocationLock(scalar)
     }
 
-    /// Encode the secret as bytes.
-    pub fn as_bytes(&self) -> [u8; 32] {
-        self.0.to_bytes()
+    /// Encode the secret as bytes, using the specified byte order.
+    pub fn as_bytes(&self, is_little_endian: bool) -> [u8; 32] {
+        let mut bytes = self.0.to_bytes();
+        if !is_little_endian {
+            bytes.reverse();
+        }
+        bytes
     }
 }
 
@@ -93,6 +97,15 @@ impl RevocationLock {
     /// Convert a revocation lock to its canonical `Scalar` representation.
     pub(crate) fn to_scalar(&self) -> Scalar {
         self.0
+    }
+
+    /// Encode the lock as bytes, using the specified byte order.
+    pub fn as_bytes(&self, is_little_endian: bool) -> [u8; 32] {
+        let mut bytes = self.0.to_bytes();
+        if !is_little_endian {
+            bytes.reverse();
+        }
+        bytes
     }
 }
 

@@ -24,7 +24,7 @@ Ch 3.3: Off-network channel protocol zkAbacus.
 #![warn(unused_qualifications, unused_results)]
 #![warn(future_incompatible)]
 #![warn(unused)]
-#![forbid(broken_intra_doc_links)]
+#![forbid(rustdoc::broken_intra_doc_links)]
 
 #[doc(hidden)]
 pub mod internal;

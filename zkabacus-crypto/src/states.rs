@@ -415,7 +415,7 @@ pub struct VerifiedBlindedCloseState(pub(crate) VerifiedBlindedMessage);
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
-pub struct CloseStateSignature(pub(crate) Signature);
+pub struct CloseStateSignature(Signature);
 
 /// Blinded signature on a close state and a constant, fixed close tag.
 #[derive(Debug, Serialize, Deserialize)]
@@ -445,16 +445,6 @@ impl CloseStateBlindedSignature {
     pub(crate) fn unblind(self, bf: CloseStateBlindingFactor) -> CloseStateSignature {
         CloseStateSignature(self.0.unblind(bf.0))
     }
-
-    /// Encode a [`crate::ClosingSignature`] as bytes representing the two parts of the signature.
-    ///
-    /// In particular, the output represents two [`G1Affine`] elements in uncompressed form.
-    pub fn as_bytes(&self) -> ([u8; 96], [u8; 96]) {
-        (
-            self.0.sigma1().to_uncompressed(),
-            self.0.sigma2().to_uncompressed(),
-        )
-    }
 }
 
 impl CloseStateSignature {
@@ -474,6 +464,16 @@ impl CloseStateSignature {
     /// Randomize the `CloseStateSignature` in place.
     pub(crate) fn randomize(&mut self, rng: &mut impl Rng) {
         self.0.randomize(rng);
+    }
+
+    /// Encode a [`CloseStateSignature`] as bytes representing the two parts of the signature.
+    ///
+    /// In particular, the output represents two [`G1Affine`] elements in uncompressed form.
+    pub fn as_bytes(&self) -> ([u8; 96], [u8; 96]) {
+        (
+            self.0.sigma1().to_uncompressed(),
+            self.0.sigma2().to_uncompressed(),
+        )
     }
 }
 

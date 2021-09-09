@@ -73,13 +73,9 @@ impl RevocationSecret {
         RevocationLock(scalar)
     }
 
-    /// Encode the secret as bytes, using the specified byte order.
-    pub fn as_bytes(&self, is_little_endian: bool) -> [u8; 32] {
-        let mut bytes = self.0.to_bytes();
-        if !is_little_endian {
-            bytes.reverse();
-        }
-        bytes
+    /// Encode the secret as bytes in little-endian order.
+    pub fn as_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
     }
 }
 
@@ -99,13 +95,9 @@ impl RevocationLock {
         self.0
     }
 
-    /// Encode the lock as bytes, using the specified byte order.
-    pub fn as_bytes(&self, is_little_endian: bool) -> [u8; 32] {
-        let mut bytes = self.0.to_bytes();
-        if !is_little_endian {
-            bytes.reverse();
-        }
-        bytes
+    /// Encode the lock as bytes in little-endian order.
+    pub fn as_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
     }
 }
 

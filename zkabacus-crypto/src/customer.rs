@@ -536,3 +536,161 @@ impl Locked {
         self.state.channel_id()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::{convert::TryInto, str::FromStr};
+
+    use rand::thread_rng;
+
+    use crate::{
+        merchant, ChannelId, Context, CustomerBalance, MerchantBalance,
+        , PaymentAmount, CLOSE_SCALAR,
+    };
+
+    use super::Requested;
+
+    #[test]
+    fn print_testing_info() {
+        let mut rng = thread_rng();
+        let merchant_config = merchant::Config::new(&mut rng);
+        let customer_config = merchant_config.to_customer_config();
+
+        let channel_id =
+            ChannelId::from_str("ql9LnQieMoux/P4yMA5F7GcDMRNdrnNGeogTGCU0ros=").unwrap();
+        let channel_id_bytes: [u8; 32] =
+            base64::decode("ql9LnQieMoux/P4yMA5F7GcDMRNdrnNGeogTGCU0ros=")
+                .unwrap()
+                .try_into()
+                .unwrap();
+
+        let merchant_balance = MerchantBalance::try_new(0).unwrap();
+        let customer_balance = CustomerBalance::try_new(1000).unwrap();
+        let context = Context::new(b"12345678");
+
+        let (requested, establish_proof) = Requested::new(
+            &mut rng,
+            customer_config,
+            channel_id,
+            merchant_balance,
+            customer_balance,
+            &context,
+        );
+
+        // print out establish details
+        let mpk = merchant_config.signing_keypair().public_key();
+        println!("{{\n");
+        println!(
+            "\"merchant_ps_public_key\": {{
+            \"g1\": {:?},
+            \"y1s\": {:?},
+            \"g2\": {:?},
+            \"x2\": {:?},
+            \"y2s\": {:?}
+        }},",
+            hex::encode(mpk.g1.to_uncompressed()),
+            mpk.y1s
+                .iter()
+                .map(|y1| hex::encode(y1.to_uncompressed()))
+                .collect::<Vec<String>>(),
+            hex::encode(mpk.g2.to_uncompressed()),
+            hex::encode(mpk.x2.to_uncompressed()),
+            mpk.y2s
+                .iter()
+                .map(|y2| hex::encode(y2.to_uncompressed()))
+                .collect::<Vec<String>>(),
+        );
+        println!(
+            "\"customer_deposit\": {:?},",
+            customer_balance.into_inner()
+        );
+        println!(
+            "\"merchant_deposit\": {:?},",
+            merchant_balance.into_inner()
+        );
+        println!("\"channel_id\": \"{}\",", hex::encode(channel_id_bytes));
+        println!(
+            "\"close_scalar_bytes\": \"0x{}\"",
+            hex::encode(CLOSE_SCALAR.to_bytes())
+        );
+        println!("}}\n\n\n");
+
+        // finish establish
+        let (closing_signature, blinded_state) = merchant_config
+            .initialize(
+                &mut rng,
+                &channel_id,
+                customer_balance,
+                merchant_balance,
+                establish_proof,
+                &context,
+            )
+            .unwrap();
+
+        let inactive = requested.complete(closing_signature).unwrap();
+        let pay_token = merchant_config.activate(&mut rng, blinded_state);
+        let ready = inactive.activate(pay_token).unwrap();
+
+        // make a payment
+        let amount = PaymentAmount::pay_merchant(50).unwrap();
+        let (started, msg) = ready.start(&mut rng, amount, &context).unwrap();
+        let (unrevoked, closing_signature) = merchant_config
+            .allow_payment(&mut rng, amount, &msg.nonce, msg.pay_proof, &context)
+            .unwrap();
+        let (locked, msg) = started.lock(closing_signature).unwrap();
+        let pay_token = unrevoked
+            .complete_payment(
+                &mut rng,
+                &msg.revocation_lock,
+                &msg.revocation_secret,
+                &msg.revocation_lock_blinding_factor,
+            )
+            .unwrap();
+        let ready = locked.unlock(pay_token).unwrap();
+
+        // print out close and revlock details
+        let be_bytes: [u8; 32] = ready.state.rev_secret_ref().as_bytes().into_iter().rev().collect();
+        println!(
+            "{{\n\t\"revocation_secret\": {:?}\n}}",
+            hex::encode(be_bytes)
+        );
+        println!("\n\n\n");
+
+        let closing_message = ready.close(&mut rng);
+
+        println!("{{\n");
+        println!(
+            "\"customer_balance\": {:?},",
+            closing_message.customer_balance().into_inner()
+        );
+        println!(
+            "\"merchant_balance\": {:?},",
+            closing_message.merchant_balance().into_inner()
+        );
+        println!(
+            "\"sigma1\": {:?},",
+            hex::encode(
+                closing_message
+                    .closing_signature()
+                    .0
+                    .sigma1()
+                    .to_uncompressed()
+            )
+        );
+        println!(
+            "\"sigma2\": {:?},",
+            hex::encode(
+                closing_message
+                    .closing_signature()
+                    .0
+                    .sigma2()
+                    .to_uncompressed()
+            )
+        );
+        println!(
+            "\"revocation_lock\": {:?}",
+            hex::encode(closing_message.revocation_lock().to_scalar().to_bytes())
+        );
+        println!("}}");
+    }
+}

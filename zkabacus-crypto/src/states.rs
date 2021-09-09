@@ -301,6 +301,10 @@ impl State {
         self.revocation_secret
     }
 
+    pub fn rev_secret_ref(&self) -> &RevocationSecret {
+        &self.revocation_secret
+    }
+
     /// Get the [`CloseState`] corresponding to this `State`.
     ///
     /// This is typically called by the customer.

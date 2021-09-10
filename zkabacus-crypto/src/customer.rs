@@ -542,13 +542,35 @@ mod test {
     use std::{convert::TryInto, str::FromStr};
 
     use rand::thread_rng;
+    use sha3::{Digest, Sha3_256};
 
     use crate::{
-        merchant, ChannelId, Context, CustomerBalance, MerchantBalance,
-        , PaymentAmount, CLOSE_SCALAR,
+        merchant, ChannelId, Context, CustomerBalance, MerchantBalance, PaymentAmount, CLOSE_SCALAR,
     };
 
     use super::Requested;
+
+    #[test]
+    fn try_sha() {
+        let bytes: [u8; 32] =
+            hex::decode("70118fc9ceb45980be32b0132c5e4ca384ac58b62f6195b48d7af8cbffa8f416")
+                .unwrap()
+                .try_into()
+                .unwrap();
+
+        let expected: [u8; 32] =
+            hex::decode("8969a68c64e745c0490c823d7aa95082aac5cd0144026b8a8d0b0796ecb13659")
+                .unwrap()
+                .try_into()
+                .unwrap();
+
+        let mut hasher = Sha3_256::new();
+        hasher.update(bytes);
+        let mut result = [0; 32];
+        result.copy_from_slice(hasher.finalize().as_ref());
+
+        assert_eq!(result, expected);
+    }
 
     #[test]
     fn print_testing_info() {
@@ -600,14 +622,8 @@ mod test {
                 .map(|y2| hex::encode(y2.to_uncompressed()))
                 .collect::<Vec<String>>(),
         );
-        println!(
-            "\"customer_deposit\": {:?},",
-            customer_balance.into_inner()
-        );
-        println!(
-            "\"merchant_deposit\": {:?},",
-            merchant_balance.into_inner()
-        );
+        println!("\"customer_deposit\": {:?},", customer_balance.into_inner());
+        println!("\"merchant_deposit\": {:?},", merchant_balance.into_inner());
         println!("\"channel_id\": \"{}\",", hex::encode(channel_id_bytes));
         println!(
             "\"close_scalar_bytes\": \"0x{}\"",
@@ -649,7 +665,8 @@ mod test {
         let ready = locked.unlock(pay_token).unwrap();
 
         // print out close and revlock details
-        let be_bytes: [u8; 32] = ready.state.rev_secret_ref().as_bytes().into_iter().rev().collect();
+        let mut be_bytes: [u8; 32] = ready.state.rev_secret_ref().as_bytes();
+        //be_bytes.reverse();
         println!(
             "{{\n\t\"revocation_secret\": {:?}\n}}",
             hex::encode(be_bytes)

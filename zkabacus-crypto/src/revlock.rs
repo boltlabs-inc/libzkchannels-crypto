@@ -17,7 +17,7 @@ use std::convert::TryFrom;
 use zkchannels_crypto::{pedersen::Commitment, BlindingFactor, Message, SerializeElement};
 
 /// A revocation lock.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[allow(missing_copy_implementations)]
 pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 
@@ -99,6 +99,12 @@ impl RevocationLock {
     pub fn as_bytes(&self) -> [u8; 32] {
         self.0.to_bytes()
     }
+
+    /// Try to decode a [`RevocationLock`] from a set of bytes. Fails if the bytes are not a
+    /// canonical little-endian representation of a [`Scalar`].
+    pub fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
+        Scalar::from_bytes(bytes).map(Self).into()
+    }
 }
 
 impl RevocationLockCommitment {
@@ -137,5 +143,14 @@ mod test {
         let rs = RevocationSecret::new(&mut thread_rng());
         let rl = rs.revocation_lock();
         assert!(matches!(rl.verify(&rs), Verification::Verified));
+    }
+
+    #[test]
+    pub fn revlock_bytes_work() {
+        let rs = RevocationSecret::new(&mut thread_rng());
+        let rl = rs.revocation_lock();
+
+        let maybe_rl = RevocationLock::from_bytes(&rl.as_bytes());
+        assert_eq!(maybe_rl, Some(rl))
     }
 }

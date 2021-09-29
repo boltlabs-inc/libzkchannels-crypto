@@ -10,11 +10,14 @@ with only negligible probability (e.g. basically never).
 
 */
 use crate::{merchant, types::*, Rng, Verification};
-use ff::Field;
-use serde::*;
-use sha3::{Digest, Sha3_256};
-use std::convert::TryFrom;
 use zkchannels_crypto::{pedersen::Commitment, BlindingFactor, Message, SerializeElement};
+
+use {
+    ff::Field,
+    serde::*,
+    sha3::{Digest, Sha3_256},
+    std::convert::{TryFrom, TryInto},
+};
 
 /// A revocation lock.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -23,8 +26,44 @@ pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 
 /// A revocation secret.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(try_from = "UncheckedRevocationSecret")]
 #[allow(missing_copy_implementations)]
-pub struct RevocationSecret(#[serde(with = "SerializeElement")] Scalar);
+pub struct RevocationSecret {
+    #[serde(with = "SerializeElement")]
+    secret: Scalar,
+    index: u8,
+}
+
+#[derive(Debug, Deserialize)]
+struct UncheckedRevocationSecret {
+    #[serde(with = "SerializeElement")]
+    secret: Scalar,
+    index: u8,
+}
+
+impl TryFrom<UncheckedRevocationSecret> for RevocationSecret {
+    type Error = String;
+
+    /// Try to convert an unchecked revocation secret into a revocation secret.
+    fn try_from(unchecked: UncheckedRevocationSecret) -> Result<Self, Self::Error> {
+        // Compute the SHA3 hash of the byte representation of the scalar
+        // (this byte conversion must match `RevocationSecret::as_bytes()`)
+        let mut bytes = [unchecked.index; 33];
+        bytes[0..32].copy_from_slice(&unchecked.secret.to_bytes());
+        let digested = Sha3_256::digest(&bytes);
+
+        // Determine if the result is a Scalar in canonical form (smaller than the modulus)
+        let maybe_lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap());
+        if maybe_lock.is_some().into() {
+            Ok(Self {
+                secret: unchecked.secret,
+                index: unchecked.index,
+            })
+        } else {
+            Err("The revocation secret must produce a valid revocation lock".to_string())
+        }
+    }
+}
 
 #[cfg(feature = "sqlite")]
 zkchannels_crypto::impl_sqlx_for_bincode_ty!(RevocationLock);
@@ -54,39 +93,42 @@ pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 impl RevocationSecret {
     /// Create a new, random revocation secret.
     pub(crate) fn new(mut rng: impl Rng) -> Self {
+        let secret = Scalar::random(&mut rng);
+
+        // This function could fail if the 256 possible values of `index` all fail to produce
+        // valid revocation locks, but the likelihood of this is so vanishingly small that we
+        // choose to ignore it
+        let mut index: u8 = 0;
         loop {
-            let secret = Scalar::random(&mut rng);
-
-            // Compute the SHA3 hash of the byte representation of the scalar
-            let digested = Sha3_256::digest(&secret.to_bytes());
-
-            // Determine if the result is a Scalar in canonical form (smaller than the modulus)
-            let maybe_lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap());
-            if maybe_lock.is_some().into() {
-                return Self(secret);
+            let maybe_secret = UncheckedRevocationSecret { secret, index }.try_into();
+            match maybe_secret {
+                Ok(secret) => return secret,
+                Err(_) => {
+                    index += 1;
+                }
             }
         }
     }
 
     /// Derive the [`RevocationLock`] corresponding to this [`RevocationSecret`]
     pub(crate) fn revocation_lock(&self) -> RevocationLock {
-        // Compute the SHA3 hash of the byte representation of this scalar, and then construct
-        // another scalar from the result. This computation is entirely little-endian, so endianness
-        // is consistent throughout.
-        let bytes = self.0.to_bytes();
+        // Compute the SHA3 hash of the byte representation of this scalar
+        let bytes = self.secret.to_bytes();
         let digested = Sha3_256::digest(&bytes);
-        let scalar = Scalar::from_raw([
-            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[0..8]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[8..16]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[16..24]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[24..32]).unwrap()),
-        ]);
+
+        // The first unwrap is safe because we know the output of Sha3_256 is 32 bytes
+        // The second unwrap is safe because both our constructors (deserialize and `new`) check that
+        // the hash digest is in canonical form.
+        let scalar = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap()).unwrap();
         RevocationLock(scalar)
     }
 
     /// Encode the secret as bytes in little-endian order.
-    pub fn as_bytes(&self) -> [u8; 32] {
-        self.0.to_bytes()
+    pub fn as_bytes(&self) -> [u8; 33] {
+        // Formatted as [scalar bytes , index]
+        let mut bytes = [self.index; 33];
+        bytes[0..32].copy_from_slice(&self.secret.to_bytes());
+        bytes
     }
 }
 
@@ -147,7 +189,7 @@ impl RevocationLockCommitment {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::thread_rng;
+    use {hex, rand::thread_rng};
 
     #[test]
     pub fn revlock_is_correct() {
@@ -171,11 +213,24 @@ mod test {
         for _ in 1..1000 {
             let secret = RevocationSecret::new(&mut rng);
             // generate lock using `from_bytes` method
-            let digested = Sha3_256::digest(&secret.0.to_bytes());
+            let digested = Sha3_256::digest(&secret.secret.to_bytes());
             let lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap()).unwrap();
 
             // compare to lock using `from_raw` method
             assert_eq!(lock, secret.revocation_lock().0);
         }
+    }
+
+    #[test]
+    pub fn checked_deserialization_works() {
+        let scalar_str = "4dd70a569aa77c525dfc72b2dddd640ae1bee82b1430e63588ed71c183038d23";
+        let secret =
+            Scalar::from_bytes(&hex::decode(scalar_str).unwrap().try_into().unwrap()).unwrap();
+
+        let unchecked_secret = UncheckedRevocationSecret { secret, index: 0 };
+        assert!(RevocationSecret::try_from(unchecked_secret).is_err());
+
+        let valid_secret = UncheckedRevocationSecret { secret, index: 1 };
+        assert!(RevocationSecret::try_from(valid_secret).is_ok())
     }
 }

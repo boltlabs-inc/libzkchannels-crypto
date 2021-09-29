@@ -53,8 +53,19 @@ pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 
 impl RevocationSecret {
     /// Create a new, random revocation secret.
-    pub(crate) fn new(rng: &mut impl Rng) -> Self {
-        Self(Scalar::random(rng))
+    pub(crate) fn new(mut rng: impl Rng) -> Self {
+        loop {
+            let secret = Scalar::random(&mut rng);
+
+            // Compute the SHA3 hash of the byte representation of the scalar
+            let digested = Sha3_256::digest(&secret.to_bytes());
+
+            // Determine if the result is a Scalar in canonical form (smaller than the modulus)
+            let maybe_lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap());
+            if maybe_lock.is_some().into() {
+                return Self(secret);
+            }
+        }
     }
 
     /// Derive the [`RevocationLock`] corresponding to this [`RevocationSecret`]
@@ -152,5 +163,19 @@ mod test {
 
         let maybe_rl = RevocationLock::from_bytes(&rl.as_bytes());
         assert_eq!(maybe_rl, Some(rl))
+    }
+
+    #[test]
+    pub fn revlock_generations_match() {
+        let mut rng = thread_rng();
+        for _ in 1..1000 {
+            let secret = RevocationSecret::new(&mut rng);
+            // generate lock using `from_bytes` method
+            let digested = Sha3_256::digest(&secret.0.to_bytes());
+            let lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap()).unwrap();
+
+            // compare to lock using `from_raw` method
+            assert_eq!(lock, secret.revocation_lock().0);
+        }
     }
 }

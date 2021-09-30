@@ -112,8 +112,8 @@ impl RevocationSecret {
 
     /// Derive the [`RevocationLock`] corresponding to this [`RevocationSecret`]
     pub(crate) fn revocation_lock(&self) -> RevocationLock {
-        // Compute the SHA3 hash of the byte representation of this scalar
-        let bytes = self.secret.to_bytes();
+        // Compute the SHA3 hash of the byte representation of this revocation secret
+        let bytes = self.as_bytes();
         let digested = Sha3_256::digest(&bytes);
 
         // The first unwrap is safe because we know the output of Sha3_256 is 32 bytes
@@ -211,13 +211,18 @@ mod test {
     pub fn revlock_generations_match() {
         let mut rng = thread_rng();
         for _ in 1..1000 {
-            let secret = RevocationSecret::new(&mut rng);
-            // generate lock using `from_bytes` method
-            let digested = Sha3_256::digest(&secret.secret.to_bytes());
-            let lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap()).unwrap();
+            let rs = RevocationSecret::new(&mut rng);
+            // generate lock using `from_raw` method
+            let digested = Sha3_256::digest(&rs.as_bytes());
+            let lock = Scalar::from_raw([
+                u64::from_le_bytes(<[u8; 8]>::try_from(&digested[0..8]).unwrap()),
+                u64::from_le_bytes(<[u8; 8]>::try_from(&digested[8..16]).unwrap()),
+                u64::from_le_bytes(<[u8; 8]>::try_from(&digested[16..24]).unwrap()),
+                u64::from_le_bytes(<[u8; 8]>::try_from(&digested[24..32]).unwrap()),
+            ]);
 
-            // compare to lock using `from_raw` method
-            assert_eq!(lock, secret.revocation_lock().0);
+            // compare to lock using `from_bytes` method
+            assert_eq!(lock, rs.revocation_lock().0);
         }
     }
 

@@ -70,6 +70,9 @@ pub struct Config {
     pub(crate) range_constraint_parameters: RangeConstraintParameters,
 }
 
+#[cfg(feature = "sqlite")]
+impl_sqlx_for_bincode_ty!(Config);
+
 impl Config {
     /// Construct a new customer configuration from the merchant's public parameters.
     pub fn from_parts(
@@ -103,9 +106,7 @@ impl Config {
 /// An activated channel that allows payments and closing.
 /// This is a channel that has completed zkAbacus.Activate.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "sqlite", derive(sqlx::FromRow))]
 pub struct Ready {
-    config: Config,
     state: State,
     pay_token: PayToken,
     close_state_signature: CloseStateSignature,
@@ -115,7 +116,6 @@ pub struct Ready {
 /// This is an intermediary state of zkAbacus.Initialize.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Requested {
-    config: Config,
     state: State,
     close_state_blinding_factor: CloseStateBlindingFactor,
     pay_token_blinding_factor: PayTokenBlindingFactor,
@@ -141,7 +141,7 @@ impl Requested {
     */
     pub fn new(
         rng: &mut impl Rng,
-        config: Config,
+        config: &Config,
         channel_id: ChannelId,
         merchant_balance: MerchantBalance,
         customer_balance: CustomerBalance,
@@ -152,11 +152,10 @@ impl Requested {
 
         // Form proof that the state / close state are correct.
         let (proof, close_state_blinding_factor, pay_token_blinding_factor) =
-            EstablishProof::new(rng, &config, &state, context);
+            EstablishProof::new(rng, config, &state, context);
 
         (
             Self {
-                config,
                 state,
                 close_state_blinding_factor,
                 pay_token_blinding_factor,
@@ -170,13 +169,13 @@ impl Requested {
     pub fn complete(
         self,
         closing_signature: crate::ClosingSignature,
+        config: &Config,
     ) -> Result<Inactive, Requested> {
         // Unblind close signature and verify it is correct.
         let close_state_signature = closing_signature.unblind(self.close_state_blinding_factor);
-        match close_state_signature.verify(&self.config, &self.state.close_state()) {
+        match close_state_signature.verify(config, &self.state.close_state()) {
             // If so, save it and enter the `Inactive` state.
             Verified => Ok(Inactive {
-                config: self.config,
                 state: self.state,
                 blinding_factor: self.pay_token_blinding_factor,
                 close_state_signature,
@@ -209,7 +208,6 @@ impl Requested {
 /// This is a channel that has completed zkAbacus.Initialize.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Inactive {
-    config: Config,
     state: State,
     blinding_factor: PayTokenBlindingFactor,
     close_state_signature: CloseStateSignature,
@@ -218,13 +216,12 @@ pub struct Inactive {
 impl Inactive {
     /// Activate the channel with the fresh pay token from the merchant.
     /// This is called as part of zkAbacus.Activate.
-    pub fn activate(self, pay_token: crate::PayToken) -> Result<Ready, Inactive> {
+    pub fn activate(self, pay_token: crate::PayToken, config: &Config) -> Result<Ready, Inactive> {
         // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
-        match unblinded_pay_token.verify(&self.config, &self.state) {
+        match unblinded_pay_token.verify(config, &self.state) {
             // If so, save it and enter the `Ready` state.
             Verified => Ok(Ready {
-                config: self.config,
                 state: self.state,
                 pay_token: unblinded_pay_token,
                 close_state_signature: self.close_state_signature,
@@ -278,6 +275,7 @@ impl Ready {
         rng: &mut impl Rng,
         amount: PaymentAmount,
         context: &Context,
+        config: &Config,
     ) -> Result<(Started, StartMessage), (Ready, Error)> {
         // Generate correctly-updated state.
         let new_state = match self.state.apply_payment(rng, amount) {
@@ -288,7 +286,7 @@ impl Ready {
         // Form proof that the payment correctly updates a valid state.
         let (pay_proof, blinding_factors) = PayProof::new(
             rng,
-            &self.config,
+            config,
             self.pay_token,
             &self.state,
             &new_state,
@@ -300,7 +298,6 @@ impl Ready {
 
         Ok((
             Started {
-                config: self.config,
                 new_state,
                 old_state: self.state,
                 blinding_factors,
@@ -339,7 +336,6 @@ impl Ready {
 /// This is the first intermediary state in zkAbacus.Pay.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Started {
-    config: Config,
     new_state: State,
     old_state: State,
     blinding_factors: BlindingFactors,
@@ -419,16 +415,16 @@ impl Started {
     pub fn lock(
         self,
         closing_signature: crate::ClosingSignature,
+        config: &Config,
     ) -> Result<(Locked, LockMessage), Started> {
         // Unblind close signature and verify it is correct.
         let close_state_signature =
             closing_signature.unblind(self.blinding_factors.for_close_state);
-        match close_state_signature.verify(&self.config, &self.new_state.close_state()) {
+        match close_state_signature.verify(config, &self.new_state.close_state()) {
             // If so, save it, reveal the revocation information for the old close signature and
             // enter the `Locked` state.
             Verified => Ok((
                 Locked {
-                    config: self.config,
                     state: self.new_state,
                     blinding_factor: self.blinding_factors.for_pay_token,
                     close_state_signature,
@@ -481,7 +477,6 @@ impl Started {
 /// This is the second intermediary state of zkAbacus.Pay.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Locked {
-    config: Config,
     state: State,
     blinding_factor: PayTokenBlindingFactor,
     close_state_signature: CloseStateSignature,
@@ -490,13 +485,12 @@ pub struct Locked {
 impl Locked {
     /// Unlock the channel by validating the merchant's approval message.
     /// This is the final step of zkAbacus.Pay.
-    pub fn unlock(self, pay_token: crate::PayToken) -> Result<Ready, Locked> {
+    pub fn unlock(self, pay_token: crate::PayToken, config: &Config) -> Result<Ready, Locked> {
         // Unblind pay token signature (on the state) and verify it is correct.
         let unblinded_pay_token = pay_token.unblind(self.blinding_factor);
-        match unblinded_pay_token.verify(&self.config, &self.state) {
+        match unblinded_pay_token.verify(config, &self.state) {
             // If so, save it and enter the `Ready` state.
             Verified => Ok(Ready {
-                config: self.config,
                 state: self.state,
                 pay_token: unblinded_pay_token,
                 close_state_signature: self.close_state_signature,

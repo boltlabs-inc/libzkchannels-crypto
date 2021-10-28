@@ -263,7 +263,7 @@ impl State {
         Self {
             channel_id,
             nonce: Nonce::new(rng),
-            revocation_secret: RevocationSecret::new(rng),
+            revocation_secret: RevocationPair::new(rng).secret,
             merchant_balance,
             customer_balance,
         }
@@ -331,7 +331,7 @@ impl State {
         Ok(State {
             channel_id: self.channel_id,
             nonce: Nonce::new(rng),
-            revocation_secret: RevocationSecret::new(rng),
+            revocation_secret: RevocationPair::new(rng).secret,
             customer_balance: self.customer_balance.apply(amt)?,
             merchant_balance: self.merchant_balance.apply(amt)?,
         })

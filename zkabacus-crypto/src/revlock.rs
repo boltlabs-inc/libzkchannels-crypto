@@ -19,14 +19,31 @@ use {
     std::convert::{TryFrom, TryInto},
 };
 
+/// A verified revocation pair, which consists of a revocation secret and a corresponding revocation lock.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(try_from = "UncheckedRevocationPair")]
+#[allow(missing_copy_implementations)]
+pub struct RevocationPair {
+    /// A revocation lock.
+    pub lock: RevocationLock,
+    /// The associated revocation secret.
+    pub secret: RevocationSecret,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(missing_copy_implementations)]
+struct UncheckedRevocationPair {
+    lock: RevocationLock,
+    secret: UncheckedRevocationSecret,
+}
+
 /// A revocation lock.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 #[allow(missing_copy_implementations)]
 pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 
 /// A revocation secret.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(try_from = "UncheckedRevocationSecret")]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct RevocationSecret {
     #[serde(with = "SerializeElement")]
@@ -39,30 +56,6 @@ struct UncheckedRevocationSecret {
     #[serde(with = "SerializeElement")]
     secret: Scalar,
     index: u8,
-}
-
-impl TryFrom<UncheckedRevocationSecret> for RevocationSecret {
-    type Error = String;
-
-    /// Try to convert an unchecked revocation secret into a revocation secret.
-    fn try_from(unchecked: UncheckedRevocationSecret) -> Result<Self, Self::Error> {
-        // Compute the SHA3 hash of the byte representation of the scalar
-        // (this byte conversion must match `RevocationSecret::as_bytes()`)
-        let mut bytes = [unchecked.index; 33];
-        bytes[0..32].copy_from_slice(&unchecked.secret.to_bytes());
-        let digested = Sha3_256::digest(&bytes);
-
-        // Determine if the result is a Scalar in canonical form (smaller than the modulus)
-        let maybe_lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap());
-        if maybe_lock.is_some().into() {
-            Ok(Self {
-                secret: unchecked.secret,
-                index: unchecked.index,
-            })
-        } else {
-            Err("The revocation secret must produce a valid revocation lock".to_string())
-        }
-    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -90,9 +83,66 @@ pub struct RevocationLockCommitment(pub(crate) Commitment<G1Projective>);
 #[allow(missing_copy_implementations)]
 pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 
-impl RevocationSecret {
-    /// Create a new, random revocation secret.
+impl TryFrom<UncheckedRevocationPair> for RevocationPair {
+    type Error = String;
+
+    /// Try to convert an unchecked revocation pair into a verified revocation pair.
+    fn try_from(unchecked: UncheckedRevocationPair) -> Result<Self, Self::Error> {
+        let valid_pair = RevocationPair::try_from(unchecked.secret).unwrap();
+        if unchecked.lock == valid_pair.lock {
+            Ok(valid_pair)
+        } else {
+            Err("The revocation secret does not produce the provided revocation lock".to_string())
+        }
+    }
+}
+
+impl TryFrom<UncheckedRevocationSecret> for RevocationPair {
+    type Error = String;
+
+    /// Try to convert an unchecked revocation pair into a verified revocation pair.
+    fn try_from(unchecked: UncheckedRevocationSecret) -> Result<Self, Self::Error> {
+        // Compute the SHA3 hash of the byte representation of the unchecked revocation secret
+        // (this byte conversion must match `RevocationSecret::as_bytes()`)
+        let mut bytes = [unchecked.index; 33];
+        bytes[0..32].copy_from_slice(&unchecked.secret.to_bytes());
+        let digested = Sha3_256::digest(&bytes);
+
+        // Determine if the result is a valid revocation lock, ie is a Scalar in canonical form (smaller than the modulus)
+        let maybe_lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap());
+
+        if maybe_lock.is_some().into() {
+            {
+                let valid_secret = RevocationSecret {
+                    secret: unchecked.secret,
+                    index: unchecked.index,
+                };
+                let valid_lock = RevocationLock(maybe_lock.unwrap());
+                Ok(RevocationPair {
+                    secret: valid_secret,
+                    lock: valid_lock,
+                })
+            }
+        } else {
+            Err("The revocation secret does not produce a valid revocation lock".to_string())
+        }
+    }
+}
+
+impl RevocationPair {
+    /// Get the revocation lock.
+    pub fn revocation_lock(&self) -> RevocationLock {
+        self.lock
+    }
+
+    /// Get the revocation secret.
+    pub fn revocation_secret(&self) -> RevocationSecret {
+        self.secret
+    }
+
+    /// Create a new, random revocation pair.
     pub(crate) fn new(mut rng: impl Rng) -> Self {
+        // Create a new, random revocation secret.
         let secret = Scalar::random(&mut rng);
 
         // This function could fail if the 256 possible values of `index` all fail to produce
@@ -100,16 +150,19 @@ impl RevocationSecret {
         // choose to ignore it
         let mut index: u8 = 0;
         loop {
-            let maybe_secret = UncheckedRevocationSecret { secret, index }.try_into();
-            match maybe_secret {
-                Ok(secret) => return secret,
+            let maybe_secret = UncheckedRevocationSecret { secret, index };
+            let maybe_pair = RevocationPair::try_from(maybe_secret);
+            match maybe_pair {
+                Ok(pair) => return pair,
                 Err(_) => {
                     index += 1;
                 }
             }
         }
     }
+}
 
+impl RevocationSecret {
     /// Derive the [`RevocationLock`] corresponding to this [`RevocationSecret`]
     pub(crate) fn revocation_lock(&self) -> RevocationLock {
         // Compute the SHA3 hash of the byte representation of this revocation secret
@@ -133,11 +186,6 @@ impl RevocationSecret {
 }
 
 impl RevocationLock {
-    /// Validate a revocation pair.
-    pub(crate) fn verify(&self, rs: &RevocationSecret) -> Verification {
-        Verification::from(self.0 == rs.revocation_lock().0)
-    }
-
     // Convert a revocation lock to its canonical [`Message`] representation.
     pub(crate) fn to_message(&self) -> Message<1> {
         Message::from(self.to_scalar())
@@ -168,20 +216,19 @@ impl RevocationLockCommitment {
     pub(crate) fn verify_revocation_pair(
         &self,
         parameters: &merchant::Config,
-        revocation_secret: &RevocationSecret,
-        revocation_lock: &RevocationLock,
+        revocation_pair: &RevocationPair,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Verification {
-        let pair_is_valid = revocation_lock.verify(revocation_secret);
         let opening_is_valid = self.0.verify_opening(
             parameters.revocation_commitment_parameters(),
             revocation_lock_blinding_factor.0,
-            &Message::from(revocation_lock.to_scalar()),
+            &Message::from(revocation_pair.lock.to_scalar()),
         );
 
-        match (pair_is_valid, opening_is_valid) {
-            (Verification::Verified, true) => Verification::Verified,
-            _ => Verification::Failed,
+        if opening_is_valid {
+            Verification::Verified
+        } else {
+            Verification::Failed
         }
     }
 }
@@ -192,28 +239,29 @@ mod test {
     use {hex, rand::thread_rng};
 
     #[test]
-    pub fn revlock_is_correct() {
-        let rs = RevocationSecret::new(&mut thread_rng());
-        let rl = rs.revocation_lock();
-        assert!(matches!(rl.verify(&rs), Verification::Verified));
+    pub fn revocation_lock_method_is_correct() {
+        let rp = RevocationPair::new(&mut thread_rng());
+        let rl = rp.secret.revocation_lock();
+
+        assert_eq!(rl, rp.lock);
     }
 
     #[test]
     pub fn revlock_bytes_work() {
-        let rs = RevocationSecret::new(&mut thread_rng());
-        let rl = rs.revocation_lock();
+        let rp = RevocationPair::new(&mut thread_rng());
+        let maybe_rl = RevocationLock::from_bytes(&rp.lock.as_bytes());
 
-        let maybe_rl = RevocationLock::from_bytes(&rl.as_bytes());
-        assert_eq!(maybe_rl, Some(rl))
+        assert_eq!(maybe_rl, Some(rp.lock))
     }
 
     #[test]
     pub fn revlock_generations_match() {
         let mut rng = thread_rng();
         for _ in 1..1000 {
-            let rs = RevocationSecret::new(&mut rng);
+            let rp = RevocationPair::new(&mut rng);
+
             // generate lock using `from_raw` method
-            let digested = Sha3_256::digest(&rs.as_bytes());
+            let digested = Sha3_256::digest(&rp.secret.as_bytes());
             let lock = Scalar::from_raw([
                 u64::from_le_bytes(<[u8; 8]>::try_from(&digested[0..8]).unwrap()),
                 u64::from_le_bytes(<[u8; 8]>::try_from(&digested[8..16]).unwrap()),
@@ -222,7 +270,7 @@ mod test {
             ]);
 
             // compare to lock using `from_bytes` method
-            assert_eq!(lock, rs.revocation_lock().0);
+            assert_eq!(lock, rp.lock.to_scalar());
         }
     }
 
@@ -233,9 +281,9 @@ mod test {
             Scalar::from_bytes(&hex::decode(scalar_str).unwrap().try_into().unwrap()).unwrap();
 
         let unchecked_secret = UncheckedRevocationSecret { secret, index: 0 };
-        assert!(RevocationSecret::try_from(unchecked_secret).is_err());
+        assert!(RevocationPair::try_from(unchecked_secret).is_err());
 
         let valid_secret = UncheckedRevocationSecret { secret, index: 1 };
-        assert!(RevocationSecret::try_from(valid_secret).is_ok())
+        assert!(RevocationPair::try_from(valid_secret).is_ok())
     }
 }

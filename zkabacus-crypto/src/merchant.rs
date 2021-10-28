@@ -266,15 +266,13 @@ impl<'a> Unrevoked<'a> {
     pub fn complete_payment(
         self,
         rng: &mut impl Rng,
-        revocation_lock: &RevocationLock,
-        revocation_secret: &RevocationSecret,
+        revocation_pair: &RevocationPair,
         revocation_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Result<crate::PayToken, Unrevoked<'a>> {
         // Verify that the provided parameters are consistent and they match the stored commitment.
         match self.revocation_lock_commitment.verify_revocation_pair(
             self.config,
-            revocation_secret,
-            revocation_lock,
+            revocation_pair,
             revocation_blinding_factor,
         ) {
             // If so, blindly sign the pay token.

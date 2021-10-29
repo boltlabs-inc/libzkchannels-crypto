@@ -163,19 +163,6 @@ impl RevocationPair {
 }
 
 impl RevocationSecret {
-    /// Derive the [`RevocationLock`] corresponding to this [`RevocationSecret`]
-    pub(crate) fn revocation_lock(&self) -> RevocationLock {
-        // Compute the SHA3 hash of the byte representation of this revocation secret
-        let bytes = self.as_bytes();
-        let digested = Sha3_256::digest(&bytes);
-
-        // The first unwrap is safe because we know the output of Sha3_256 is 32 bytes
-        // The second unwrap is safe because both our constructors (deserialize and `new`) check that
-        // the hash digest is in canonical form.
-        let scalar = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap()).unwrap();
-        RevocationLock(scalar)
-    }
-
     /// Encode the secret as bytes in little-endian order.
     pub fn as_bytes(&self) -> [u8; 33] {
         // Formatted as [scalar bytes , index]
@@ -238,13 +225,7 @@ mod test {
     use super::*;
     use {hex, rand::thread_rng};
 
-    #[test]
-    pub fn revocation_lock_method_is_correct() {
-        let rp = RevocationPair::new(&mut thread_rng());
-        let rl = rp.secret.revocation_lock();
-
-        assert_eq!(rl, rp.lock);
-    }
+  
 
     #[test]
     pub fn revlock_bytes_work() {

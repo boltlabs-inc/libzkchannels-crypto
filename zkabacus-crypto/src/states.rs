@@ -234,7 +234,7 @@ impl CustomerBalance {
 pub struct State {
     channel_id: ChannelId,
     nonce: Nonce,
-    revocation_secret: RevocationSecret,
+    revocation_pair: RevocationPair,
     merchant_balance: MerchantBalance,
     customer_balance: CustomerBalance,
 }
@@ -263,7 +263,7 @@ impl State {
         Self {
             channel_id,
             nonce: Nonce::new(rng),
-            revocation_secret: RevocationPair::new(rng).secret,
+            revocation_pair: RevocationPair::new(rng),
             merchant_balance,
             customer_balance,
         }
@@ -286,7 +286,7 @@ impl State {
 
     /// Get the current [`RevocationLock`] for this state.
     pub(crate) fn revocation_lock(&self) -> RevocationLock {
-        self.revocation_secret.revocation_lock()
+        self.revocation_pair.lock
     }
 
     /// Get the current [`Nonce`] for this state.
@@ -298,7 +298,7 @@ impl State {
     ///
     /// Once the revocation secret is removed and shared, the State is useless, so this function consumes it.
     pub fn revocation_secret(self) -> RevocationSecret {
-        self.revocation_secret
+        self.revocation_pair.secret
     }
 
     /// Get the [`CloseState`] corresponding to this `State`.
@@ -331,7 +331,7 @@ impl State {
         Ok(State {
             channel_id: self.channel_id,
             nonce: Nonce::new(rng),
-            revocation_secret: RevocationPair::new(rng).secret,
+            revocation_pair: RevocationPair::new(rng),
             customer_balance: self.customer_balance.apply(amt)?,
             merchant_balance: self.merchant_balance.apply(amt)?,
         })
@@ -345,7 +345,7 @@ impl State {
         Message::new([
             self.channel_id.to_scalar(),
             self.nonce.as_scalar(),
-            self.revocation_secret.revocation_lock().to_scalar(),
+            self.revocation_pair.lock.to_scalar(),
             self.customer_balance.to_scalar(),
             self.merchant_balance.to_scalar(),
         ])

@@ -346,6 +346,7 @@ pub struct Started {
 /// This is sent as part of zkAbacus.Pay.
 #[derive(Debug)]
 #[non_exhaustive]
+#[allow(missing_copy_implementations)]
 pub struct LockMessage {
     /// Revocation lock
     pub revocation_lock: RevocationLock,

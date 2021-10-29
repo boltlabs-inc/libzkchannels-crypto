@@ -16,11 +16,11 @@ use {
     ff::Field,
     serde::*,
     sha3::{Digest, Sha3_256},
-    std::convert::{TryFrom, TryInto},
+    std::convert::TryFrom,
 };
 
 /// A verified revocation pair, which consists of a revocation secret and a corresponding revocation lock.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(try_from = "UncheckedRevocationPair")]
 #[allow(missing_copy_implementations)]
 pub struct RevocationPair {
@@ -39,19 +39,17 @@ struct UncheckedRevocationPair {
 
 /// A revocation lock.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
-#[allow(missing_copy_implementations)]
 pub struct RevocationLock(#[serde(with = "SerializeElement")] Scalar);
 
 /// A revocation secret.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RevocationSecret {
     #[serde(with = "SerializeElement")]
     secret: Scalar,
     index: u8,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Copy, Clone, Deserialize)]
 struct UncheckedRevocationSecret {
     #[serde(with = "SerializeElement")]
     secret: Scalar,
@@ -80,7 +78,6 @@ pub struct RevocationLockCommitment(pub(crate) Commitment<G1Projective>);
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
 pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 
 impl TryFrom<UncheckedRevocationPair> for RevocationPair {
@@ -174,12 +171,12 @@ impl RevocationSecret {
 
 impl RevocationLock {
     // Convert a revocation lock to its canonical [`Message`] representation.
-    pub(crate) fn to_message(&self) -> Message<1> {
+    pub(crate) fn to_message(self) -> Message<1> {
         Message::from(self.to_scalar())
     }
 
     /// Convert a revocation lock to its canonical `Scalar` representation.
-    pub(crate) fn to_scalar(&self) -> Scalar {
+    pub(crate) fn to_scalar(self) -> Scalar {
         self.0
     }
 
@@ -223,9 +220,28 @@ impl RevocationLockCommitment {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::convert::TryInto;
     use {hex, rand::thread_rng};
 
-  
+    #[test]
+    pub fn revpair_is_correct() {
+        let rp = RevocationPair::new(&mut thread_rng());
+
+        let maybe_rs = UncheckedRevocationSecret {
+            secret: rp.secret.secret,
+            index: rp.secret.index,
+        };
+
+        let maybe_rp_from_unchecked_pair = RevocationPair::try_from(UncheckedRevocationPair {
+            secret: maybe_rs,
+            lock: rp.lock,
+        })
+        .unwrap();
+        let maybe_rp_from_secret = RevocationPair::try_from(maybe_rs).unwrap();
+
+        assert_eq!(maybe_rp_from_unchecked_pair, rp);
+        assert_eq!(maybe_rp_from_secret, rp);
+    }
 
     #[test]
     pub fn revlock_bytes_work() {

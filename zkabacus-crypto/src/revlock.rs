@@ -27,9 +27,9 @@ use {
 #[allow(missing_copy_implementations)]
 pub struct RevocationPair {
     /// A revocation lock.
-     lock: RevocationLock,
+    lock: RevocationLock,
     /// The associated revocation secret.
-     secret: RevocationSecret,
+    secret: RevocationSecret,
 }
 
 #[derive(Debug, Deserialize)]

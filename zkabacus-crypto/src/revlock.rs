@@ -27,9 +27,9 @@ use {
 #[allow(missing_copy_implementations)]
 pub struct RevocationPair {
     /// A revocation lock.
-    pub lock: RevocationLock,
+    pub(crate) lock: RevocationLock,
     /// The associated revocation secret.
-    pub secret: RevocationSecret,
+    pub(crate) secret: RevocationSecret,
 }
 
 #[derive(Debug, Deserialize)]
@@ -125,17 +125,15 @@ impl TryFrom<UncheckedRevocationSecret> for RevocationPair {
         let maybe_lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap());
 
         if maybe_lock.is_some().into() {
-            {
-                let valid_secret = RevocationSecret {
-                    secret: unchecked.secret,
-                    index: unchecked.index,
-                };
-                let valid_lock = RevocationLock(maybe_lock.unwrap());
-                Ok(RevocationPair {
-                    secret: valid_secret,
-                    lock: valid_lock,
-                })
-            }
+            let valid_secret = RevocationSecret {
+                secret: unchecked.secret,
+                index: unchecked.index,
+            };
+            let valid_lock = RevocationLock(maybe_lock.unwrap());
+            Ok(RevocationPair {
+                secret: valid_secret,
+                lock: valid_lock,
+            })
         } else {
             Err(Error::InvalidSecret())
         }
@@ -249,20 +247,20 @@ mod test {
         for _ in 1..1000 {
             let rp = RevocationPair::new(&mut rng);
 
-            let maybe_rs = UncheckedRevocationSecret {
+            let rs = UncheckedRevocationSecret {
                 secret: rp.secret.secret,
                 index: rp.secret.index,
             };
 
-            let maybe_rp_from_unchecked_pair = RevocationPair::try_from(UncheckedRevocationPair {
-                secret: maybe_rs,
+            let rp_from_unchecked_pair = RevocationPair::try_from(UncheckedRevocationPair {
+                secret: rs,
                 lock: rp.lock,
             })
             .unwrap();
-            let maybe_rp_from_secret = RevocationPair::try_from(maybe_rs).unwrap();
+            let rp_from_secret = RevocationPair::try_from(rs).unwrap();
 
-            assert_eq!(maybe_rp_from_unchecked_pair, rp);
-            assert_eq!(maybe_rp_from_secret, rp);
+            assert_eq!(rp_from_unchecked_pair, rp);
+            assert_eq!(rp_from_secret, rp);
         }
     }
 
@@ -301,8 +299,8 @@ mod test {
     }
 
     #[test]
-    // Test deserializtion of revocation pairs from secret
-    pub fn checked_deserialization_from_secret_works() {
+    // Check revocation pair from secret
+    pub fn from_secret_works() {
         let scalar_str = "4dd70a569aa77c525dfc72b2dddd640ae1bee82b1430e63588ed71c183038d23";
         let secret =
             Scalar::from_bytes(&hex::decode(scalar_str).unwrap().try_into().unwrap()).unwrap();
@@ -322,8 +320,8 @@ mod test {
     }
 
     #[test]
-    // Check deserialization of revocation pairs from pair
-    pub fn checked_deserialization_from_pair_works() {
+    // Check revocation pair from pair
+    pub fn from_pair_works() {
         let scalar_str = "4dd70a569aa77c525dfc72b2dddd640ae1bee82b1430e63588ed71c183038d23";
         let secret =
             Scalar::from_bytes(&hex::decode(scalar_str).unwrap().try_into().unwrap()).unwrap();
@@ -382,5 +380,17 @@ mod test {
             }),
             Err(Error::MismatchedPair())
         ));
+    }
+
+    #[test]
+    pub fn run_serialize_deserialize() {
+        let mut rng = thread_rng();
+        for _ in 1..1000 {
+            let rp = RevocationPair::new(&mut rng);
+            let serialized_rp = bincode::serialize(&rp).unwrap();
+            let deserialized_rp = bincode::deserialize(&serialized_rp).unwrap();
+
+            assert_eq!(rp, deserialized_rp);
+        }
     }
 }

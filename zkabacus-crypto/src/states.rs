@@ -287,7 +287,7 @@ impl State {
 
     /// Get the current [`RevocationLock`] for this state.
     pub(crate) fn revocation_lock(&self) -> RevocationLock {
-        self.revocation_pair.lock
+        self.revocation_pair.revocation_lock()
     }
 
     /// Get the current [`Nonce`] for this state.
@@ -299,7 +299,7 @@ impl State {
     ///
     /// Once the revocation secret is removed and shared, the State is useless, so this function consumes it.
     pub fn revocation_secret(self) -> RevocationSecret {
-        self.revocation_pair.secret
+        self.revocation_pair.revocation_secret()
     }
 
     /// Get the [`CloseState`] corresponding to this `State`.
@@ -346,7 +346,7 @@ impl State {
         Message::new([
             self.channel_id.to_scalar(),
             self.nonce.as_scalar(),
-            self.revocation_pair.lock.to_scalar(),
+            self.revocation_pair.revocation_lock().to_scalar(),
             self.customer_balance.to_scalar(),
             self.merchant_balance.to_scalar(),
         ])

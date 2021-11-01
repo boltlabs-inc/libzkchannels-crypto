@@ -32,7 +32,7 @@ pub struct RevocationPair {
     secret: RevocationSecret,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 struct UncheckedRevocationPair {
     lock: RevocationLock,
@@ -51,7 +51,7 @@ pub struct RevocationSecret {
     index: u8,
 }
 
-#[derive(Debug, Copy, Clone, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 struct UncheckedRevocationSecret {
     #[serde(with = "SerializeElement")]
     secret: Scalar,
@@ -384,6 +384,7 @@ mod test {
 
     #[test]
     pub fn run_serialize_deserialize() {
+        // Normal case
         let mut rng = thread_rng();
         for _ in 1..1000 {
             let rp = RevocationPair::new(&mut rng);
@@ -392,5 +393,37 @@ mod test {
 
             assert_eq!(rp, deserialized_rp);
         }
+    }
+
+    #[test]
+    pub fn failing_serialize_deserialize() {
+        // Test bad pair
+        let scalar_str = "4dd70a569aa77c525dfc72b2dddd640ae1bee82b1430e63588ed71c183038d23";
+        let secret =
+            Scalar::from_bytes(&hex::decode(scalar_str).unwrap().try_into().unwrap()).unwrap();
+
+        // Test that a specific invalid revocation secret produces the correct error
+        // invalid secret
+        let invalid_secret = UncheckedRevocationSecret { secret, index: 0 };
+        // invalid secret as bytes
+        let mut bytes = [0; 33];
+        bytes[0..32].copy_from_slice(&secret.to_bytes());
+
+        // generate lock corresponding to invalid secret using `from_raw` method
+        let invalid_digested = Sha3_256::digest(&bytes);
+        let invalid_lock = Scalar::from_raw([
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[24..32]).unwrap()),
+        ]);
+
+        let unchecked_rp = UncheckedRevocationPair {
+            secret: invalid_secret,
+            lock: RevocationLock(invalid_lock),
+        };
+
+        let serialized_unchecked_rp = bincode::serialize(&unchecked_rp).unwrap();
+        assert!(bincode::deserialize::<RevocationPair>(&serialized_unchecked_rp).is_err());
     }
 }

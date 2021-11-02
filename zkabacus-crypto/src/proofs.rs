@@ -50,9 +50,8 @@ An establish proof demonstrates that a customer is trying to initialize a channe
 This is a zero-knowledge proof that makes the following guarantees:
 
 - The new balances match the previously-agreed-upon values.
-- The [`BlindedState`] and [`BlindedCloseState`] open to objects that are correctly formed
-  relative to each other.
-- The close state is well-formed (e.g. with a close tag and corresponding to the state).
+- The channel state and close state are correctly formed relative to each other
+- The close state is well-formed (with a close tag and corresponding to the state).
 */
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EstablishProof {
@@ -256,12 +255,13 @@ A payment proof demonstrates that a customer is trying to make a valid payment o
 This is a zero-knowledge proof that makes the following guarantees:
 
 - The customer holds a valid `PayToken` and knows the state it corresponds to.
-- The customer knows the opening of the [`RevocationLockCommitment`], the [`BlindedState`], and
-  the [`BlindedCloseState`].
-- The new state from the commitment is correctly updated from the previous state
+- The customer knows a [`RevocationLock`] and the current state (and thus close state) of the
+  channel, and has correctly formed a corresponding [`CommitmentProof`] and
+  [`SignatureRequestProof`]s.
+- The new state is correctly updated from the previous state
   (that is, the balances are updated by an agreed-upon amount).
-- The close state is well-formed (e.g. with a close tag and corresponding to the new state).
-- The committed [`RevocationLock`] and revealed [`Nonce`] are contained in the previous `State`.
+- The close state is well-formed (with a close tag and corresponding to the new state).
+- The committed [`RevocationLock`] and revealed [`Nonce`] match the ones in the previous state
 - The new balances are non-negative.
 
 */

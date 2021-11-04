@@ -127,13 +127,13 @@ impl TryFrom<UncheckedRevocationSecret> for RevocationPair {
 
         match maybe_lock.into() {
             Some(maybe_lock) => Ok(RevocationPair {
-                    secret: RevocationSecret {
-                        secret: unchecked.secret,
-                        index: unchecked.index,
-                    },
-                    lock: RevocationLock(maybe_lock)
+                secret: RevocationSecret {
+                    secret: unchecked.secret,
+                    index: unchecked.index,
+                },
+                lock: RevocationLock(maybe_lock),
             }),
-            
+
             None => Err(Error::InvalidSecret),
         }
     }
@@ -216,11 +216,13 @@ impl RevocationLockCommitment {
         revocation_pair: &RevocationPair,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Verification {
-        self.0.verify_opening(
-            parameters.revocation_commitment_parameters(),
-            revocation_lock_blinding_factor.0,
-            &Message::from(revocation_pair.lock.to_scalar()),
-        ).into()
+        self.0
+            .verify_opening(
+                parameters.revocation_commitment_parameters(),
+                revocation_lock_blinding_factor.0,
+                &Message::from(revocation_pair.lock.to_scalar()),
+            )
+            .into()
     }
 }
 

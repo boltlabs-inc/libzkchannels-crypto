@@ -87,11 +87,11 @@ pub struct RevocationLockBlindingFactor(pub(crate) BlindingFactor);
 pub enum Error {
     /// The provided revocation secret does not produce a valid revocation lock.
     #[error("The revocation secret does not produce a valid revocation lock")]
-    InvalidSecret(),
+    InvalidSecret,
 
     /// The provided revocation secret does not produce the input revocation lock.
     #[error("The revocation secret does not produce the provided revocation lock")]
-    MismatchedPair(),
+    MismatchedPair,
 }
 
 impl TryFrom<UncheckedRevocationPair> for RevocationPair {
@@ -104,7 +104,7 @@ impl TryFrom<UncheckedRevocationPair> for RevocationPair {
         if unchecked.lock == valid_pair.lock {
             Ok(valid_pair)
         } else {
-            Err(Error::MismatchedPair())
+            Err(Error::MismatchedPair)
         }
     }
 }
@@ -125,18 +125,16 @@ impl TryFrom<UncheckedRevocationSecret> for RevocationPair {
         // ie is a Scalar in canonical form (smaller than the modulus)
         let maybe_lock = Scalar::from_bytes(digest.as_ref());
 
-        if maybe_lock.is_some().into() {
-            let valid_secret = RevocationSecret {
-                secret: unchecked.secret,
-                index: unchecked.index,
-            };
-            let valid_lock = RevocationLock(maybe_lock.unwrap());
-            Ok(RevocationPair {
-                secret: valid_secret,
-                lock: valid_lock,
-            })
-        } else {
-            Err(Error::InvalidSecret())
+        match maybe_lock.into() {
+            Some(maybe_lock) => Ok(RevocationPair {
+                    secret: RevocationSecret {
+                        secret: unchecked.secret,
+                        index: unchecked.index,
+                    },
+                    lock: RevocationLock(maybe_lock)
+            }),
+            
+            None => Err(Error::InvalidSecret),
         }
     }
 }
@@ -218,17 +216,11 @@ impl RevocationLockCommitment {
         revocation_pair: &RevocationPair,
         revocation_lock_blinding_factor: &RevocationLockBlindingFactor,
     ) -> Verification {
-        let opening_is_valid = self.0.verify_opening(
+        self.0.verify_opening(
             parameters.revocation_commitment_parameters(),
             revocation_lock_blinding_factor.0,
             &Message::from(revocation_pair.lock.to_scalar()),
-        );
-
-        if opening_is_valid {
-            Verification::Verified
-        } else {
-            Verification::Failed
-        }
+        ).into()
     }
 }
 
@@ -311,7 +303,7 @@ mod test {
         let invalid_secret = UncheckedRevocationSecret { secret, index: 0 };
         assert!(matches!(
             RevocationPair::try_from(invalid_secret),
-            Err(Error::InvalidSecret())
+            Err(Error::InvalidSecret)
         ));
 
         // Test that a specific valid revocation secret produces a verified pair
@@ -349,7 +341,7 @@ mod test {
                 secret: invalid_secret,
                 lock: RevocationLock(invalid_lock)
             }),
-            Err(Error::InvalidSecret())
+            Err(Error::InvalidSecret)
         ));
 
         // Test that a specific valid revocation secret produces a verified pair
@@ -382,11 +374,12 @@ mod test {
                 secret: valid_secret,
                 lock: RevocationLock(invalid_lock)
             }),
-            Err(Error::MismatchedPair())
+            Err(Error::MismatchedPair)
         ));
     }
 
     #[test]
+    #[cfg(feature = "sqlite")]
     pub fn run_serialize_deserialize() {
         // Normal case
         let mut rng = thread_rng();
@@ -400,6 +393,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "sqlite")]
     pub fn failing_serialize_deserialize() {
         // Test bad pair
         let scalar_str = "4dd70a569aa77c525dfc72b2dddd640ae1bee82b1430e63588ed71c183038d23";

@@ -16,7 +16,7 @@ use {
     ff::Field,
     serde::*,
     sha3::{Digest, Sha3_256},
-    std::convert::TryFrom,
+    std::convert::{AsRef, TryFrom},
     thiserror::Error,
 };
 
@@ -32,7 +32,7 @@ pub struct RevocationPair {
     secret: RevocationSecret,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(missing_copy_implementations)]
 struct UncheckedRevocationPair {
     lock: RevocationLock,
@@ -112,17 +112,18 @@ impl TryFrom<UncheckedRevocationPair> for RevocationPair {
 impl TryFrom<UncheckedRevocationSecret> for RevocationPair {
     type Error = Error;
 
-    /// Try to convert an unchecked revocation pair into a verified revocation pair.
+    /// Try to convert an unchecked revocation secret into a verified revocation pair.
     fn try_from(unchecked: UncheckedRevocationSecret) -> Result<Self, Self::Error> {
         // Compute the SHA3 hash of the byte representation of the unchecked revocation secret
         // (this byte conversion must match `RevocationSecret::as_bytes()`)
-        let mut bytes = [unchecked.index; 33];
-        bytes[0..32].copy_from_slice(&unchecked.secret.to_bytes());
-        let digested = Sha3_256::digest(&bytes);
+        let digest = Sha3_256::new()
+            .chain(unchecked.secret.to_bytes())
+            .chain([unchecked.index])
+            .finalize();
 
         // Determine if the result is a valid revocation lock,
         // ie is a Scalar in canonical form (smaller than the modulus)
-        let maybe_lock = Scalar::from_bytes(&<[u8; 32]>::try_from(&digested[..]).unwrap());
+        let maybe_lock = Scalar::from_bytes(digest.as_ref());
 
         if maybe_lock.is_some().into() {
             let valid_secret = RevocationSecret {
@@ -329,17 +330,18 @@ mod test {
         // Test that a specific invalid revocation secret produces the correct error
         // invalid secret
         let invalid_secret = UncheckedRevocationSecret { secret, index: 0 };
-        // invalid secret as bytes
-        let mut bytes = [0; 33];
-        bytes[0..32].copy_from_slice(&secret.to_bytes());
 
         // generate lock corresponding to invalid secret using `from_raw` method
-        let invalid_digested = Sha3_256::digest(&bytes);
+        let invalid_digest = Sha3_256::new()
+            .chain(invalid_secret.secret.to_bytes())
+            .chain([invalid_secret.index])
+            .finalize();
+
         let invalid_lock = Scalar::from_raw([
-            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[0..8]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[8..16]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[16..24]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[24..32]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digest[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digest[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digest[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digest[24..32]).unwrap()),
         ]);
 
         assert!(matches!(
@@ -354,15 +356,17 @@ mod test {
         // valid secret
         let valid_secret = UncheckedRevocationSecret { secret, index: 1 };
         // valid secret as bytes
-        bytes = [1; 33];
-        bytes[0..32].copy_from_slice(&secret.to_bytes());
         // generate lock corresponding to valid secret using `from_raw` method
-        let digested = Sha3_256::digest(&bytes);
+        let digest = Sha3_256::new()
+            .chain(valid_secret.secret.to_bytes())
+            .chain([valid_secret.index])
+            .finalize();
+
         let lock = Scalar::from_raw([
-            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[0..8]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[8..16]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[16..24]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&digested[24..32]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digest[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digest[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digest[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&digest[24..32]).unwrap()),
         ]);
 
         assert!(RevocationPair::try_from(UncheckedRevocationPair {
@@ -405,17 +409,18 @@ mod test {
         // Test that a specific invalid revocation secret produces the correct error
         // invalid secret
         let invalid_secret = UncheckedRevocationSecret { secret, index: 0 };
-        // invalid secret as bytes
-        let mut bytes = [0; 33];
-        bytes[0..32].copy_from_slice(&secret.to_bytes());
 
         // generate lock corresponding to invalid secret using `from_raw` method
-        let invalid_digested = Sha3_256::digest(&bytes);
+        let invalid_digest = Sha3_256::new()
+            .chain(invalid_secret.secret.to_bytes())
+            .chain([invalid_secret.index])
+            .finalize();
+
         let invalid_lock = Scalar::from_raw([
-            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[0..8]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[8..16]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[16..24]).unwrap()),
-            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digested[24..32]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digest[0..8]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digest[8..16]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digest[16..24]).unwrap()),
+            u64::from_le_bytes(<[u8; 8]>::try_from(&invalid_digest[24..32]).unwrap()),
         ]);
 
         let unchecked_rp = UncheckedRevocationPair {

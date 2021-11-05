@@ -5,6 +5,8 @@ use zkchannels_crypto::{
     Message, Rng,
 };
 
+/// A zero-knowledge proof of knowledge of the opening of a commitment to a message tuple with two
+/// elements, where the first element is a known public value.
 struct PartialOpeningProof {
     pub public_value: Scalar,
     pub public_value_commitment_scalar: Scalar,
@@ -18,12 +20,12 @@ impl PartialOpeningProof {
         public_value: u64,
         secret_value: u64,
     ) -> Self {
-        // Generate a message tuple with a public and secret part.
+        // Generate a message tuple with a public and secret part
         let public_value = Scalar::from(public_value);
         let secret_value = Scalar::from(secret_value);
         let msg = Message::new([public_value, secret_value]);
 
-        // Start building the proof.
+        // Start building the proof
         let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             msg,
@@ -34,14 +36,14 @@ impl PartialOpeningProof {
         // Save the commitment scalar corresponding to `public_value` (the first in the tuple)
         let public_value_commitment_scalar = proof_builder.conjunction_commitment_scalars()[0];
 
-        // Construct challenge with _all_ public components of the proof.
+        // Construct challenge with _all_ public components of the proof
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(&public_value_commitment_scalar)
             .with(&public_value)
             .finish();
 
-        // Finish building the proof and assemble components.
+        // Finish building the proof and assemble components
         PartialOpeningProof {
             public_value,
             public_value_commitment_scalar,
@@ -60,7 +62,7 @@ impl PartialOpeningProof {
             .with(&self.public_value)
             .finish();
 
-        // 1. Make sure the public value is correct.
+        // 1. Make sure the public value is correct
         let public_value_matches_expected =
             Scalar::from(expected_public_value) == self.public_value;
 
@@ -69,7 +71,7 @@ impl PartialOpeningProof {
         let public_value_matches_proof = self.commitment_proof.conjunction_response_scalars()[0]
             == challenge * self.public_value + self.public_value_commitment_scalar;
 
-        // 3. Make sure the commitment proof is valid.
+        // 3. Make sure the commitment proof is valid
         let proof_validates = self
             .commitment_proof
             .verify_knowledge_of_opening(pedersen_params, challenge);

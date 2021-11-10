@@ -7,7 +7,6 @@ use crate::{
 };
 use arrayvec::ArrayVec;
 use serde::*;
-use std::convert::TryFrom;
 use thiserror::Error;
 
 /// The error type returned when attempting to form a range constraint for a value outside the range.
@@ -33,7 +32,6 @@ const RP_PARAMETER_L: usize = 9;
 /// generation.
 /// This follows the work of Camenish, Chaabouni, and shelat. See [`RangeConstraint`] for citation.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(try_from = "UncheckedRangeConstraintParameters")]
 pub struct RangeConstraintParameters {
     /// A signature on every `u`-ary digit
     ///
@@ -42,37 +40,6 @@ pub struct RangeConstraintParameters {
     digit_signatures: Box<[Signature; RP_PARAMETER_U as usize]>,
     /// Public key corresponding _exclusively with the signatures above.
     public_key: PublicKey<1>,
-}
-
-/// Parameters for a [`RangeConstraint`] before validation.
-///
-/// Used during deserialization before validation checks have been done.
-#[derive(Debug, Deserialize)]
-struct UncheckedRangeConstraintParameters {
-    #[serde(with = "crate::serde::big_boxed_array")]
-    digit_signatures: Box<[Signature; RP_PARAMETER_U as usize]>,
-    public_key: PublicKey<1>,
-}
-
-impl TryFrom<UncheckedRangeConstraintParameters> for RangeConstraintParameters {
-    type Error = String;
-    /// During deserialization verify the signature inside the RangeConstraintParameters are valid signatures on the appropriate scalars
-    fn try_from(unchecked: UncheckedRangeConstraintParameters) -> Result<Self, Self::Error> {
-        let UncheckedRangeConstraintParameters {
-            digit_signatures,
-            public_key,
-        } = unchecked;
-        for (i, sig) in digit_signatures.iter().enumerate() {
-            if !sig.verify(&public_key, &Scalar::from(i as u64).into()) {
-                return Err("The signatures in the RangeConstraintParameters must be valid signatures on the appropriate scalars".to_string());
-            }
-        }
-
-        Ok(RangeConstraintParameters {
-            digit_signatures,
-            public_key,
-        })
-    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -101,6 +68,16 @@ impl RangeConstraintParameters {
     /// Return the public key used to form the `RangeConstraintParameters`.
     pub fn public_key(&self) -> &PublicKey<1> {
         &self.public_key
+    }
+
+    /// Verify the signatures inside the RangeConstraintParameters are valid signatures on the appropriate scalars
+    pub fn validate(&self) -> Result<(), String> {
+        for (i, sig) in self.digit_signatures.iter().enumerate() {
+            if !sig.verify(&self.public_key, &Scalar::from(i as u64).into()) {
+                return Err("The signatures in the RangeConstraintParameters must be valid signatures on the appropriate scalars".to_string());
+            }
+        }
+        Ok(())
     }
 }
 
@@ -314,8 +291,8 @@ mod test {
     use super::*;
     use crate::test::rng;
     use rand::Rng;
-    #[cfg(feature = "bincode")]
     use std::convert::TryFrom;
+    use std::time::Instant;
 
     #[test]
     fn test_range_constraint_challenge() {
@@ -364,14 +341,19 @@ mod test {
         let ser_params = bincode::serialize(&params).unwrap();
         let new_params = bincode::deserialize::<RangeConstraintParameters>(&ser_params).unwrap();
         assert_eq!(params, new_params);
+    }
+
+    /// Test the validation code during deserialization of the range constraint parameters
+    #[test]
+    fn test_validate_range_constraint_parameters() {
+        let mut rng = rng();
 
         // Check validation when the first signature is a signature on the second element
         let mut bad_params = RangeConstraintParameters::new(&mut rng);
         let mut sigs = bad_params.digit_signatures.to_vec();
         sigs[0] = sigs[1];
         bad_params.digit_signatures = Box::try_from(sigs.into_boxed_slice()).unwrap();
-        let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<RangeConstraintParameters>(&ser_params).is_err());
+        assert!(bad_params.validate().is_err());
 
         // Check validation when a signature at random position is a random signature
         let mut bad_params = RangeConstraintParameters::new(&mut rng);
@@ -381,7 +363,21 @@ mod test {
         let pos = rng.gen_range(0..RP_PARAMETER_U as usize);
         sigs[pos] = Signature::new(&mut rng, &kp, &msg);
         bad_params.digit_signatures = Box::try_from(sigs.into_boxed_slice()).unwrap();
-        let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<RangeConstraintParameters>(&ser_params).is_err());
+        assert!(bad_params.validate().is_err());
+    }
+
+    #[test]
+    #[cfg(feature = "bincode")]
+    fn test_serialize_deserialize_range_constraint_parameters() {
+        let mut rng = rng();
+        let params = RangeConstraintParameters::new(&mut rng);
+
+        // Check normal serialization/deserialization
+        let ser_params = bincode::serialize(&params).unwrap();
+
+        let deserialize_params_timer = Instant::now();
+        let _ = bincode::deserialize::<RangeConstraintParameters>(&ser_params).unwrap();
+        let duration = deserialize_params_timer.elapsed();
+        println!("{:?}", duration);
     }
 }

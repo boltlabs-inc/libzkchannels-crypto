@@ -624,8 +624,10 @@ mod tests {
         merchant,
         proofs::*,
         states::{ChannelId, CustomerBalance, MerchantBalance, State},
+        RangeConstraintParameters,
     };
     use rand::SeedableRng;
+    use std::time::Instant;
     use zkchannels_crypto::pointcheval_sanders::KeyPair;
 
     fn rng() -> impl Rng {
@@ -809,5 +811,74 @@ mod tests {
         assert!(proof
             .verify(&merchant_params, &public_values, &context)
             .is_some());
+    }
+
+    #[test]
+    #[cfg(feature = "bincode")]
+    fn test_pay_proof_with_serialize() {
+        let merchant_balance = 0;
+        let customer_balance = 100;
+        let amount = 10;
+        let pay = PaymentAmount::pay_merchant;
+        let mut rng = rng();
+        let merchant_params = merchant::Config::new(&mut rng);
+        let params = merchant_params.to_customer_config();
+
+        // Create a state.
+        let channel_id = channel_id(&mut rng);
+        let old_state = State::new(
+            &mut rng,
+            channel_id,
+            MerchantBalance::try_new(merchant_balance).unwrap(),
+            CustomerBalance::try_new(customer_balance).unwrap(),
+        );
+
+        // Update state.
+        let amount = pay(amount).unwrap();
+        let new_state = old_state.apply_payment(&mut rng, amount).unwrap();
+
+        // Run establish proof and sign result to get a valid signature on the old state.
+        let (verified_state_com, old_pt_bf) =
+            run_establish_proof(merchant_balance, customer_balance);
+        let pay_token = BlindedPayToken::sign(&mut rng, &merchant_params, verified_state_com)
+            .unblind(old_pt_bf);
+
+        // Save a copy of the nonce...
+        let nonce = *old_state.nonce();
+
+        let context = Context::new(b"pay proof verify test");
+
+        // Form proof.
+        let param_ser = bincode::serialize(&params).unwrap();
+        let deserialize_and_proof_timer = Instant::now();
+        let _ = bincode::deserialize::<customer::Config>(&param_ser).unwrap();
+        let proof_timer = Instant::now();
+        let (proof, _blinding_factors) = PayProof::new(
+            &mut rng, &params, pay_token, &old_state, &new_state, &context,
+        );
+        println!(
+            "create proof (with deserializing params): {:?}",
+            deserialize_and_proof_timer.elapsed()
+        );
+        println!("create proof: {:?}", proof_timer.elapsed());
+
+        // Verify proof against expected objects.
+        let public_values = PayProofPublicValues {
+            old_nonce: nonce,
+            amount,
+        };
+
+        let param_ser = bincode::serialize(&merchant_params.range_constraint_parameters).unwrap();
+        let deserialize_and_proof_timer = Instant::now();
+        let _ = bincode::deserialize::<RangeConstraintParameters>(&param_ser).unwrap();
+        let proof_timer = Instant::now();
+        assert!(proof
+            .verify(&merchant_params, &public_values, &context)
+            .is_some());
+        println!(
+            "verify proof (with deserializing params): {:?}",
+            deserialize_and_proof_timer.elapsed()
+        );
+        println!("verify proof: {:?}", proof_timer.elapsed());
     }
 }

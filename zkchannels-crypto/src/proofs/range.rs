@@ -375,9 +375,9 @@ mod test {
         // Check normal serialization/deserialization
         let ser_params = bincode::serialize(&params).unwrap();
 
-        let start = Instant::now();
+        let deserialize_params_timer = Instant::now();
         let _ = bincode::deserialize::<RangeConstraintParameters>(&ser_params).unwrap();
-        let duration = start.elapsed();
+        let duration = deserialize_params_timer.elapsed();
         println!("{:?}", duration);
     }
 }

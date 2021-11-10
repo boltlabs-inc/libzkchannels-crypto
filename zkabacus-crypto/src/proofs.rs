@@ -850,17 +850,17 @@ mod tests {
 
         // Form proof.
         let param_ser = bincode::serialize(&params).unwrap();
-        let start = Instant::now();
+        let deserialize_and_proof_timer = Instant::now();
         let _ = bincode::deserialize::<customer::Config>(&param_ser).unwrap();
-        let start1 = Instant::now();
+        let proof_timer = Instant::now();
         let (proof, _blinding_factors) = PayProof::new(
             &mut rng, &params, pay_token, &old_state, &new_state, &context,
         );
         println!(
             "create proof (with deserializing params): {:?}",
-            start.elapsed()
+            deserialize_and_proof_timer.elapsed()
         );
-        println!("create proof: {:?}", start1.elapsed());
+        println!("create proof: {:?}", proof_timer.elapsed());
 
         // Verify proof against expected objects.
         let public_values = PayProofPublicValues {
@@ -869,16 +869,16 @@ mod tests {
         };
 
         let param_ser = bincode::serialize(&merchant_params.range_constraint_parameters).unwrap();
-        let start = Instant::now();
+        let deserialize_and_proof_timer = Instant::now();
         let _ = bincode::deserialize::<RangeConstraintParameters>(&param_ser).unwrap();
-        let start1 = Instant::now();
+        let proof_timer = Instant::now();
         assert!(proof
             .verify(&merchant_params, &public_values, &context)
             .is_some());
         println!(
             "verify proof (with deserializing params): {:?}",
-            start.elapsed()
+            deserialize_and_proof_timer.elapsed()
         );
-        println!("verify proof: {:?}", start1.elapsed());
+        println!("verify proof: {:?}", proof_timer.elapsed());
     }
 }

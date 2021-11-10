@@ -1,4 +1,3 @@
-use bls12_381::{G1Projective, Scalar};
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
     pointcheval_sanders::{KeyPair, PublicKey},
@@ -8,7 +7,14 @@ use zkchannels_crypto::{
     },
     Message, Rng,
 };
+use {
+    bls12_381::{G1Projective, Scalar},
+    ff::Field,
+};
 
+
+// This example generates three different proofs, each demonstrating a different fundamental piece
+// of a linear combination.
 fn main() {
     let mut rng = rand::thread_rng();
     let pedersen_parameters = PedersenParameters::new(&mut rng);
@@ -19,12 +25,23 @@ fn main() {
         SecretSumProof::new(&mut rng, &key_pair, &pedersen_parameters, &[25, 300]);
     assert!(double_message_proof.verify(key_pair.public_key(), &pedersen_parameters));
 
-    // TODO: Build and verify a proof with a sum of a secret and a public value
+    // Build and verify a proof with a sum of a secret and a public value
+    let values = [10, 100];
+    let fixed_difference_proof =
+        FixedDifferenceProof::new(&mut rng, &pedersen_parameters, &values, 90);
+    assert!(fixed_difference_proof.verify(&pedersen_parameters, 90));
+
+    // It's possible to make an invalid fixed difference proof! It won't verify because the
+    // difference between the two values is not 10
+    // A better implementation would return an error type indicating why it failed.
+    let bad_fixed_difference_proof =
+        FixedDifferenceProof::new(&mut rng, &pedersen_parameters, &values, 10);
+    assert!(!bad_fixed_difference_proof.verify(&pedersen_parameters, 10));
 
     // TODO: Build and verify a proof with a product of a secret and a public value
 }
 /// Zero-knowledge proof of knowledge of a signature on a message that is the sum of two committed
-/// values
+/// values (an additive linear combination of secret values).
 struct SecretSumProof {
     summands: CommitmentProof<G1Projective, 2>,
     sum: SignatureProof<1>,
@@ -98,5 +115,74 @@ impl SecretSumProof {
             .verify_knowledge_of_opening(pedersen_parameters, challenge);
 
         response_scalars_sum && sum_proof_verifies && summand_proof_verifies
+    }
+}
+
+/// Zero-knowledge proof of knowledge of two values that differ by a fixed amount
+/// (an additive linear combination of a secret and a public value).
+struct FixedDifferenceProof {
+    proof: CommitmentProof<G1Projective, 2>,
+    difference: Scalar,
+}
+
+impl FixedDifferenceProof {
+    /// Generate a new `FixedDifferenceProof`. Note that this does not validate inputs; the proof
+    /// may not verify if the `values` do not differ by `difference.
+    pub fn new(
+        rng: &mut impl Rng,
+        pedersen_parameters: &PedersenParameters<G1Projective, 2>,
+        values: &[u64; 2],
+        difference: u64,
+    ) -> Self {
+        // Form commitment proof builder to the two values
+        let scalar_values = Message::new([Scalar::from(values[0]), Scalar::from(values[1])]);
+        let difference = Scalar::from(difference);
+
+        // Generate commitment proof builder with matching commitment scalars for the values that differ
+        let matching_commitment_scalar = Some(Scalar::random(&mut *rng));
+        let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+            rng,
+            scalar_values,
+            &[matching_commitment_scalar, matching_commitment_scalar],
+            pedersen_parameters,
+        );
+
+        // Form the challenge
+        let challenge = ChallengeBuilder::new()
+            .with(&proof_builder)
+            .with(&difference)
+            .finish();
+
+        // Form the proof
+        Self {
+            proof: proof_builder.generate_proof_response(challenge),
+            difference,
+        }
+    }
+
+    pub fn verify(
+        &self,
+        pedersen_parameters: &PedersenParameters<G1Projective, 2>,
+        expected_difference: u64,
+    ) -> bool {
+        // Check that expected difference matches the one in the proof
+        let difference_matches = self.difference == Scalar::from(expected_difference);
+
+        let challenge = ChallengeBuilder::new()
+            .with(&self.proof)
+            .with(&self.difference)
+            .finish();
+
+        // Check that the response scalars have the correct relationship
+        let response_scalars = self.proof.conjunction_response_scalars();
+        let response_scalars_differ_correctly =
+            response_scalars[1] == response_scalars[0] + challenge * self.difference;
+
+        // Check that the proof verifies
+        let proof_verifies = self
+            .proof
+            .verify_knowledge_of_opening(pedersen_parameters, challenge);
+
+        difference_matches && response_scalars_differ_correctly && proof_verifies
     }
 }

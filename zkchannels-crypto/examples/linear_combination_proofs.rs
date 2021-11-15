@@ -12,7 +12,6 @@ use {
     ff::Field,
 };
 
-
 // This example generates three different proofs, each demonstrating a different fundamental piece
 // of a linear combination.
 fn main() {
@@ -38,7 +37,11 @@ fn main() {
         FixedDifferenceProof::new(&mut rng, &pedersen_parameters, &values, 10);
     assert!(!bad_fixed_difference_proof.verify(&pedersen_parameters, 10));
 
-    // TODO: Build and verify a proof with a product of a secret and a public value
+    // Build and verify a proof with a product of a secret and a public value
+    let key_pair = KeyPair::new(&mut rng);
+    let product_proof = PublicProductProof::new(&mut rng, &key_pair, &values, 10);
+    assert!(product_proof.verify(key_pair.public_key(), 10));
+    assert!(!product_proof.verify(key_pair.public_key(), 90));
 }
 /// Zero-knowledge proof of knowledge of a signature on a message that is the sum of two committed
 /// values (an additive linear combination of secret values).
@@ -127,7 +130,7 @@ struct FixedDifferenceProof {
 
 impl FixedDifferenceProof {
     /// Generate a new `FixedDifferenceProof`. Note that this does not validate inputs; the proof
-    /// may not verify if the `values` do not differ by `difference.
+    /// may not verify if the `values` do not differ by `difference`.
     pub fn new(
         rng: &mut impl Rng,
         pedersen_parameters: &PedersenParameters<G1Projective, 2>,
@@ -184,5 +187,75 @@ impl FixedDifferenceProof {
             .verify_knowledge_of_opening(pedersen_parameters, challenge);
 
         difference_matches && response_scalars_differ_correctly && proof_verifies
+    }
+}
+
+/// Zero knowledge proof of knowledge of a signature over two values that differ by a given 
+/// multiplier.
+pub struct PublicProductProof {
+    proof: SignatureProof<2>,
+    multiplier: Scalar,
+}
+
+impl PublicProductProof {
+    /// Generate a new `PublicProductProof`. Note that this does not validate inputs; the proof
+    /// may not verify if the `values` do not differ by the `multiplier`.
+    pub fn new(
+        rng: &mut impl Rng,
+        key_pair: &KeyPair<2>,
+        values: &[u64; 2],
+        multiplier: u64,
+    ) -> Self {
+        // Form a signature over the values
+        let scalar_values = Message::new([Scalar::from(values[0]), Scalar::from(values[1])]);
+        let multiplier = Scalar::from(multiplier);
+        let signature = scalar_values.sign(rng, key_pair);
+
+        // Generate signature proof builder with coordinating commitment scalars for the values
+        let commitment_scalar = Scalar::random(&mut *rng);
+        let proof_builder = SignatureProofBuilder::generate_proof_commitments(
+            rng,
+            scalar_values,
+            signature,
+            &[
+                Some(commitment_scalar),
+                Some(commitment_scalar * multiplier),
+            ],
+            key_pair.public_key(),
+        );
+
+        // Form the challenge
+        let challenge = ChallengeBuilder::new()
+            .with(&proof_builder)
+            .with(&multiplier)
+            .finish();
+
+        // Form the proof
+        Self {
+            proof: proof_builder.generate_proof_response(challenge),
+            multiplier,
+        }
+    }
+
+    pub fn verify(&self, public_key: &PublicKey<2>, expected_multiplier: u64) -> bool {
+        // Check that the multiplier matches the one in the proof
+        let multiplier_is_correct = Scalar::from(expected_multiplier) == self.multiplier;
+
+        // Check that the response scalars have the correct relationship
+        let response_scalars = self.proof.conjunction_response_scalars();
+        let response_scalars_correspond =
+            response_scalars[1] == response_scalars[0] * self.multiplier;
+
+        let challenge = ChallengeBuilder::new()
+            .with(&self.proof)
+            .with(&self.multiplier)
+            .finish();
+
+        // Check that the proof verifies
+        let proof_verifies = self
+            .proof
+            .verify_knowledge_of_signature(public_key, challenge);
+
+        multiplier_is_correct && response_scalars_correspond && proof_verifies
     }
 }

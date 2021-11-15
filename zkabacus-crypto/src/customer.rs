@@ -348,10 +348,8 @@ pub struct Started {
 #[non_exhaustive]
 #[allow(missing_copy_implementations)]
 pub struct LockMessage {
-    /// Revocation lock
-    pub revocation_lock: RevocationLock,
-    /// Revocation secret
-    pub revocation_secret: RevocationSecret,
+    /// Revocation pair
+    pub revocation_pair: RevocationPair,
     /// Blinding factor for commitment to revocation lock
     pub revocation_lock_blinding_factor: RevocationLockBlindingFactor,
 }
@@ -431,8 +429,7 @@ impl Started {
                     close_state_signature,
                 },
                 LockMessage {
-                    revocation_lock: self.old_state.revocation_lock(),
-                    revocation_secret: self.old_state.revocation_secret(),
+                    revocation_pair: self.old_state.revocation_pair(),
                     revocation_lock_blinding_factor: self.blinding_factors.for_old_revocation_lock,
                 },
             )),

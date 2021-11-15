@@ -295,11 +295,11 @@ impl State {
         &self.nonce
     }
 
-    /// Get the revocation secret for this state.
+    /// Get the revocation pair for this state.
     ///
-    /// Once the revocation secret is removed and shared, the State is useless, so this function consumes it.
-    pub fn revocation_secret(self) -> RevocationSecret {
-        self.revocation_pair.revocation_secret()
+    /// Once the revocation pair is removed and shared, the State is useless, so this function consumes it.
+    pub fn revocation_pair(self) -> RevocationPair {
+        self.revocation_pair
     }
 
     /// Get the [`CloseState`] corresponding to this `State`.

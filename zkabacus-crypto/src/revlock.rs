@@ -126,12 +126,12 @@ impl TryFrom<UncheckedRevocationSecret> for RevocationPair {
         let maybe_lock = Scalar::from_bytes(digest.as_ref());
 
         match maybe_lock.into() {
-            Some(maybe_lock) => Ok(RevocationPair {
+            Some(lock) => Ok(RevocationPair {
                 secret: RevocationSecret {
                     secret: unchecked.secret,
                     index: unchecked.index,
                 },
-                lock: RevocationLock(maybe_lock),
+                lock: RevocationLock(lock),
             }),
 
             None => Err(Error::InvalidSecret),

@@ -24,3 +24,4 @@ serde-big-array = { version = "0.3.2", features = ["const-generics"] }
 sha3 = "0.9.1"
 sqlx = { version = "0.5.2", features = ["runtime-tokio-rustls"], optional = true }
 thiserror = "1"
+chrono = "0.4"

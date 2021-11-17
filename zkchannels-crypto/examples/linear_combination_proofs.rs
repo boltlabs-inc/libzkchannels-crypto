@@ -190,7 +190,7 @@ impl FixedDifferenceProof {
     }
 }
 
-/// Zero knowledge proof of knowledge of a signature over two values that differ by a given 
+/// Zero knowledge proof of knowledge of a signature over two values that differ by a given
 /// multiplier.
 pub struct PublicProductProof {
     proof: SignatureProof<2>,

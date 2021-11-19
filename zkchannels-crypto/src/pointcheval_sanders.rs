@@ -27,11 +27,11 @@ use std::{iter, ops::Neg};
 #[serde(try_from = "UncheckedSecretKey<N>")]
 pub(crate) struct SecretKey<const N: usize> {
     #[serde(with = "SerializeElement")]
-    pub x: Scalar,
+    x: Scalar,
     #[serde(with = "SerializeElement")]
-    pub ys: Box<[Scalar; N]>,
+    ys: Box<[Scalar; N]>,
     #[serde(with = "SerializeElement")]
-    pub x1: G1Affine,
+    x1: G1Affine,
 }
 
 /// Pointcheval-Sanders secret key before validation.
@@ -40,11 +40,11 @@ pub(crate) struct SecretKey<const N: usize> {
 #[derive(Debug, Deserialize)]
 struct UncheckedSecretKey<const N: usize> {
     #[serde(with = "SerializeElement")]
-    pub x: Scalar,
+    x: Scalar,
     #[serde(with = "SerializeElement")]
-    pub ys: Box<[Scalar; N]>,
+    ys: Box<[Scalar; N]>,
     #[serde(with = "SerializeElement")]
-    pub x1: G1Affine,
+    x1: G1Affine,
 }
 
 impl<const N: usize> TryFrom<UncheckedSecretKey<N>> for SecretKey<N> {
@@ -76,19 +76,19 @@ impl<const N: usize> TryFrom<UncheckedSecretKey<N>> for SecretKey<N> {
 pub struct PublicKey<const N: usize> {
     /// G1 generator (g)
     #[serde(with = "SerializeElement")]
-    pub g1: G1Affine,
+    g1: G1Affine,
     /// Y_1 ... Y_l
     #[serde(with = "SerializeElement")]
-    pub y1s: Box<[G1Affine; N]>,
+    y1s: Box<[G1Affine; N]>,
     /// G2 generator (g~)
     #[serde(with = "SerializeElement")]
-    pub g2: G2Affine,
+    g2: G2Affine,
     /// X~
     #[serde(with = "SerializeElement")]
-    pub x2: G2Affine,
+    x2: G2Affine,
     /// Y~_1 ... Y~_l
     #[serde(with = "SerializeElement")]
-    pub y2s: Box<[G2Affine; N]>,
+    y2s: Box<[G2Affine; N]>,
 }
 
 /// Pointcheval-Sanders public key before validation.
@@ -98,19 +98,19 @@ pub struct PublicKey<const N: usize> {
 struct UncheckedPublicKey<const N: usize> {
     /// G1 generator (g)
     #[serde(with = "SerializeElement")]
-    pub g1: G1Affine,
+    g1: G1Affine,
     /// Y_1 ... Y_l
     #[serde(with = "SerializeElement")]
-    pub y1s: Box<[G1Affine; N]>,
+    y1s: Box<[G1Affine; N]>,
     /// G2 generator (g~)
     #[serde(with = "SerializeElement")]
-    pub g2: G2Affine,
+    g2: G2Affine,
     /// X~
     #[serde(with = "SerializeElement")]
-    pub x2: G2Affine,
+    x2: G2Affine,
     /// Y~_1 ... Y~_l
     #[serde(with = "SerializeElement")]
-    pub y2s: Box<[G2Affine; N]>,
+    y2s: Box<[G2Affine; N]>,
 }
 
 impl<const N: usize> TryFrom<UncheckedPublicKey<N>> for PublicKey<N> {
@@ -239,6 +239,16 @@ impl<const N: usize> PublicKey<N> {
         }
         buf
     }
+
+    /// Get the x2 element of the public key
+    pub fn x2(&self) -> G2Affine {
+        self.x2
+    }
+
+    /// Get the g2 element of the public key
+    pub fn g2(&self) -> G2Affine {
+        self.g2
+    }
 }
 
 impl<const N: usize> ChallengeInput for PublicKey<N> {
@@ -342,14 +352,14 @@ impl TryFrom<UncheckedSignature> for Signature {
 impl Signature {
     pub(crate) fn new<const N: usize>(
         rng: &mut impl Rng,
-        signing_key: &KeyPair<N>,
+        signing_keypair: &KeyPair<N>,
         msg: &Message<N>,
     ) -> Self {
         // select h randomly from G1*.
         let h: G1Projective = random_non_identity(&mut *rng);
 
         // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
-        let scalar_combination = signing_key.sk.x + inner_product(signing_key.sk.ys.as_ref(), msg);
+        let scalar_combination = signing_keypair.sk.x + inner_product(signing_keypair.sk.ys.as_ref(), msg);
 
         Signature {
             sigma1: h.into(),
@@ -465,10 +475,10 @@ impl VerifiedBlindedMessage {
     /// Blind-sign a verified blinded message.
     pub fn blind_sign<const N: usize>(
         self,
-        signing_key: &KeyPair<N>,
+        signing_keypair: &KeyPair<N>,
         rng: &mut impl Rng,
     ) -> BlindedSignature {
-        BlindedSignature::new(signing_key, rng, self)
+        BlindedSignature::new(signing_keypair, rng, self)
     }
 
     /// Extract the internal commitment object.
@@ -498,15 +508,15 @@ pub struct BlindedSignature(Signature);
 impl BlindedSignature {
     /// Sign a verified blinded message.
     pub fn new<const N: usize>(
-        signing_key: &KeyPair<N>,
+        signing_keypair: &KeyPair<N>,
         rng: &mut impl Rng,
         msg: VerifiedBlindedMessage,
     ) -> Self {
         let u = Scalar::random(rng);
 
         BlindedSignature(Signature {
-            sigma1: (signing_key.public_key().g1 * u).into(),
-            sigma2: ((signing_key.sk.x1 + msg.into_g1()) * u).into(),
+            sigma1: (signing_keypair.public_key().g1 * u).into(),
+            sigma2: ((signing_keypair.sk.x1 + msg.into_g1()) * u).into(),
         })
     }
 

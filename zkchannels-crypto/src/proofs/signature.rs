@@ -119,10 +119,10 @@ impl<const N: usize> SignatureProof<N> {
         let commitment_proof_matches_signature = multi_miller_loop(&[
             (
                 &self.blinded_signature.sigma1(),
-                &(((params.x2 + self.commitment_proof.commitment().to_element()).to_affine())
+                &(((params.x2() + self.commitment_proof.commitment().to_element()).to_affine())
                     .into()),
             ),
-            (&self.blinded_signature.sigma2(), &params.g2.neg().into()),
+            (&self.blinded_signature.sigma2(), &params.g2().neg().into()),
         ])
         .final_exponentiation()
             == Gt::identity();

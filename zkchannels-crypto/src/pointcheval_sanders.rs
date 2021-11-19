@@ -245,6 +245,11 @@ impl<const N: usize> PublicKey<N> {
         self.x2
     }
 
+    /// Get the y2 elements of the public key
+    pub fn y2s(&self) -> Box<[G2Affine; N]> {
+        self.y2s.clone()
+    }
+
     /// Get the g2 element of the public key
     pub fn g2(&self) -> G2Affine {
         self.g2
@@ -359,7 +364,8 @@ impl Signature {
         let h: G1Projective = random_non_identity(&mut *rng);
 
         // [x] + sum( [yi] * [mi] ), for the secret key ([x], [y1], ...) and message [m1] ...
-        let scalar_combination = signing_keypair.sk.x + inner_product(signing_keypair.sk.ys.as_ref(), msg);
+        let scalar_combination =
+            signing_keypair.sk.x + inner_product(signing_keypair.sk.ys.as_ref(), msg);
 
         Signature {
             sigma1: h.into(),

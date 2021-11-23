@@ -624,11 +624,12 @@ mod tests {
         merchant,
         proofs::*,
         states::{ChannelId, CustomerBalance, MerchantBalance, State},
-        RangeConstraintParameters,
     };
     use rand::SeedableRng;
-    use std::time::Instant;
     use zkchannels_crypto::pointcheval_sanders::KeyPair;
+
+    #[cfg(feature = "bincode")]
+    use {crate::RangeConstraintParameters, std::time::Instant};
 
     fn rng() -> impl Rng {
         let seed: [u8; 32] = *b"NEVER USE THIS FOR ANYTHING REAL";

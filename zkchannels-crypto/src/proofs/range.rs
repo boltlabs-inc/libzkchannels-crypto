@@ -292,6 +292,7 @@ mod test {
     use crate::test::rng;
     use rand::Rng;
     use std::convert::TryFrom;
+    #[cfg(feature = "bincode")]
     use std::time::Instant;
 
     #[test]

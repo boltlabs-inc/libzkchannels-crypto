@@ -42,6 +42,15 @@ pub struct RangeConstraintParameters {
     public_key: PublicKey<1>,
 }
 
+impl ChallengeInput for RangeConstraintParameters {
+    fn consume(&self, builder: &mut ChallengeBuilder) {
+        for digit_signature in self.digit_signatures.iter() {
+            builder.consume(digit_signature);
+        }
+        builder.consume(&self.public_key);
+    }
+}
+
 #[cfg(feature = "sqlite")]
 crate::impl_sqlx_for_bincode_ty!(RangeConstraintParameters);
 

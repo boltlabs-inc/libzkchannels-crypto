@@ -22,9 +22,11 @@ use {
 
 /// A verified revocation pair, which consists of a revocation secret and
 /// a corresponding revocation lock.
+///
+/// This type does not derive `Clone` because a `RevocationPair` should only be used once, to
+/// unlock a channel.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(try_from = "UncheckedRevocationPair")]
-#[allow(missing_copy_implementations)]
 pub struct RevocationPair {
     /// A revocation lock.
     lock: RevocationLock,
@@ -32,8 +34,9 @@ pub struct RevocationPair {
     secret: RevocationSecret,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
+/// This type does not derive `Copy` because it isn't used, but implementing it would not break
+/// any assumptions.
+#[derive(Debug, Serialize, Deserialize)]
 struct UncheckedRevocationPair {
     lock: RevocationLock,
     secret: UncheckedRevocationSecret,
@@ -74,8 +77,10 @@ zkchannels_crypto::impl_sqlx_for_bincode_ty!(RevocationSecret);
 ///
 /// *Binding*: Given a `RevocationLockCommitment`, an adversary cannot feasibly generate a
 /// [`RevocationLock`] and [`RevocationLockBlindingFactor`] that verify with the commitment.
+///
+/// This type does not derive `Clone`, because a `RevocationLockCommitment` must only be used
+/// once, to commit to the [`RevocationLock`] used for a payment.
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
 pub struct RevocationLockCommitment(pub(crate) Commitment<G1Projective>);
 
 /// Commitment randomness corresponding to a [`RevocationLockCommitment`].

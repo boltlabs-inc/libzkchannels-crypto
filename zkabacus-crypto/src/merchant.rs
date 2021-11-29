@@ -55,8 +55,10 @@ use zkchannels_crypto::{
 ///
 /// Holds keys and parameters used throughout the lifetime of a merchant node, across
 /// all its channels.
+///
+/// This type does not derive `Clone` because the underlying secret key type in the
+/// [`KeyPair`] does not derive it.
 #[derive(Debug, Eq, PartialEq)]
-#[allow(missing_copy_implementations)]
 pub struct Config {
     /// KeyPair for signing, blind signing, and proofs.
     pub(crate) signing_keypair: KeyPair<5>,

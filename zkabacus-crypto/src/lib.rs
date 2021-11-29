@@ -20,7 +20,7 @@ between parties in the execution of zkAbacus; these are revealed publicly.
 Ch 3.3: Off-network channel protocol zkAbacus.
 */
 #![warn(missing_docs)]
-#![warn(missing_copy_implementations, missing_debug_implementations)]
+#![warn(missing_debug_implementations)]
 #![warn(unused_qualifications, unused_results)]
 #![warn(future_incompatible)]
 #![warn(unused)]
@@ -58,8 +58,8 @@ pub type CommitmentParameters = zkchannels_crypto::pedersen::PedersenParameters<
 pub type KeyPair = zkchannels_crypto::pointcheval_sanders::KeyPair<5>;
 
 pub use states::{
-    BlindedCloseState, ChannelId, CloseState, CloseStateSignature, CustomerBalance,
-    CustomerRandomness, MerchantBalance, MerchantRandomness, VerifiedBlindedState,
+    ChannelId, CloseState, CloseStateSignature, CustomerBalance, CustomerRandomness,
+    MerchantBalance, MerchantRandomness, VerifiedBlindedState,
 };
 
 pub use revlock::RevocationLock;

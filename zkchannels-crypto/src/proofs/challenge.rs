@@ -71,8 +71,13 @@ impl Mul<Scalar> for Challenge {
 
 /// Holds state used when building a [`Challenge`] using the Fiat-Shamir heuristic, as in a
 /// non-interactive Schnorr proof.
+///
+/// This type does not derive `Clone` because standard use of a `Challenge` requires it to be
+/// built out of public material at time of proof verification; this prevents misuse that could
+/// arise from partially-constructed `ChallengeBuilder`s containing non-public material.
+/// Also, challenge generation is efficient and it is typically not worth reusing a
+/// `ChallengeBuilder`, even if the desired `Challenge`s consume similar inputs.
 #[derive(Debug)]
-#[allow(missing_copy_implementations)]
 pub struct ChallengeBuilder {
     hasher: Sha3_256,
 }

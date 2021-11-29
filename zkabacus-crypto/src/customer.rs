@@ -121,19 +121,6 @@ pub struct Requested {
     pay_token_blinding_factor: PayTokenBlindingFactor,
 }
 
-/// Message sent to the merchant to request a new channel.
-/// This is sent as part of zkAbacus.Initialize.
-#[derive(Debug, Serialize, Deserialize)]
-#[non_exhaustive]
-pub struct RequestMessage {
-    /// Commitment to the initial close state.
-    pub close_state_commitment: BlindedCloseState,
-    /// Commitment to the initial state.
-    pub state_commitment: BlindedState,
-    /// Proof that channel is being correctly established.
-    pub proof: EstablishProof,
-}
-
 impl Requested {
     /**
     Generate a new channel request from public parameters.
@@ -344,9 +331,11 @@ pub struct Started {
 
 /// Message sent to the merchant to revoke the old balance and lock the channel.
 /// This is sent as part of zkAbacus.Pay.
+///
+/// This type does not derive `Clone` because the revocation information in the `LockMessage`
+/// is unique and should only be sent to a merchant once.
 #[derive(Debug)]
 #[non_exhaustive]
-#[allow(missing_copy_implementations)]
 pub struct LockMessage {
     /// Revocation pair
     pub revocation_pair: RevocationPair,

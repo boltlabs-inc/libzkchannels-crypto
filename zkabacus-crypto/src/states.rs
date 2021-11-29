@@ -229,7 +229,9 @@ impl CustomerBalance {
 }
 
 /// Describes the complete state of the channel with the given ID.
-#[allow(missing_copy_implementations)]
+///
+/// This type does not implement `Clone` because a state is a unique object and should not be
+/// copied or reused.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct State {
     channel_id: ChannelId,
@@ -242,10 +244,12 @@ pub struct State {
 /// The closing state associated with a state.
 ///
 /// When signed by the merchant, this can be used by the customer to close the channel.
-/// It removes the nonce from the associated `State` to maintain privacy during closing, even in the case of
-/// merchant abort during payment.
+/// It removes the nonce from the associated `State` to maintain privacy during closing, even in
+/// the case of merchant abort during payment.
+///
+/// This type does not implement `Copy` because a close state is unique and should not be copied
+/// or reused outside the given API, except as necessary to send over the network.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
 pub struct CloseState {
     channel_id: ChannelId,
     revocation_lock: RevocationLock,
@@ -389,38 +393,33 @@ impl CloseState {
     }
 }
 
-/// Blinded representation of a State:
-/// (channel_id, nonce, revocation_lock, customer_balance, merchant_balance).
-/// The underlying State cannot be derived from this value.
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
-pub struct BlindedState(pub(crate) BlindedMessage);
-
 /// Blinded representation of a State that has been verified correct via a proof.
+///
+/// This type does not derive `Clone`; it should only be used to produce a single
+/// [`BlindedPayToken`].
 #[derive(Debug)]
-#[allow(missing_copy_implementations)]
 pub struct VerifiedBlindedState(pub(crate) VerifiedBlindedMessage);
 
-/// Blinded representation of a CloseState and a constant, fixed close tag.
-///
-/// The underlying CloseState cannot be derived from this value.
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
-pub struct BlindedCloseState(pub(crate) BlindedMessage);
-
 /// Blinded representation of a State that has been verified correct via a proof.
+///
+/// This type does not derive `Clone`; it should only be used to produce a single
+/// [`BlindedCloseStateSignature`].
 #[derive(Debug)]
-#[allow(missing_copy_implementations)]
 pub struct VerifiedBlindedCloseState(pub(crate) VerifiedBlindedMessage);
 
 /// Signature on a [`CloseState`] and a constant, fixed close tag. Used to close a channel.
+///
+/// This type does not derive `Copy`: it may be necessary to `Clone` a [`CloseStateSignature`]
+/// while it is valid, but it should never be used after the underlying [`CloseState`] has been
+/// revoked.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
 pub struct CloseStateSignature(Signature);
 
 /// Blinded signature on a close state and a constant, fixed close tag.
+///
+/// This type does not derive `Clone`: the blinded signature should be unblinded upon receipt,
+/// and can only be used once.
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
 pub struct CloseStateBlindedSignature(pub(crate) BlindedSignature);
 
 /// Blinding factor for a [`BlindedCloseState`] and corresponding [`CloseStateBlindedSignature`].
@@ -480,8 +479,10 @@ impl CloseStateSignature {
 
 /// A `PayToken` allows a customer to initiate a new payment. It is tied to a specific channel
 /// [`State`].
+///
+/// This type does not derive `Copy`: it may be necessary to `Clone` a [`PayToken`] while it is
+/// valid, but it should never be used after it has been revoked.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(missing_copy_implementations)]
 pub struct PayToken(pub(crate) Signature);
 
 /// A blinded pay token.

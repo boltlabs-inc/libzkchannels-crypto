@@ -4,9 +4,8 @@ Cryptographic routines for establishing, making payments on, and closing a zkAba
 ## Establish
 
 Channel establishment for the customer has two phases. First, the customer _initializes_ the
-channel. They form a [`RequestMessage`] that proves they have correctly formed the channel
-state with respect to the agreed-upon balances and enter the [`Requested`]
-state.
+channel. They form an [`EstablishProof`] that proves they have correctly formed the channel
+state with respect to the agreed-upon balances and enter the [`Requested`] state.
 
 On receiving a valid [`ClosingSignature`](crate::ClosingSignature), they
 [`complete()`](Requested::complete()) the initialize phase and enter the [`Inactive`] state.

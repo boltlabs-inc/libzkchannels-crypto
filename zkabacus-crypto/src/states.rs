@@ -12,13 +12,14 @@ goes as follows:
 3. the merchant produces a blinded version of the output, and
 4. the customer unblinds the output.
 
-To produce a [`PayToken`], the customer blinds the [`State`] with a [`PayTokenBlindingFactor`].
-This produces a [`BlindedState`], which the merchant verifies with a proof to get a
+To acquire a [`PayToken`], the customer produces a proof that contains the [`State`] blinded
+with a [`PayTokenBlindingFactor`]. This is sent to the merchant, who verifies the proof to get a
 [`VerifiedBlindedState`]. Then, they blindly sign that to produce a [`BlindedPayToken`].
 
-To produce a [`CloseStateSignature`], the customer blinds the [`CloseState`] with a
-[`CloseStateBlindingFactor`]. This produces a [`BlindedCloseState`], which the merchant verifies
-to receive a [`VerifiedBlindedCloseState`], and signs to produce a [`CloseStateBlindedSignature`].
+To acquire a [`CloseStateSignature`], the customer produces a proof that contains the
+[`CloseState`] blinded with a [`CloseStateBlindingFactor`]. This is sent to the merchant, who
+verifies the proof and extracts a [`VerifiedBlindedCloseState`]. They blindly sign this to produce
+a [`CloseStateBlindedSignature`].
 
 The customer must blind the input and unblind the output with the _same_ blinding factor.
 */

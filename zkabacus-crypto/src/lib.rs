@@ -186,7 +186,7 @@ impl PaymentAmount {
     }
 }
 
-/// The "CLOSE" scalar constant, used in place of a state's nonce to form a [`BlindedCloseState`].
+/// The "CLOSE" scalar constant, used in place of a `State`'s nonce in a [`CloseState`].
 pub const CLOSE_SCALAR: Scalar = Scalar::from_raw([0, 0, 0, u64::from_le_bytes(*b"\0\0\0CLOSE")]);
 
 #[cfg(test)]

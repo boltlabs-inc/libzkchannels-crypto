@@ -159,6 +159,7 @@ fn main() {
     let double_message_proof = RepeatedMessageProof::new(&mut rng, &pedersen_parameters, 1000);
     assert!(double_message_proof.verify(&pedersen_parameters));
 
+    // Build and verify a flip flop signature proof
     let signature_parameters = KeyPair::new(&mut rng);
     let flip_flop_proof = FlipFlopSignatureProof::new(
         &mut rng,

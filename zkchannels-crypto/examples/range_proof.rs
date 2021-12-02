@@ -28,8 +28,7 @@ fn main() {
     ) {
         Ok(proof) => proof,
         Err(e) => {
-            eprintln!("Impossible error while generating proof: {}", e);
-            return;
+            unreachable!("Impossible error while generating proof: {}", e);
         }
     };
 
@@ -46,7 +45,7 @@ fn main() {
         &range_constraint_parameters,
         -100,
     ) {
-        Ok(_proof) => eprintln!("Impossible error generating range proof on an invalid value!"),
+        Ok(_proof) => unreachable!("Impossible error generating range proof on an invalid value!"),
         Err(e) => println!("Got expected error: {}", e),
     };
 

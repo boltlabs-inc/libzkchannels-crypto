@@ -28,11 +28,15 @@ use crate::{
     customer, merchant, revlock::*, types::*, Balance, Error, Nonce, PaymentAmount, Rng,
     Verification, CLOSE_SCALAR,
 };
-use serde::*;
-use sha3::{Digest, Sha3_256};
-use std::convert::{TryFrom, TryInto};
-use std::str::FromStr;
 use zkchannels_crypto::{pointcheval_sanders::*, BlindingFactor, Message};
+use {
+    serde::*,
+    sha3::{Digest, Sha3_256},
+    std::{
+        convert::{TryFrom, TryInto},
+        str::FromStr,
+    },
+};
 
 /// Randomness produced by the customer, used to create the [`ChannelId`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -158,7 +162,7 @@ impl ChannelId {
 }
 
 /// Channel balance for merchant.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 pub struct MerchantBalance(Balance);
 
 #[cfg(feature = "sqlite")]
@@ -172,6 +176,11 @@ impl MerchantBalance {
         Balance::try_new(value).map(Self)
     }
 
+    /// Create a `MerchantBalance` of zero.
+    pub fn zero() -> Self {
+        Self(Balance::zero())
+    }
+
     fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
         // The merchant adds, the customer subtracts
         let new_value = self.0 .0 as i128 + amt.0 as i128;
@@ -180,6 +189,11 @@ impl MerchantBalance {
         } else {
             Self::try_new(new_value as u64)
         }
+    }
+
+    /// Indicate if the balance is zero.
+    pub fn is_zero(&self) -> bool {
+        self.into_inner() == 0
     }
 
     pub(crate) fn to_scalar(self) -> Scalar {
@@ -191,10 +205,16 @@ impl MerchantBalance {
     pub fn into_inner(self) -> u64 {
         self.0.into_inner()
     }
+
+    /// Try to add the value of the given [`CustomerBalance`] to self.
+    /// Fails if the sum is too large.
+    pub fn try_add(self, rhs: CustomerBalance) -> Result<Self, Error> {
+        MerchantBalance::try_new(self.into_inner() + rhs.into_inner())
+    }
 }
 
 /// Channel balance for customer.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 pub struct CustomerBalance(Balance);
 
 #[cfg(feature = "sqlite")]
@@ -208,6 +228,11 @@ impl CustomerBalance {
         Balance::try_new(value).map(Self)
     }
 
+    /// Create a `CustomerBalance` of zero.
+    pub fn zero() -> Self {
+        Self(Balance::zero())
+    }
+
     fn apply(self, amt: PaymentAmount) -> Result<Self, Error> {
         // The merchant adds, the customer subtracts
         let new_value = self.0 .0 as i128 - amt.0 as i128;
@@ -216,6 +241,11 @@ impl CustomerBalance {
         } else {
             Self::try_new(new_value as u64)
         }
+    }
+
+    /// Indicate if the balance is zero.
+    pub fn is_zero(&self) -> bool {
+        self.into_inner() == 0
     }
 
     pub(crate) fn to_scalar(self) -> Scalar {

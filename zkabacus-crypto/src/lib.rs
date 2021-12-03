@@ -124,7 +124,7 @@ impl BitAnd for Verification {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 struct Balance(u64);
 
 impl Balance {
@@ -134,6 +134,10 @@ impl Balance {
         } else {
             Ok(Self(value))
         }
+    }
+
+    fn zero() -> Self {
+        Self(0)
     }
 
     fn to_scalar(self) -> Scalar {

@@ -717,8 +717,8 @@ mod tests {
         // Proof must verify against the provided values.
         let public_values = EstablishProofPublicValues {
             channel_id: *state.channel_id(),
-            merchant_balance: *state.merchant_balance(),
-            customer_balance: *state.customer_balance(),
+            merchant_balance: state.merchant_balance(),
+            customer_balance: state.customer_balance(),
         };
 
         // Unwrap result - will panic if the proof is invalid.

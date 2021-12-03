@@ -311,13 +311,13 @@ impl State {
     }
 
     /// Get the merchant's current [`MerchantBalance`] for this state.
-    pub fn merchant_balance(&self) -> &MerchantBalance {
-        &self.merchant_balance
+    pub fn merchant_balance(&self) -> MerchantBalance {
+        self.merchant_balance
     }
 
     /// Get the customer's current [`CustomerBalance`] for this state.
-    pub fn customer_balance(&self) -> &CustomerBalance {
-        &self.customer_balance
+    pub fn customer_balance(&self) -> CustomerBalance {
+        self.customer_balance
     }
 
     /// Get the current [`RevocationLock`] for this state.
@@ -414,13 +414,13 @@ impl CloseState {
     }
 
     /// Get the merchant's current [`MerchantBalance`] for this [`CloseState`].
-    pub fn merchant_balance(&self) -> &MerchantBalance {
-        &self.merchant_balance
+    pub fn merchant_balance(&self) -> MerchantBalance {
+        self.merchant_balance
     }
 
     /// Get the customer's current [`CustomerBalance`] for this [`CloseState`].
-    pub fn customer_balance(&self) -> &CustomerBalance {
-        &self.customer_balance
+    pub fn customer_balance(&self) -> CustomerBalance {
+        self.customer_balance
     }
 }
 

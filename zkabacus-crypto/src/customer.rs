@@ -173,14 +173,14 @@ impl Requested {
     /// Get the current [`CustomerBalance`] for this state.
     ///
     /// This represents the proposed customer contribution to the yet-to-be-established channel.
-    pub fn customer_balance(&self) -> &CustomerBalance {
+    pub fn customer_balance(&self) -> CustomerBalance {
         self.state.customer_balance()
     }
 
     /// Get the current [`MerchantBalance`] for this state.
     ///
     /// This represents the proposed merchant contribution to the yet-to-be-established channel.
-    pub fn merchant_balance(&self) -> &MerchantBalance {
+    pub fn merchant_balance(&self) -> MerchantBalance {
         self.state.merchant_balance()
     }
 
@@ -225,14 +225,14 @@ impl Inactive {
     /// Get the current [`CustomerBalance`] for this state.
     ///
     /// This represents the customer contribution to the yet-to-be-activated channel.
-    pub fn customer_balance(&self) -> &CustomerBalance {
+    pub fn customer_balance(&self) -> CustomerBalance {
         self.state.customer_balance()
     }
 
     /// Get the current [`MerchantBalance`] for this state.
     ///
     /// This represents the merchant contribution to the yet-to-be-activated channel.
-    pub fn merchant_balance(&self) -> &MerchantBalance {
+    pub fn merchant_balance(&self) -> MerchantBalance {
         self.state.merchant_balance()
     }
 
@@ -303,12 +303,12 @@ impl Ready {
     }
 
     /// Get the current [`CustomerBalance`] for this state, prior to starting a payment.
-    pub fn customer_balance(&self) -> &CustomerBalance {
+    pub fn customer_balance(&self) -> CustomerBalance {
         self.state.customer_balance()
     }
 
     /// Get the current [`MerchantBalance`] for this state, prior to starting a payment.
-    pub fn merchant_balance(&self) -> &MerchantBalance {
+    pub fn merchant_balance(&self) -> MerchantBalance {
         self.state.merchant_balance()
     }
 
@@ -366,12 +366,12 @@ impl ClosingMessage {
     }
 
     /// Get the closing [`CustomerBalance`] for this [`ClosingMessage`].
-    pub fn customer_balance(&self) -> &CustomerBalance {
+    pub fn customer_balance(&self) -> CustomerBalance {
         self.close_state.customer_balance()
     }
 
     /// Get the closing [`MerchantBalance`] for this [`ClosingMessage`].
-    pub fn merchant_balance(&self) -> &MerchantBalance {
+    pub fn merchant_balance(&self) -> MerchantBalance {
         self.close_state.merchant_balance()
     }
 
@@ -439,7 +439,7 @@ impl Started {
     ///
     /// Note that although the payment has been started, this is the *old* balance, because this is
     /// what would be closed on if the [`Started::close`] method was called from this state.
-    pub fn customer_balance(&self) -> &CustomerBalance {
+    pub fn customer_balance(&self) -> CustomerBalance {
         self.old_state.customer_balance()
     }
 
@@ -447,7 +447,7 @@ impl Started {
     ///
     /// Note that although the payment has been started, this is the *old* balance, because this is
     /// what would be closed on if the [`Started::close`] method was called from this state.
-    pub fn merchant_balance(&self) -> &MerchantBalance {
+    pub fn merchant_balance(&self) -> MerchantBalance {
         self.old_state.merchant_balance()
     }
 
@@ -497,7 +497,7 @@ impl Locked {
     /// Note that although the payment has not yet been completed, this is the *new* balance,
     /// because this is what would be closed on if the [`Locked::close`] method was called from this
     /// state.
-    pub fn customer_balance(&self) -> &CustomerBalance {
+    pub fn customer_balance(&self) -> CustomerBalance {
         self.state.customer_balance()
     }
 
@@ -507,7 +507,7 @@ impl Locked {
     /// Note that although the payment has not yet been completed, this is the *new* balance,
     /// because this is what would be closed on if the [`Locked::close`] method was called from this
     /// state.
-    pub fn merchant_balance(&self) -> &MerchantBalance {
+    pub fn merchant_balance(&self) -> MerchantBalance {
         self.state.merchant_balance()
     }
 

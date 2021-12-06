@@ -52,7 +52,7 @@ impl ChallengeInput for G2Projective {
 }
 
 /// A challenge scalar for use in a Schnorr-style proof.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Challenge(Scalar);
 
 impl Challenge {
@@ -72,11 +72,69 @@ impl Mul<Scalar> for Challenge {
 /// Holds state used when building a [`Challenge`] using the Fiat-Shamir heuristic, as in a
 /// non-interactive Schnorr proof.
 ///
+/// # Usage
+/// A [`Challenge`] should integrate any public information shared by the prover and
+/// the verifier. The parties must integrate the elements in the same order.
+/// Types that can be integrated into the challenge should implement the [`ChallengeInput`] trait.
+///
+/// This library includes convenience functions to generate identical `Challenge`s from the
+/// `Builder` type held by the prover and the corresponding `Proof` held by the verifier.
+///
+/// ```
+/// # use zkchannels_crypto::{Message, pedersen::PedersenParameters, proofs::{CommitmentProofBuilder, ChallengeBuilder}};
+/// # use bls12_381::{Scalar, G1Projective};
+/// # let mut rng = rand::thread_rng();
+/// # let pedersen_parameters: PedersenParameters<G1Projective, 1> = PedersenParameters::new(&mut rng);
+/// # let msg = Message::new([Scalar::from(100)]);
+/// # let commitment_scalars = [None];
+/// // The prover constructs a proof builder...
+/// let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
+///     &mut rng,
+///     msg,
+///     &commitment_scalars,
+///     &pedersen_parameters
+/// );
+///
+/// // ...and uses it to form a challenge
+/// let prover_challenge = ChallengeBuilder::new()
+///     .with(&proof_builder)
+///     .with(&pedersen_parameters)
+///     .finish();
+///
+/// let proof = proof_builder.generate_proof_response(prover_challenge);
+///
+/// // The verifier uses the corresponding proof to form the challenge
+/// let verifier_challenge = ChallengeBuilder::new()
+///     .with(&proof)
+///     .with(&pedersen_parameters)
+///     .finish();
+///
+/// assert_eq!(prover_challenge, verifier_challenge);
+/// # assert!(proof.verify_knowledge_of_opening(&pedersen_parameters, verifier_challenge));
+/// ```
+///
+/// Other relevant types are already held by both parties, such as
+/// [`PedersenParameters`](crate::pedersen::PedersenParameters),
+/// [`PublicKey`](crate::pointcheval_sanders::PublicKey)s, and
+/// [`RangeConstraintParameters`](crate::proofs::RangeConstraintParameters). Additional
+/// constraints on the proof must be manually added to the challenge; see details in the
+/// [constraints documentation](crate::proofs#constraints).
+///  
+/// **Secure challenge construction:**
+/// Reuse attacks are possible when the challenge does
+/// not change between separate proving sessions. We recommend integrating shared, external
+/// context, like a protocol transcript, to avoid these attacks. Users can implement the
+/// [`ChallengeInput`] trait for any such context or pass arbitrary bytes directly.
+///
+/// # Implementation details
+///
 /// This type does not derive `Clone` because standard use of a `Challenge` requires it to be
 /// built out of public material at time of proof verification; this prevents misuse that could
 /// arise from partially-constructed `ChallengeBuilder`s containing non-public material.
 /// Also, challenge generation is efficient and it is typically not worth reusing a
 /// `ChallengeBuilder`, even if the desired `Challenge`s consume similar inputs.
+///
+/// This implementation simulates a random oracle with the SHA3-256 hash function.
 #[derive(Debug)]
 pub struct ChallengeBuilder {
     hasher: Sha3_256,

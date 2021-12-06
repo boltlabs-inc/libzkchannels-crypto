@@ -29,7 +29,7 @@
 //!
 //! 2. **Challenge**. In an interactive proof, the prover obtains a random challenge from the
 //!     verifier. However, it is standard practice to use the Fiat-Shamir heuristic to transform an
-//!     interactive proof into a non-interactive proof; see [`Challenge`] for details.
+//!     interactive proof into a non-interactive proof; see [`ChallengeBuilder`] for details.
 //!
 //! 3. **Response**. The prover constructs response scalars, which mask each element of the message
 //!     tuple and the blinding factor with the corresponding commitment scalar and the challenge.

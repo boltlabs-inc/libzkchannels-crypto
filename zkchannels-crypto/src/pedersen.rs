@@ -31,7 +31,7 @@
 use crate::{
     common::*,
     proofs::{ChallengeBuilder, ChallengeInput},
-    serde::{SerializeElement, SerializeG1},
+    serde::SerializeElement,
 };
 use arrayvec::ArrayVec;
 use group::Group;
@@ -87,7 +87,7 @@ impl<G: Group<Scalar = Scalar> + GroupEncoding> ChallengeInput for Commitment<G>
 /// Uses Box to avoid stack overflows with large parameter sets.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(
-    bound = "G: SerializeG1",
+    bound = "G: SerializeElement",
     try_from = "UncheckedPedersenParameters<G, N>"
 )]
 pub struct PedersenParameters<G, const N: usize>
@@ -104,7 +104,7 @@ where
 ///
 /// Used during deserialization before validation checks have been done.
 #[derive(Debug, Deserialize)]
-#[serde(bound = "G: SerializeG1")]
+#[serde(bound = "G: SerializeElement")]
 struct UncheckedPedersenParameters<G, const N: usize>
 where
     G: Group<Scalar = Scalar>,
@@ -208,9 +208,9 @@ mod test {
     #[cfg(feature = "bincode")]
     use {rand::Rng, std::convert::TryFrom};
 
-    fn commit_open<G: Group<Scalar = Scalar>>() {
+    fn commit_open_success<G: Group<Scalar = Scalar>, const N: usize>() {
         let mut rng = crate::test::rng();
-        let params = PedersenParameters::<G, 3>::new(&mut rng);
+        let params = PedersenParameters::<G, N>::new(&mut rng);
         let msg = Message::random(&mut rng);
         let bf = BlindingFactor::new(&mut rng);
 
@@ -218,19 +218,9 @@ mod test {
         assert!(com.verify_opening(&params, bf, &msg));
     }
 
-    #[test]
-    fn commit_open_g1() {
-        commit_open::<G1Projective>()
-    }
-
-    #[test]
-    fn commit_open_g2() {
-        commit_open::<G2Projective>()
-    }
-
-    fn commit_does_not_open_on_wrong_msg<G: Group<Scalar = Scalar>>() {
+    fn commit_does_not_open_on_wrong_msg<G: Group<Scalar = Scalar>, const N: usize>() {
         let mut rng = crate::test::rng();
-        let params = PedersenParameters::<G, 3>::new(&mut rng);
+        let params = PedersenParameters::<G, N>::new(&mut rng);
         let msg = Message::random(&mut rng);
         let bf = BlindingFactor::new(&mut rng);
 
@@ -238,52 +228,32 @@ mod test {
 
         assert_ne!(
             &*msg, &*bad_msg,
-            "unfortunate RNG seed: bad_msg should be different"
+            "unfortunate RNG seed in commit_does_not_open_on_wrong_msg: bad_msg should be different"
         );
 
         let com = msg.commit(&params, bf);
         assert!(!com.verify_opening(&params, bf, &bad_msg));
     }
 
-    #[test]
-    fn commit_does_not_open_on_wrong_msg_g1() {
-        commit_does_not_open_on_wrong_msg::<G1Projective>()
-    }
-
-    #[test]
-    fn commit_does_not_open_on_wrong_msg_g2() {
-        commit_does_not_open_on_wrong_msg::<G2Projective>()
-    }
-
-    fn commit_does_not_open_on_wrong_bf<G: Group<Scalar = Scalar>>() {
+    fn commit_does_not_open_on_wrong_bf<G: Group<Scalar = Scalar>, const N: usize>() {
         let mut rng = crate::test::rng();
-        let params = PedersenParameters::<G, 3>::new(&mut rng);
+        let params = PedersenParameters::<G, N>::new(&mut rng);
         let msg = Message::random(&mut rng);
         let bf = BlindingFactor::new(&mut rng);
         let bad_bf = BlindingFactor::new(&mut rng);
 
         assert_ne!(
             bf.0, bad_bf.0,
-            "unfortunate RNG seed: bad_bf should be different"
+            "unfortunate RNG seed in commit_does_not_open_on_wrong_bf: bad_bf should be different"
         );
 
         let com = msg.commit(&params, bf);
         assert!(!com.verify_opening(&params, bad_bf, &msg));
     }
 
-    #[test]
-    fn commit_does_not_open_on_wrong_bf_g1() {
-        commit_does_not_open_on_wrong_bf::<G1Projective>()
-    }
-
-    #[test]
-    fn commit_does_not_open_on_wrong_bf_g2() {
-        commit_does_not_open_on_wrong_bf::<G2Projective>()
-    }
-
-    fn commit_does_not_open_on_wrong_commit<G: Group<Scalar = Scalar>>() {
+    fn commit_does_not_open_on_wrong_commit<G: Group<Scalar = Scalar>, const N: usize>() {
         let mut rng = crate::test::rng();
-        let params = PedersenParameters::<G, 3>::new(&mut rng);
+        let params = PedersenParameters::<G, N>::new(&mut rng);
         let msg = Message::random(&mut rng);
         let bf = BlindingFactor::new(&mut rng);
 
@@ -296,24 +266,14 @@ mod test {
 
         assert_ne!(
             com.0, bad_com.0,
-            "unfortunate RNG seed: bad_com should be different"
+            "unfortunate RNG seed in commit_does_not_open_on_wrong_commit: bad_com should be different"
         );
         assert!(!bad_com.verify_opening(&params, bf, &msg));
     }
 
-    #[test]
-    fn commit_does_not_open_on_wrong_commit_g1() {
-        commit_does_not_open_on_wrong_commit::<G1Projective>()
-    }
-
-    #[test]
-    fn commit_does_not_open_on_wrong_commit_g2() {
-        commit_does_not_open_on_wrong_commit::<G2Projective>()
-    }
-
-    fn commit_does_not_open_on_random_commit<G: Group<Scalar = Scalar>>() {
+    fn commit_does_not_open_on_random_commit<G: Group<Scalar = Scalar>, const N: usize>() {
         let mut rng = crate::test::rng();
-        let params = PedersenParameters::<G, 3>::new(&mut rng);
+        let params = PedersenParameters::<G, N>::new(&mut rng);
         let msg = Message::random(&mut rng);
         let bf = BlindingFactor::new(&mut rng);
 
@@ -323,74 +283,89 @@ mod test {
 
         assert_ne!(
             com.0, bad_com.0,
-            "unfortunate RNG seed: bad_com should be different"
+            "unfortunate RNG seed in commit_does_not_open_on_random_commit: bad_com should be different"
         );
         assert!(!bad_com.verify_opening(&params, bf, &msg));
     }
 
-    #[test]
-    fn commit_does_not_open_on_random_commit_g1() {
-        commit_does_not_open_on_random_commit::<G1Projective>()
-    }
-
-    #[test]
-    fn commit_does_not_open_on_random_commit_g2() {
-        commit_does_not_open_on_random_commit::<G2Projective>()
-    }
-
     /// Test the validation code during deserialization of the Pedersen parameters
-    #[test]
     #[cfg(feature = "bincode")]
-    fn serialize_deserialize_pedersen_params() {
-        run_serialize_deserialize_pedersen_params::<1>();
-        run_serialize_deserialize_pedersen_params::<2>();
-        run_serialize_deserialize_pedersen_params::<3>();
-        run_serialize_deserialize_pedersen_params::<5>();
-        run_serialize_deserialize_pedersen_params::<8>();
-        run_serialize_deserialize_pedersen_params::<13>();
-    }
-
-    #[cfg(feature = "bincode")]
-    fn run_serialize_deserialize_pedersen_params<const N: usize>() {
+    fn serialize_deserialize_pedersen_params<
+        G: Group<Scalar = Scalar> + SerializeElement,
+        const N: usize,
+    >() {
         let mut rng = crate::test::rng();
-        let params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        let params = PedersenParameters::<G, N>::new(&mut rng);
 
         // Check normal serialization/deserialization
         let ser_params = bincode::serialize(&params).unwrap();
-        let new_params =
-            bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).unwrap();
+        let new_params = bincode::deserialize::<PedersenParameters<G, N>>(&ser_params).unwrap();
         assert_eq!(params, new_params);
 
         // Check validation when h in the Pedersen parameters is the identity element
-        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
-        bad_params.h = G1Projective::identity();
+        let mut bad_params = PedersenParameters::<G, N>::new(&mut rng);
+        bad_params.h = G::identity();
         let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
+        assert!(bincode::deserialize::<PedersenParameters<G, N>>(&ser_params).is_err());
 
         // Check validation when the first of the gs in the Pedersen parameters is the identity element
-        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        let mut bad_params = PedersenParameters::<G, N>::new(&mut rng);
         let mut gs = bad_params.gs.to_vec();
-        gs[0] = G1Projective::identity();
+        gs[0] = G::identity();
         bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
         let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
+        assert!(bincode::deserialize::<PedersenParameters<G, N>>(&ser_params).is_err());
 
         // Check validation when the last of the gs in the Pedersen parameters is the identity element
-        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        let mut bad_params = PedersenParameters::<G, N>::new(&mut rng);
         let mut gs = bad_params.gs.to_vec();
         let last_position = gs.len() - 1;
-        gs[last_position] = G1Projective::identity();
+        gs[last_position] = G::identity();
         bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
         let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
+        assert!(bincode::deserialize::<PedersenParameters<G, N>>(&ser_params).is_err());
 
         // Check validation when the random element of the gs in the Pedersen parameters is the identity element
-        let mut bad_params = PedersenParameters::<G1Projective, N>::new(&mut rng);
+        let mut bad_params = PedersenParameters::<G, N>::new(&mut rng);
         let mut gs = bad_params.gs.to_vec();
         let random_position = rng.gen_range(0..gs.len());
-        gs[random_position] = G1Projective::identity();
+        gs[random_position] = G::identity();
         bad_params.gs = Box::try_from(gs.into_boxed_slice()).unwrap();
         let ser_params = bincode::serialize(&bad_params).unwrap();
-        assert!(bincode::deserialize::<PedersenParameters<G1Projective, N>>(&ser_params).is_err());
+        assert!(bincode::deserialize::<PedersenParameters<G, N>>(&ser_params).is_err());
     }
+
+    macro_rules! test_commitment_mod {
+        ($group:path, $test_name:ident) => {
+            #[test]
+            fn $test_name() {
+                commit_open_success::<$group, 1>();
+                commit_open_success::<$group, 3>();
+                commit_open_success::<$group, 5>();
+
+                commit_does_not_open_on_wrong_msg::<$group, 1>();
+                commit_does_not_open_on_wrong_msg::<$group, 3>();
+                commit_does_not_open_on_wrong_msg::<$group, 5>();
+
+                commit_does_not_open_on_wrong_bf::<$group, 1>();
+                commit_does_not_open_on_wrong_bf::<$group, 3>();
+                commit_does_not_open_on_wrong_bf::<$group, 5>();
+
+                commit_does_not_open_on_wrong_commit::<$group, 1>();
+                commit_does_not_open_on_wrong_commit::<$group, 3>();
+                commit_does_not_open_on_wrong_commit::<$group, 5>();
+
+                commit_does_not_open_on_random_commit::<$group, 1>();
+                commit_does_not_open_on_random_commit::<$group, 3>();
+                commit_does_not_open_on_random_commit::<$group, 5>();
+
+                serialize_deserialize_pedersen_params::<$group, 1>();
+                serialize_deserialize_pedersen_params::<$group, 3>();
+                serialize_deserialize_pedersen_params::<$group, 5>();
+            }
+        };
+    }
+
+    test_commitment_mod!(G1Projective, pedersen_test_g1);
+    test_commitment_mod!(G2Projective, pedersen_test_g2);
 }

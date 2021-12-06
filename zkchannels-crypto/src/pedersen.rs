@@ -208,8 +208,6 @@ mod test {
     #[cfg(feature = "bincode")]
     use {rand::Rng, std::convert::TryFrom};
 
-    const TEST_LENGTHS: [usize; 3] = [1, 3, 5];
-
     fn commit_open_success<G: Group<Scalar = Scalar>, const N: usize>() {
         let mut rng = crate::test::rng();
         let params = PedersenParameters::<G, N>::new(&mut rng);
@@ -338,44 +336,29 @@ mod test {
     }
 
     macro_rules! test_commitment_mod {
-        ($group:path, $test_name:ident, [$length:literal]) => {
-            #[test]
-            fn $test_name() {
-                commit_open_success::<$group, $length>();
-                /*
-                commit_open_success::<$group, 1>();
-                commit_open_success::<$group, 3>();
-                commit_open_success::<$group, 5>();
-
-                commit_does_not_open_on_wrong_msg::<$group, 1>();
-                commit_does_not_open_on_wrong_msg::<$group, 3>();
-                commit_does_not_open_on_wrong_msg::<$group, 5>();
-
-                commit_does_not_open_on_wrong_bf::<$group, 1>();
-                commit_does_not_open_on_wrong_bf::<$group, 3>();
-                commit_does_not_open_on_wrong_bf::<$group, 5>();
-
-                commit_does_not_open_on_wrong_commit::<$group, 1>();
-                commit_does_not_open_on_wrong_commit::<$group, 3>();
-                commit_does_not_open_on_wrong_commit::<$group, 5>();
-
-                commit_does_not_open_on_random_commit::<$group, 1>();
-                commit_does_not_open_on_random_commit::<$group, 3>();
-                commit_does_not_open_on_random_commit::<$group, 5>();
-
-                serialize_deserialize_pedersen_params::<$group, 1>();
-                serialize_deserialize_pedersen_params::<$group, 3>();
-                serialize_deserialize_pedersen_params::<$group, 5>();
-                */
-            }
+        ($group:path, [$length:literal]) => {
+            commit_open_success::<$group, $length>();
+            commit_does_not_open_on_wrong_msg::<$group, $length>();
+            commit_does_not_open_on_wrong_bf::<$group, $length>();
+            commit_does_not_open_on_wrong_commit::<$group, $length>();
+            commit_does_not_open_on_random_commit::<$group, $length>();
+            #[cfg(feature = "bincode")]
+            serialize_deserialize_pedersen_params::<$group, $length>();
         };
 
-        ($group:path, $test_name:ident, [$length:literal, $($rest:literal),*]) => {
-            test_commitment_mod!($group, $test_name, [$length]);
-            test_commitment_mod!($group, $test_name, [$($rest),*]);
+        ($group:path, [$length:literal, $($rest:literal),*]) => {
+            test_commitment_mod!($group, [$length]);
+            test_commitment_mod!($group, [$($rest),*]);
         };
     }
 
-    test_commitment_mod!(G1Projective, pedersen_test_g1, TEST_LENGTHS);
-    // test_commitment_mod!(G2Projective, pedersen_test_g2);
+    #[test]
+    fn pedersen_test_g1() {
+        test_commitment_mod!(G1Projective, [1, 3, 5]);
+    }
+
+    #[test]
+    fn pedersen_test_g2() {
+        test_commitment_mod!(G2Projective, [1, 3, 5]);
+    }
 }

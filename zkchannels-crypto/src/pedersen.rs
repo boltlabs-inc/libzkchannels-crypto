@@ -208,6 +208,8 @@ mod test {
     #[cfg(feature = "bincode")]
     use {rand::Rng, std::convert::TryFrom};
 
+    const TEST_LENGTHS: [usize; 3] = [1, 3, 5];
+
     fn commit_open_success<G: Group<Scalar = Scalar>, const N: usize>() {
         let mut rng = crate::test::rng();
         let params = PedersenParameters::<G, N>::new(&mut rng);
@@ -336,9 +338,11 @@ mod test {
     }
 
     macro_rules! test_commitment_mod {
-        ($group:path, $test_name:ident) => {
+        ($group:path, $test_name:ident, [$length:literal]) => {
             #[test]
             fn $test_name() {
+                commit_open_success::<$group, $length>();
+                /*
                 commit_open_success::<$group, 1>();
                 commit_open_success::<$group, 3>();
                 commit_open_success::<$group, 5>();
@@ -362,10 +366,16 @@ mod test {
                 serialize_deserialize_pedersen_params::<$group, 1>();
                 serialize_deserialize_pedersen_params::<$group, 3>();
                 serialize_deserialize_pedersen_params::<$group, 5>();
+                */
             }
+        };
+
+        ($group:path, $test_name:ident, [$length:literal, $($rest:literal),*]) => {
+            test_commitment_mod!($group, $test_name, [$length]);
+            test_commitment_mod!($group, $test_name, [$($rest),*]);
         };
     }
 
-    test_commitment_mod!(G1Projective, pedersen_test_g1);
-    test_commitment_mod!(G2Projective, pedersen_test_g2);
+    test_commitment_mod!(G1Projective, pedersen_test_g1, TEST_LENGTHS);
+    // test_commitment_mod!(G2Projective, pedersen_test_g2);
 }

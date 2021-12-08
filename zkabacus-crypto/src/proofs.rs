@@ -423,7 +423,7 @@ impl PayProof {
         let challenge = ChallengeBuilder::new()
             // integrate keys and constants
             .with(&params.merchant_public_key)
-            .with(params.range_constraint_parameters.public_key())
+            .with(&params.range_constraint_parameters)
             .with(&old_state.nonce().as_scalar())
             .with(&CLOSE_SCALAR)
             // integrate commitments and commitment scalars from commitment proofs
@@ -483,7 +483,7 @@ impl PayProof {
         let challenge = ChallengeBuilder::new()
             // integrate keys and constants
             .with(&params.signing_keypair.public_key())
-            .with(params.range_constraint_parameters.public_key())
+            .with(&params.range_constraint_parameters)
             .with(&public_values.old_nonce.as_scalar())
             .with(&CLOSE_SCALAR)
             // integrate commitments and commitment scalars from commitment proofs

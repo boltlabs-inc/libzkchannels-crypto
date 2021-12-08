@@ -480,8 +480,6 @@ mod test {
         };
     }
 
-    
     test_commitment_mod!(G1Projective, [1, 3, 5], g1);
     test_commitment_mod!(G2Projective, [1, 3, 5], g2);
-
 }

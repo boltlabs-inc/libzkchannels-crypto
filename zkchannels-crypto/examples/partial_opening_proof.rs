@@ -5,8 +5,19 @@ use zkchannels_crypto::{
     Message, Rng,
 };
 
-/// A zero-knowledge proof of knowledge of the opening of a commitment to a message tuple with two
-/// elements, where the first element is a known public value.
+fn main() {
+    let mut rng = rand::thread_rng();
+    let pedersen_params = PedersenParameters::new(&mut rng);
+
+    let public_value = 123456789;
+
+    let public_opening_proof =
+        PartialOpeningProof::new(&mut rng, &pedersen_params, public_value, 777666555);
+
+    assert!(public_opening_proof.verify(&pedersen_params, public_value));
+}
+/// A zero-knowledge proof of knowledge of the opening of a commitment to a message tuple (x, y),
+/// where the first element x is a known public value.
 struct PartialOpeningProof {
     pub public_value: Scalar,
     pub public_value_commitment_scalar: Scalar,
@@ -14,6 +25,11 @@ struct PartialOpeningProof {
 }
 
 impl PartialOpeningProof {
+    /// Generate a new `PartialOpeningProof` with the given parameters.
+    ///
+    /// * `public_value` - x, or the first element of the message tuple, which will be public
+    /// * `secret_value` - y, or the second element of the message tuple, which will not be
+    ///   revealed
     pub fn new(
         rng: &mut impl Rng,
         pedersen_params: &PedersenParameters<G1Projective, 2>,
@@ -78,15 +94,4 @@ impl PartialOpeningProof {
 
         public_value_matches_expected && public_value_matches_proof && proof_validates
     }
-}
-fn main() {
-    let mut rng = rand::thread_rng();
-    let pedersen_params = PedersenParameters::new(&mut rng);
-
-    let public_value = 123456789;
-
-    let public_opening_proof =
-        PartialOpeningProof::new(&mut rng, &pedersen_params, public_value, 777666555);
-
-    assert!(public_opening_proof.verify(&pedersen_params, public_value));
 }

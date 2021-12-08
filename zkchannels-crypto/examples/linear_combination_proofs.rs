@@ -43,14 +43,19 @@ fn main() {
     assert!(product_proof.verify(key_pair.public_key(), 10));
     assert!(!product_proof.verify(key_pair.public_key(), 90));
 }
-/// Zero-knowledge proof of knowledge of a signature on a message that is the sum of two committed
-/// values (an additive linear combination of secret values).
+/// Zero-knowledge proof of knowledge of a signature on a message (x) and of the opening of a
+/// commitment (y, z), such that x = y + z.
+/// This is an additive linear combination of secret values.
 struct SecretSumProof {
     summands: CommitmentProof<G1Projective, 2>,
     sum: SignatureProof<1>,
 }
 
 impl SecretSumProof {
+    /// Create a new `SecretSumProof` with the given parameters. This constructor validates inputs:
+    /// it will not produce a `SecretSumProof` on values x, y, z where x =! y + z.
+    ///
+    /// * `numbers` - [y, z], or the two values that will be summed.
     pub fn new(
         rng: &mut impl Rng,
         key_pair: &KeyPair<1>,
@@ -129,8 +134,11 @@ struct FixedDifferenceProof {
 }
 
 impl FixedDifferenceProof {
-    /// Generate a new `FixedDifferenceProof`. Note that this does not validate inputs; the proof
+    /// Generate a new `FixedDifferenceProof`. This constructor does _not_ validate inputs; the proof
     /// may not verify if the `values` do not differ by `difference`.
+    ///
+    /// * `values` - two numbers that will form the commitment in the proof
+    /// * `difference` - the expected difference between the values
     pub fn new(
         rng: &mut impl Rng,
         pedersen_parameters: &PedersenParameters<G1Projective, 2>,
@@ -190,16 +198,19 @@ impl FixedDifferenceProof {
     }
 }
 
-/// Zero knowledge proof of knowledge of a signature over two values that differ by a given
-/// multiplier.
+/// Zero knowledge proof of knowledge of a signature over two values (x, y) that differ by a given
+/// multiplier (m). That is, x * m = y.
 pub struct PublicProductProof {
     proof: SignatureProof<2>,
     multiplier: Scalar,
 }
 
 impl PublicProductProof {
-    /// Generate a new `PublicProductProof`. Note that this does not validate inputs; the proof
+    /// Generate a new `PublicProductProof`. This constructor does not validate inputs; the proof
     /// may not verify if the `values` do not differ by the `multiplier`.
+    ///
+    /// * `values` - [x, y], or the two values for which the described equation should hold
+    /// * `multiplier` - m, the expected multiplier
     pub fn new(
         rng: &mut impl Rng,
         key_pair: &KeyPair<2>,

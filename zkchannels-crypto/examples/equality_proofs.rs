@@ -17,6 +17,9 @@ pub struct RepeatedMessageProof {
 }
 
 impl RepeatedMessageProof {
+    /// Create a new `RepeatedMessageProof` with the given parameters.
+    ///
+    /// * `secret_value` - x, or the value that is repeated twice in the proof
     pub fn new(
         rng: &mut impl Rng,
         pedersen_parameters: &PedersenParameters<G1Projective, 2>,
@@ -64,22 +67,28 @@ impl RepeatedMessageProof {
 }
 
 /// Zero knowledge proof of knowledge of a signature and an opening such that
-/// - the signature is on a message tuple of the form (x, _)
-/// - the opening is on a message tuple of the form (_, x)
-/// for some secret x.
+/// - the signature is on a message tuple of the form (x, y)
+/// - the opening is on a message tuple of the form (z, x)
+/// for some secret value x.
 pub struct FlipFlopSignatureProof {
     first: SignatureProof<2>,
     second: CommitmentProof<G1Projective, 2>,
 }
 
 impl FlipFlopSignatureProof {
+    /// Generate a new `FlipFlopSignatureProof` with the given parameters.
+    ///
+    /// * `shared_value` - x, or the value that is in both the signature and commitment parts of
+    ///    the proof
+    /// * `signed_value` - y, or the value that is only in the signature part of the proof
+    /// * `committed_value` - z, or the value that is only in the commitment part of the proof
     pub fn new(
         rng: &mut impl Rng,
         signature_parameters: &KeyPair<2>,
         commitment_parameters: &PedersenParameters<G1Projective, 2>,
+        shared_value: u64,
         signed_value: u64,
         committed_value: u64,
-        shared_value: u64,
     ) -> Self {
         // Format the two specific messages
         let signed_message = Message::new([Scalar::from(shared_value), Scalar::from(signed_value)]);

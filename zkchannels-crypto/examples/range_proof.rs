@@ -65,6 +65,7 @@ pub enum RangeError {
     #[error("Range constraint is not satisfied")]
     InconsistentRangeConstraint,
 }
+
 // Zero-knowledge proof of knowledge of a number within the range [0, 2^63).
 pub struct RangeProof {
     proof: CommitmentProof<G2Projective, 1>,
@@ -73,7 +74,7 @@ pub struct RangeProof {
 
 impl RangeProof {
     /// Try to create a new `RandomNumberProof`.
-    /// This fails if the provided number is out of range.
+    /// This constructor validates the input and fails if the provided `number` is out of range.
     pub fn new(
         rng: &mut impl Rng,
         pedersen_parameters: &PedersenParameters<G2Projective, 1>,

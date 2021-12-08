@@ -73,7 +73,7 @@ pub struct RangeProof {
 }
 
 impl RangeProof {
-    /// Try to create a new `RandomNumberProof`.
+    /// Try to create a new `RangeProof`.
     /// This constructor validates the input and fails if the provided `number` is out of range.
     pub fn new(
         rng: &mut impl Rng,

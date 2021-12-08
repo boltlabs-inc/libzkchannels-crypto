@@ -90,6 +90,8 @@ impl SecretSumProof {
         let challenge = ChallengeBuilder::new()
             .with(&summand_proof_builder)
             .with(&sum_proof_builder)
+            .with(key_pair.public_key())
+            .with(pedersen_parameters)
             .finish();
 
         // Execute response phase of proofs
@@ -112,6 +114,8 @@ impl SecretSumProof {
         let challenge = ChallengeBuilder::new()
             .with(&self.summands)
             .with(&self.sum)
+            .with(public_key)
+            .with(pedersen_parameters)
             .finish();
 
         // Check that proofs verify
@@ -162,6 +166,7 @@ impl FixedDifferenceProof {
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(&difference)
+            .with(pedersen_parameters)
             .finish();
 
         // Form the proof
@@ -182,6 +187,7 @@ impl FixedDifferenceProof {
         let challenge = ChallengeBuilder::new()
             .with(&self.proof)
             .with(&self.difference)
+            .with(pedersen_parameters)
             .finish();
 
         // Check that the response scalars have the correct relationship
@@ -239,6 +245,7 @@ impl PublicProductProof {
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(&multiplier)
+            .with(key_pair.public_key())
             .finish();
 
         // Form the proof
@@ -260,6 +267,7 @@ impl PublicProductProof {
         let challenge = ChallengeBuilder::new()
             .with(&self.proof)
             .with(&self.multiplier)
+            .with(public_key)
             .finish();
 
         // Check that the proof verifies

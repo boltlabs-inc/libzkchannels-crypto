@@ -57,6 +57,7 @@ impl PartialOpeningProof {
             .with(&proof_builder)
             .with(&public_value_commitment_scalar)
             .with(&public_value)
+            .with(pedersen_params)
             .finish();
 
         // Finish building the proof and assemble components
@@ -76,6 +77,7 @@ impl PartialOpeningProof {
             .with(&self.commitment_proof)
             .with(&self.public_value_commitment_scalar)
             .with(&self.public_value)
+            .with(pedersen_params)
             .finish();
 
         // 1. Make sure the public value is correct

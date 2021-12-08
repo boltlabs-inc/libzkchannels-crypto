@@ -10,6 +10,28 @@ use zkchannels_crypto::{
     Message, Rng,
 };
 
+fn main() {
+    let mut rng = rand::thread_rng();
+    let pedersen_parameters = PedersenParameters::new(&mut rng);
+
+    // Build and verify a double message proof
+    let double_message_proof = RepeatedMessageProof::new(&mut rng, &pedersen_parameters, 1000);
+    assert!(double_message_proof.verify(&pedersen_parameters));
+
+    // Build and verify a flip flop signature proof
+    let signature_parameters = KeyPair::new(&mut rng);
+    let flip_flop_proof = FlipFlopSignatureProof::new(
+        &mut rng,
+        &signature_parameters,
+        &pedersen_parameters,
+        31,
+        13,
+        987654,
+    );
+
+    assert!(flip_flop_proof.verify(signature_parameters.public_key(), &pedersen_parameters));
+}
+
 /// Zero knowledge proof of knowledge of a message tuple that repeats itself
 /// e.g. (x, x).
 pub struct RepeatedMessageProof {
@@ -43,7 +65,10 @@ impl RepeatedMessageProof {
 
         // Generate challenge - the only public part of this proof is the proof itself, which
         // includes the proof statement (the commitment to msg)
-        let challenge = ChallengeBuilder::new().with(&proof_builder).finish();
+        let challenge = ChallengeBuilder::new()
+            .with(&proof_builder)
+            .with(pedersen_parameters)
+            .finish();
 
         // Finish the proof.
         Self {
@@ -55,7 +80,10 @@ impl RepeatedMessageProof {
         // 1. Check that the response scalars for the matching elements, match
         let responses_match = self.proof.conjunction_response_scalars()[0]
             == self.proof.conjunction_response_scalars()[1];
-        let challenge = ChallengeBuilder::new().with(&self.proof).finish();
+        let challenge = ChallengeBuilder::new()
+            .with(&self.proof)
+            .with(pedersen_parameters)
+            .finish();
 
         // 2. Check that the commitment proof verifies
         let proof_verifies = self
@@ -123,6 +151,8 @@ impl FlipFlopSignatureProof {
         let challenge = ChallengeBuilder::new()
             .with(&signature_proof_builder)
             .with(&commitment_proof_builder)
+            .with(signature_parameters.public_key())
+            .with(commitment_parameters)
             .finish();
 
         Self {
@@ -144,6 +174,8 @@ impl FlipFlopSignatureProof {
         let challenge = ChallengeBuilder::new()
             .with(&self.first)
             .with(&self.second)
+            .with(public_key)
+            .with(commitment_parameters)
             .finish();
 
         // Make sure signature proof verifies
@@ -158,26 +190,4 @@ impl FlipFlopSignatureProof {
 
         elements_match && signature_proof_verifies && commitment_proof_verifies
     }
-}
-
-fn main() {
-    let mut rng = rand::thread_rng();
-    let pedersen_parameters = PedersenParameters::new(&mut rng);
-
-    // Build and verify a double message proof
-    let double_message_proof = RepeatedMessageProof::new(&mut rng, &pedersen_parameters, 1000);
-    assert!(double_message_proof.verify(&pedersen_parameters));
-
-    // Build and verify a flip flop signature proof
-    let signature_parameters = KeyPair::new(&mut rng);
-    let flip_flop_proof = FlipFlopSignatureProof::new(
-        &mut rng,
-        &signature_parameters,
-        &pedersen_parameters,
-        31,
-        13,
-        987654,
-    );
-
-    assert!(flip_flop_proof.verify(signature_parameters.public_key(), &pedersen_parameters));
 }

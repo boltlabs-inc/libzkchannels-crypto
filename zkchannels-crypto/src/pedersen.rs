@@ -228,7 +228,7 @@ mod test {
 
         assert_ne!(
             &*msg, &*bad_msg,
-            "unfortunate RNG seed in commit_does_not_open_on_wrong_msg: bad_msg should be different"
+            "unfortunate RNG seed: bad_msg should be different"
         );
 
         let com = msg.commit(&params, bf);
@@ -244,7 +244,7 @@ mod test {
 
         assert_ne!(
             bf.0, bad_bf.0,
-            "unfortunate RNG seed in commit_does_not_open_on_wrong_bf: bad_bf should be different"
+            "unfortunate RNG seed: bad_bf should be different"
         );
 
         let com = msg.commit(&params, bf);
@@ -266,7 +266,7 @@ mod test {
 
         assert_ne!(
             com.0, bad_com.0,
-            "unfortunate RNG seed in commit_does_not_open_on_wrong_commit: bad_com should be different"
+            "unfortunate RNG seed: bad_com should be different"
         );
         assert!(!bad_com.verify_opening(&params, bf, &msg));
     }
@@ -283,7 +283,7 @@ mod test {
 
         assert_ne!(
             com.0, bad_com.0,
-            "unfortunate RNG seed in commit_does_not_open_on_random_commit: bad_com should be different"
+            "unfortunate RNG seed: bad_com should be different"
         );
         assert!(!bad_com.verify_opening(&params, bf, &msg));
     }

@@ -64,6 +64,8 @@ pub enum RangeError {
     InconsistentCommitment,
     #[error("Range constraint is not satisfied")]
     InconsistentRangeConstraint,
+    #[error("Range constraint parameters failed to validate")]
+    InvalidParameters(String),
 }
 
 // Zero-knowledge proof of knowledge of a number within the range [0, 2^63).
@@ -75,6 +77,10 @@ pub struct RangeProof {
 impl RangeProof {
     /// Try to create a new `RangeProof`.
     /// This constructor validates the input and fails if the provided `number` is out of range.
+    ///
+    /// Returns a blinding factor for the commitment part of the proof and the proof itself.
+    /// **Important**: the blinding factor should only be shared with the verifier when the prover
+    /// is ready to open the commitment!
     pub fn new(
         rng: &mut impl Rng,
         pedersen_parameters: &PedersenParameters<G2Projective, 1>,
@@ -118,6 +124,12 @@ impl RangeProof {
         pedersen_parameters: &PedersenParameters<G2Projective, 1>,
         range_constraint_parameters: &RangeConstraintParameters,
     ) -> Result<(), RangeError> {
+        // Verify that the range constraint parameters are correctly formed
+        // (in practice, this may have been done already e.g. on receipt of the parameters)
+        range_constraint_parameters
+            .validate()
+            .map_err(RangeError::InvalidParameters)?;
+
         let challenge = ChallengeBuilder::new()
             .with(&self.range_constraint)
             .with(&range_constraint_parameters)

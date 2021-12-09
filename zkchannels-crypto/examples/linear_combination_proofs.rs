@@ -12,39 +12,46 @@ use {
     ff::Field,
 };
 
-// This example generates three different proofs, each demonstrating a different fundamental piece
-// of a linear combination.
+/// This example generates three different proofs, each demonstrating a different fundamental piece
+/// of a modular linear combination. That is, each proof demonstrates a piece of the following
+/// equation, where (a, b, c) are public values, (x, y, z) are secret values, and q is the modulus of
+/// the BLS12-381 Scalar field:
+/// a*x + b*y + c === z (mod q)
 fn main() {
     let mut rng = rand::thread_rng();
     let pedersen_parameters = PedersenParameters::new(&mut rng);
     let key_pair = KeyPair::new(&mut rng);
 
-    // Build and verify a proof with a sum of secret values
-    let double_message_proof =
-        SecretSumProof::new(&mut rng, &key_pair, &pedersen_parameters, &[25, 300]);
+    // Build and verify a proof with a sum of secret values (x + y = z)
+    let double_message_proof = SecretSumProof::new(
+        &mut rng,
+        &key_pair,
+        &pedersen_parameters,
+        &[Scalar::from(25), Scalar::from(300)],
+    );
     assert!(double_message_proof.verify(key_pair.public_key(), &pedersen_parameters));
 
-    // Build and verify a proof with a sum of a secret and a public value
-    let values = [10, 100];
+    // Build and verify a proof with a sum of a secret and a public value (x + c = z)
+    let values = [Scalar::from(10), Scalar::from(100)];
     let fixed_difference_proof =
-        FixedDifferenceProof::new(&mut rng, &pedersen_parameters, &values, 90);
-    assert!(fixed_difference_proof.verify(&pedersen_parameters, 90));
+        FixedDifferenceProof::new(&mut rng, &pedersen_parameters, &values, Scalar::from(90));
+    assert!(fixed_difference_proof.verify(&pedersen_parameters, Scalar::from(90)));
 
     // It's possible to make an invalid fixed difference proof! It won't verify because the
     // difference between the two values is not 10
     // A better implementation would return an error type indicating why it failed.
     let bad_fixed_difference_proof =
-        FixedDifferenceProof::new(&mut rng, &pedersen_parameters, &values, 10);
-    assert!(!bad_fixed_difference_proof.verify(&pedersen_parameters, 10));
+        FixedDifferenceProof::new(&mut rng, &pedersen_parameters, &values, Scalar::from(10));
+    assert!(!bad_fixed_difference_proof.verify(&pedersen_parameters, Scalar::from(10)));
 
-    // Build and verify a proof with a product of a secret and a public value
+    // Build and verify a proof with a product of a secret and a public value (a * x = z)
     let key_pair = KeyPair::new(&mut rng);
-    let product_proof = PublicProductProof::new(&mut rng, &key_pair, &values, 10);
-    assert!(product_proof.verify(key_pair.public_key(), 10));
-    assert!(!product_proof.verify(key_pair.public_key(), 90));
+    let product_proof = PublicProductProof::new(&mut rng, &key_pair, &values, Scalar::from(10));
+    assert!(product_proof.verify(key_pair.public_key(), Scalar::from(10)));
+    assert!(!product_proof.verify(key_pair.public_key(), Scalar::from(90)));
 }
-/// Zero-knowledge proof of knowledge of a signature on a message (x) and of the opening of a
-/// commitment (y, z), such that x = y + z.
+/// Zero-knowledge proof of knowledge of a signature on a message (z) and of the opening of a
+/// commitment (x, y), such that x + y === z (mod q).
 /// This is an additive linear combination of secret values.
 struct SecretSumProof {
     summands: CommitmentProof<G1Projective, 2>,
@@ -53,21 +60,21 @@ struct SecretSumProof {
 
 impl SecretSumProof {
     /// Create a new `SecretSumProof` with the given parameters. This constructor validates inputs:
-    /// it will not produce a `SecretSumProof` on values x, y, z where x =! y + z.
+    /// it will not produce a `SecretSumProof` on values x, y, z where x + y != z (mod q).
     ///
-    /// * `numbers` - [y, z], or the two values that will be summed.
+    /// * `numbers` - [x, y], or the two values that will be summed.
     pub fn new(
         rng: &mut impl Rng,
         key_pair: &KeyPair<1>,
         pedersen_parameters: &PedersenParameters<G1Projective, 2>,
-        numbers: &[u64; 2],
+        numbers: &[Scalar; 2],
     ) -> Self {
         // Compute and sign sum
-        let sum = Message::from(Scalar::from(numbers[0] + numbers[1]));
+        let sum = Message::from(numbers[0] + numbers[1]);
         let sum_signature = sum.sign(rng, key_pair);
 
         // Form commitment proof builder to summands
-        let summands = Message::new([Scalar::from(numbers[0]), Scalar::from(numbers[1])]);
+        let summands = Message::new(*numbers);
         let summand_proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
             summands,
@@ -108,7 +115,7 @@ impl SecretSumProof {
     ) -> bool {
         // Check that response scalars have the expected relationship
         let summand_scalars = self.summands.conjunction_response_scalars();
-        let response_scalars_sum =
+        let responses_sum =
             self.sum.conjunction_response_scalars()[0] == summand_scalars[0] + summand_scalars[1];
 
         let challenge = ChallengeBuilder::new()
@@ -126,12 +133,13 @@ impl SecretSumProof {
             .summands
             .verify_knowledge_of_opening(pedersen_parameters, challenge);
 
-        response_scalars_sum && sum_proof_verifies && summand_proof_verifies
+        responses_sum && sum_proof_verifies && summand_proof_verifies
     }
 }
 
-/// Zero-knowledge proof of knowledge of two values that differ by a fixed amount
-/// (an additive linear combination of a secret and a public value).
+/// Zero-knowledge proof of knowledge of two values that differ by a fixed amount:
+/// x + c === z (mod q).
+/// This is an additive linear combination of a secret and a public value.
 struct FixedDifferenceProof {
     proof: CommitmentProof<G1Projective, 2>,
     difference: Scalar,
@@ -141,23 +149,22 @@ impl FixedDifferenceProof {
     /// Generate a new `FixedDifferenceProof`. This constructor does _not_ validate inputs; the proof
     /// may not verify if the `values` do not differ by `difference`.
     ///
-    /// * `values` - two numbers that will form the commitment in the proof
-    /// * `difference` - the expected difference between the values
+    /// * `values` - [x, z], or the two numbers that will form the commitment in the proof
+    /// * `difference` - c, or the expected difference between the values
     pub fn new(
         rng: &mut impl Rng,
         pedersen_parameters: &PedersenParameters<G1Projective, 2>,
-        values: &[u64; 2],
-        difference: u64,
+        values: &[Scalar; 2],
+        difference: Scalar,
     ) -> Self {
         // Form commitment proof builder to the two values
-        let scalar_values = Message::new([Scalar::from(values[0]), Scalar::from(values[1])]);
-        let difference = Scalar::from(difference);
+        let message = Message::new(*values);
 
         // Generate commitment proof builder with matching commitment scalars for the values that differ
         let matching_commitment_scalar = Some(Scalar::random(&mut *rng));
         let proof_builder = CommitmentProofBuilder::generate_proof_commitments(
             rng,
-            scalar_values,
+            message,
             &[matching_commitment_scalar, matching_commitment_scalar],
             pedersen_parameters,
         );
@@ -179,10 +186,10 @@ impl FixedDifferenceProof {
     pub fn verify(
         &self,
         pedersen_parameters: &PedersenParameters<G1Projective, 2>,
-        expected_difference: u64,
+        expected_difference: Scalar,
     ) -> bool {
         // Check that expected difference matches the one in the proof
-        let difference_matches = self.difference == Scalar::from(expected_difference);
+        let difference_matches = self.difference == expected_difference;
 
         let challenge = ChallengeBuilder::new()
             .with(&self.proof)
@@ -192,7 +199,7 @@ impl FixedDifferenceProof {
 
         // Check that the response scalars have the correct relationship
         let response_scalars = self.proof.conjunction_response_scalars();
-        let response_scalars_differ_correctly =
+        let responses_differ_correctly =
             response_scalars[1] == response_scalars[0] + challenge * self.difference;
 
         // Check that the proof verifies
@@ -200,12 +207,12 @@ impl FixedDifferenceProof {
             .proof
             .verify_knowledge_of_opening(pedersen_parameters, challenge);
 
-        difference_matches && response_scalars_differ_correctly && proof_verifies
+        difference_matches && responses_differ_correctly && proof_verifies
     }
 }
 
 /// Zero knowledge proof of knowledge of a signature over two values (x, y) that differ by a given
-/// multiplier (m). That is, x * m = y.
+/// multiplier (a). That is, x * a === y (mod q).
 pub struct PublicProductProof {
     proof: SignatureProof<2>,
     multiplier: Scalar,
@@ -216,23 +223,22 @@ impl PublicProductProof {
     /// may not verify if the `values` do not differ by the `multiplier`.
     ///
     /// * `values` - [x, y], or the two values for which the described equation should hold
-    /// * `multiplier` - m, the expected multiplier
+    /// * `multiplier` - a, or the expected multiplier
     pub fn new(
         rng: &mut impl Rng,
         key_pair: &KeyPair<2>,
-        values: &[u64; 2],
-        multiplier: u64,
+        values: &[Scalar; 2],
+        multiplier: Scalar,
     ) -> Self {
         // Form a signature over the values
-        let scalar_values = Message::new([Scalar::from(values[0]), Scalar::from(values[1])]);
-        let multiplier = Scalar::from(multiplier);
-        let signature = scalar_values.sign(rng, key_pair);
+        let message = Message::new(*values);
+        let signature = message.sign(rng, key_pair);
 
         // Generate signature proof builder with coordinating commitment scalars for the values
         let commitment_scalar = Scalar::random(&mut *rng);
         let proof_builder = SignatureProofBuilder::generate_proof_commitments(
             rng,
-            scalar_values,
+            message,
             signature,
             &[
                 Some(commitment_scalar),
@@ -255,14 +261,13 @@ impl PublicProductProof {
         }
     }
 
-    pub fn verify(&self, public_key: &PublicKey<2>, expected_multiplier: u64) -> bool {
+    pub fn verify(&self, public_key: &PublicKey<2>, expected_multiplier: Scalar) -> bool {
         // Check that the multiplier matches the one in the proof
-        let multiplier_is_correct = Scalar::from(expected_multiplier) == self.multiplier;
+        let multiplier_is_correct = expected_multiplier == self.multiplier;
 
         // Check that the response scalars have the correct relationship
         let response_scalars = self.proof.conjunction_response_scalars();
-        let response_scalars_correspond =
-            response_scalars[1] == response_scalars[0] * self.multiplier;
+        let responses_correspond = response_scalars[1] == response_scalars[0] * self.multiplier;
 
         let challenge = ChallengeBuilder::new()
             .with(&self.proof)
@@ -275,6 +280,6 @@ impl PublicProductProof {
             .proof
             .verify_knowledge_of_signature(public_key, challenge);
 
-        multiplier_is_correct && response_scalars_correspond && proof_verifies
+        multiplier_is_correct && responses_correspond && proof_verifies
     }
 }

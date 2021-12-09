@@ -9,10 +9,14 @@ fn main() {
     let mut rng = rand::thread_rng();
     let pedersen_params = PedersenParameters::new(&mut rng);
 
-    let public_value = 123456789;
+    let public_value = Scalar::from(123456789);
 
-    let public_opening_proof =
-        PartialOpeningProof::new(&mut rng, &pedersen_params, public_value, 777666555);
+    let public_opening_proof = PartialOpeningProof::new(
+        &mut rng,
+        &pedersen_params,
+        public_value,
+        Scalar::from(777666555),
+    );
 
     assert!(public_opening_proof.verify(&pedersen_params, public_value));
 }
@@ -33,12 +37,10 @@ impl PartialOpeningProof {
     pub fn new(
         rng: &mut impl Rng,
         pedersen_params: &PedersenParameters<G1Projective, 2>,
-        public_value: u64,
-        secret_value: u64,
+        public_value: Scalar,
+        secret_value: Scalar,
     ) -> Self {
         // Generate a message tuple with a public and secret part
-        let public_value = Scalar::from(public_value);
-        let secret_value = Scalar::from(secret_value);
         let msg = Message::new([public_value, secret_value]);
 
         // Start building the proof
@@ -71,7 +73,7 @@ impl PartialOpeningProof {
     pub fn verify(
         &self,
         pedersen_params: &PedersenParameters<G1Projective, 2>,
-        expected_public_value: u64,
+        expected_public_value: Scalar,
     ) -> bool {
         let challenge = ChallengeBuilder::new()
             .with(&self.commitment_proof)
@@ -81,8 +83,7 @@ impl PartialOpeningProof {
             .finish();
 
         // 1. Make sure the public value is correct
-        let public_value_matches_expected =
-            Scalar::from(expected_public_value) == self.public_value;
+        let public_value_matches_expected = expected_public_value == self.public_value;
 
         // 2. Make sure the proof is correctly constructed with respect to the public value
         //    and its commitment scalar.
@@ -90,10 +91,10 @@ impl PartialOpeningProof {
             == challenge * self.public_value + self.public_value_commitment_scalar;
 
         // 3. Make sure the commitment proof is valid
-        let proof_validates = self
+        let proof_verifies = self
             .commitment_proof
             .verify_knowledge_of_opening(pedersen_params, challenge);
 
-        public_value_matches_expected && public_value_matches_proof && proof_validates
+        public_value_matches_expected && public_value_matches_proof && proof_verifies
     }
 }

@@ -15,7 +15,8 @@ fn main() {
     let pedersen_parameters = PedersenParameters::new(&mut rng);
 
     // Build and verify a double message proof
-    let double_message_proof = RepeatedMessageProof::new(&mut rng, &pedersen_parameters, 1000);
+    let double_message_proof =
+        RepeatedMessageProof::new(&mut rng, &pedersen_parameters, Scalar::from(1000));
     assert!(double_message_proof.verify(&pedersen_parameters));
 
     // Build and verify a flip flop signature proof
@@ -33,7 +34,7 @@ fn main() {
 }
 
 /// Zero knowledge proof of knowledge of a message tuple that repeats itself
-/// e.g. (x, x).
+/// e.g. (x, x), where x === x (mod q)
 pub struct RepeatedMessageProof {
     proof: CommitmentProof<G1Projective, 2>,
 }
@@ -45,9 +46,9 @@ impl RepeatedMessageProof {
     pub fn new(
         rng: &mut impl Rng,
         pedersen_parameters: &PedersenParameters<G1Projective, 2>,
-        secret_value: u64,
+        secret_value: Scalar,
     ) -> Self {
-        let msg = Message::new([Scalar::from(secret_value), Scalar::from(secret_value)]);
+        let msg = Message::new([secret_value, secret_value]);
 
         // Generate a commitment scalar *uniformly at random* to use for the matching elements
         let matching_commitment_scalar = Scalar::random(&mut *rng);
@@ -63,8 +64,8 @@ impl RepeatedMessageProof {
             pedersen_parameters,
         );
 
-        // Generate challenge - the only public part of this proof is the proof itself, which
-        // includes the proof statement (the commitment to msg)
+        // Generate challenge - the public part of this proof is the proof statement and the
+        // corresponding commitment, which are both contained in the proof builder.
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(pedersen_parameters)
@@ -167,7 +168,7 @@ impl FlipFlopSignatureProof {
         commitment_parameters: &PedersenParameters<G1Projective, 2>,
     ) -> bool {
         // Make sure matching elements have matching response scalars
-        let elements_match = self.first.conjunction_response_scalars()[0]
+        let responses_match = self.first.conjunction_response_scalars()[0]
             == self.second.conjunction_response_scalars()[1];
 
         // Regenerate challenge
@@ -188,6 +189,6 @@ impl FlipFlopSignatureProof {
             .second
             .verify_knowledge_of_opening(commitment_parameters, challenge);
 
-        elements_match && signature_proof_verifies && commitment_proof_verifies
+        responses_match && signature_proof_verifies && commitment_proof_verifies
     }
 }

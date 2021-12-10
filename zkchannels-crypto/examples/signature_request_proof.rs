@@ -6,91 +6,88 @@ use {
 
 use rand::thread_rng;
 use zkchannels_crypto::{
-    pointcheval_sanders::{BlindedSignature, KeyPair, PublicKey},
+    pointcheval_sanders::{BlindedSignature, KeyPair, PublicKey, Signature},
     proofs::{ChallengeBuilder, SignatureRequestProof, SignatureRequestProofBuilder},
     BlindingFactor, Message, Rng,
 };
 
 fn main() {
-    // Time to vote!
+    // Time to bid!
     //
-    // A certain cryptography-minded organization is holding a vote to determine their employees'
-    // collectively favorite color.
-    // Each employee must vote before the final official voting day, but shouldn't
-    // reveal what they voted for until then.
-
-    // A ballot is a signature over their favorite color and the date that they voted.
-    // To receive a valid ballot, they must submit a `SignatureRequestProof` with the correct date
-    // and their (secret) candidate. On election day, each employee will provide their
-    // ballot and the results will be tallied.
+    // An organization is holding a sealed-bid auction to offload some items.
+    // Parties can bid over a bidding period, but shouldn't reveal what their bids until the
+    // auction concludes. Sealed bids must be registered with the organization to count.
+    //
+    // A bid is a signature over the amount and the date that the bid was placed.
+    // To receive a valid bid, parties must submit a `SignatureRequestProof` with the correct date
+    // and their (secret) amount.
+    // On auction day, each party will unseal their bids and the results will be tallied.
 
     let mut rng = thread_rng();
     let key_pair = KeyPair::new(&mut rng);
 
-    // Describes the period over which employees are allowed to vote. For this example, it's just
+    // Describes the period over which parties are allowed to bid. For this example, it's just
     // the current date.
     let voting_period = [date()];
 
-    // 0. Employee selects their favorite color
-    let favorite_color = "olive green";
+    // 0. Party selects their bid amount in whole-dollar increments
+    let bid_amount = 150;
 
-    // 1. Employee generates a ballot request with their favorite color
-    let (blinding_factor, ballot_request) =
-        ColorBallotRequest::new(&mut rng, key_pair.public_key(), favorite_color);
+    // 1. Party generates a bid request
+    let (blinding_factor, bid_request) =
+        BidRequest::new(&mut rng, key_pair.public_key(), bid_amount);
 
-    // 2. Employee sends the `ballot_request` to the company, who verifies it and returns an
-    // official `ColorVote` if the ballot was valid
-    let color_vote = match ballot_request.verify_ballot(&key_pair, &mut rng) {
-        Some(color_vote) => color_vote,
+    // 2. Party sends the `bid_request` to the organization, who verifies it and returns an
+    // official `SealedBid` if the request was valid
+    let sealed_bid = match bid_request.verify_bid(&key_pair, &mut rng) {
+        Some(sealed_bid) => sealed_bid,
         None => {
-            eprintln!("Invalid ballot! Rejected");
+            eprintln!("Invalid bid request! Rejected");
             return;
         }
     };
 
-    // 3. Company sends the `color_vote`, which is a blinded signature over the date and color,
-    // back to the employee. At no point during (2) or (3) can the company determine the
-    // candidate color in the ballot!
+    // 3. Organization sends the sealed bid, which is a blind signature over the date and amount,
+    // back to the party. At no point during (2) or (3) can the organization determine the
+    // bid amount in the request!
     //
-    // On election day, the employee unblinds and reveals their vote:
-    if color_vote.verify_candidate(
-        key_pair.public_key(),
-        blinding_factor,
-        favorite_color,
-        &voting_period,
-    ) {
-        println!("One vote for {}!", favorite_color);
+    // On auction day, the party unseals their bid (by unblinding the signature) and can provide
+    // that bid to claim their item.
+    let bid = sealed_bid.unseal(blinding_factor);
+
+    if bid.verify_bid_amount(key_pair.public_key(), bid_amount, &voting_period) {
+        println!("One bid for {}!", bid_amount);
     } else {
-        println!("Somebody tried voter fraud :(");
+        unreachable!("You tried to fake your bid :(");
     }
 
-    // An employee cannot retroactively change their ballot
-    if !color_vote.verify_candidate(
-        key_pair.public_key(),
-        blinding_factor,
-        "purple",
-        &voting_period,
-    ) {
-        println!("It wasn't a vote for purple...");
+    // An party cannot retroactively change their bid amount
+    if !bid.verify_bid_amount(key_pair.public_key(), 125, &voting_period) {
+        println!("That's not the amount you agreed to pay!");
     }
 }
 
-pub struct ColorBallotRequest {
+/// Zero-knowledge proof of knowledge of a bid amount made on a specific date.
+/// The date is publicly verifiable, and a successfully verified `BidRequest` generates a valid
+/// `SealedBid`.
+pub struct BidRequest {
     date: Scalar,
     date_commitment_scalar: Scalar,
     proof: SignatureRequestProof<2>,
 }
 
-pub struct ColorVote(BlindedSignature);
+pub struct SealedBid(BlindedSignature);
 
-impl ColorBallotRequest {
+pub struct Bid(Signature);
+
+impl BidRequest {
     pub fn new(
         rng: &mut impl Rng,
         public_key: &PublicKey<2>,
-        favorite_color: &str,
+        bid_amount: u64,
     ) -> (BlindingFactor, Self) {
-        // Encode date and color in the message
-        let message = Message::new([to_scalar(favorite_color), date()]);
+        // Encode date and bid amount in the message
+        let message = Message::new([Scalar::from(bid_amount), date()]);
 
         // Create the proof builder with no constraints on the message
         let proof_builder = SignatureRequestProofBuilder::generate_proof_commitments(
@@ -111,7 +108,7 @@ impl ColorBallotRequest {
             .finish();
 
         (
-            // Save the blinding factor so the employee can unblind the signature they eventually get
+            // Save the blinding factor so the party can unseal the sealed bid they will receive
             proof_builder.message_blinding_factor(),
             // Generate the proof
             Self {
@@ -122,7 +119,7 @@ impl ColorBallotRequest {
         )
     }
 
-    pub fn verify_ballot(&self, key_pair: &KeyPair<2>, rng: &mut impl Rng) -> Option<ColorVote> {
+    pub fn verify_bid(&self, key_pair: &KeyPair<2>, rng: &mut impl Rng) -> Option<SealedBid> {
         // Make sure date is correct
         let date_is_correct = self.date == date();
 
@@ -138,33 +135,39 @@ impl ColorBallotRequest {
             == self.proof.conjunction_response_scalars()[1];
 
         // Make sure proof verifies
-        let maybe_ballot = self
+        let maybe_bid = self
             .proof
             .verify_knowledge_of_opening(key_pair.public_key(), challenge);
 
-        match (maybe_ballot, date_is_correct, date_opens_correctly) {
-            (Some(blinded_ballot), true, true) => {
-                Some(ColorVote(blinded_ballot.blind_sign(key_pair, rng)))
+        match (maybe_bid, date_is_correct, date_opens_correctly) {
+            (Some(blinded_bid_request), true, true) => {
+                Some(SealedBid(blinded_bid_request.blind_sign(key_pair, rng)))
             }
             _ => None,
         }
     }
 }
 
-impl ColorVote {
-    // Verify vote against the given candidate
-    fn verify_candidate(
+impl SealedBid {
+    fn unseal(self, blinding_factor: BlindingFactor) -> Bid {
+        Bid(self.0.unblind(blinding_factor))
+    }
+}
+
+impl Bid {
+    /// Verify that the sealed bid is correctly formed (a valid signature) and was made in the
+    /// correct time period.
+    fn verify_bid_amount(
         &self,
         public_key: &PublicKey<2>,
-        blinding_factor: BlindingFactor,
-        favorite_color: &str,
+        bid_amount: u64,
         voting_period: &[Scalar],
     ) -> bool {
         for date in voting_period {
-            if self.0.unblind(blinding_factor).verify(
-                public_key,
-                &Message::new([to_scalar(favorite_color), *date]),
-            ) {
+            if self
+                .0
+                .verify(public_key, &Message::new([Scalar::from(bid_amount), *date]))
+            {
                 return true;
             }
         }
@@ -172,20 +175,7 @@ impl ColorVote {
     }
 }
 
-fn to_scalar(string: &str) -> Scalar {
-    let mut bytes: Vec<u8> = string.as_bytes().into();
-    while bytes.len() < 8 {
-        bytes.push(0);
-    }
-    if bytes.len() > 8 {
-        bytes.truncate(8);
-    }
-    let mut raw_bytes: [u8; 8] = [0; 8];
-    raw_bytes.clone_from_slice(&bytes);
-
-    Scalar::from(u64::from_le_bytes(raw_bytes))
-}
-
+/// Encode the current date as a `Scalar`.
 fn date() -> Scalar {
     let date = Utc::now();
     let date_bytes = [date.month().to_le_bytes(), date.day().to_le_bytes()].concat();

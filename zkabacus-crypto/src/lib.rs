@@ -140,6 +140,10 @@ impl Balance {
         Self(0)
     }
 
+    fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
+
     fn to_scalar(self) -> Scalar {
         Scalar::from(self.0)
     }

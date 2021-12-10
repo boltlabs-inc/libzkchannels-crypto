@@ -193,7 +193,12 @@ impl MerchantBalance {
 
     /// Indicate if the balance is zero.
     pub fn is_zero(&self) -> bool {
-        self.into_inner() == 0
+        self.0.is_zero()
+    }
+
+    /// Indicate if the balance is positive.
+    pub fn is_positive(&self) -> bool {
+        !self.is_zero()
     }
 
     pub(crate) fn to_scalar(self) -> Scalar {
@@ -245,7 +250,12 @@ impl CustomerBalance {
 
     /// Indicate if the balance is zero.
     pub fn is_zero(&self) -> bool {
-        self.into_inner() == 0
+        self.0.is_zero()
+    }
+
+    /// Indicate if the balance is positive.
+    pub fn is_positive(&self) -> bool {
+        !self.is_zero()
     }
 
     pub(crate) fn to_scalar(self) -> Scalar {
@@ -567,13 +577,81 @@ mod test {
     }
 
     #[test]
+    fn try_new_balance_works() {
+        // Values in the range [0, i64::MAX] are valid
+        for amount in [0, 100, i64::MAX as u64] {
+            assert!(MerchantBalance::try_new(amount).is_ok());
+            assert!(CustomerBalance::try_new(amount).is_ok());
+        }
+
+        // Values in the range (i64::MAX, u64::MAX] are not valid
+        for invalid_amount in [1 + i64::MAX as u64, u64::MAX] {
+            assert!(MerchantBalance::try_new(invalid_amount).is_err());
+            assert!(CustomerBalance::try_new(invalid_amount).is_err());
+        }
+    }
+
+    #[test]
+    fn zero_balance_validates() {
+        let balance = MerchantBalance::zero();
+        assert!(balance.is_zero());
+        assert!(!balance.is_positive());
+
+        let balance = CustomerBalance::zero();
+        assert!(balance.is_zero());
+        assert!(!balance.is_positive());
+    }
+
+    #[test]
+    fn nonzero_balance_validates() {
+        for amount in [1, 100, i64::MAX as u64] {
+            let balance = MerchantBalance::try_new(amount).unwrap();
+            assert!(!balance.is_zero());
+            assert!(balance.is_positive());
+
+            let balance = CustomerBalance::try_new(amount).unwrap();
+            assert!(!balance.is_zero());
+            assert!(balance.is_positive());
+        }
+    }
+
+    #[test]
+    fn try_add_works() {
+        for (merchant_amount, customer_amount) in [
+            (0, 0),
+            (0, 100),
+            (100, 0),
+            (100, 100),
+            (i64::MAX as u64, 10),
+            (10, i64::MAX as u64),
+            (i64::MAX as u64, i64::MAX as u64),
+        ] {
+            let merchant_balance = MerchantBalance::try_new(merchant_amount).unwrap();
+            let customer_balance = CustomerBalance::try_new(customer_amount).unwrap();
+
+            let updated_balance = merchant_balance.try_add(customer_balance);
+
+            // try_add should fail if the summed amount is larger than i64::MAX
+            if merchant_amount + customer_amount < i64::MAX as u64 {
+                assert!(
+                    updated_balance.is_ok()
+                        && updated_balance.unwrap().into_inner()
+                            == merchant_amount + customer_amount
+                )
+            } else {
+                assert!(updated_balance.is_err())
+            }
+        }
+    }
+
+    #[test]
     fn apply_positive_payment_works() {
         let mut rng = rand::thread_rng();
         let channel_id = channel_id(&mut rng);
         let s = State::new(
             &mut rng,
             channel_id,
-            MerchantBalance::try_new(0).unwrap(),
+            MerchantBalance::zero(),
             CustomerBalance::try_new(1).unwrap(),
         );
 
@@ -594,7 +672,7 @@ mod test {
             &mut rng,
             channel_id,
             MerchantBalance::try_new(1).unwrap(),
-            CustomerBalance::try_new(0).unwrap(),
+            CustomerBalance::zero(),
         );
         let s_prime = s
             .apply_payment(&mut rng, PaymentAmount::pay_customer(1).unwrap())
@@ -612,7 +690,7 @@ mod test {
         let s = State::new(
             &mut rng,
             channel_id,
-            MerchantBalance::try_new(0).unwrap(),
+            MerchantBalance::zero(),
             CustomerBalance::try_new(1).unwrap(),
         );
         let _ = s
@@ -628,7 +706,7 @@ mod test {
         let s = State::new(
             &mut rng,
             channel_id,
-            MerchantBalance::try_new(0).unwrap(),
+            MerchantBalance::zero(),
             CustomerBalance::try_new(1).unwrap(),
         );
         let _ = s

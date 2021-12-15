@@ -20,7 +20,7 @@ fn main() {
 
     assert!(public_opening_proof.verify(&pedersen_params, public_value));
 }
-/// A zero-knowledge proof of knowledge of the opening of a commitment to a message tuple (x, y),
+/// A zero-knowledge proof of knowledge of the opening (x, y) of a commitment,
 /// where the first element x is a known public value.
 struct PartialOpeningProof {
     pub public_value: Scalar,

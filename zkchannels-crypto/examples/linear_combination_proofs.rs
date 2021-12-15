@@ -50,8 +50,8 @@ fn main() {
     assert!(product_proof.verify(key_pair.public_key(), Scalar::from(10)));
     assert!(!product_proof.verify(key_pair.public_key(), Scalar::from(90)));
 }
-/// Zero-knowledge proof of knowledge of a signature on a message (z) and of the opening of a
-/// commitment (x, y), such that x + y === z (mod q).
+/// Zero-knowledge proof of knowledge of a signature on a message (z) and of the opening (x, y)
+/// of a commitment, such that x + y === z (mod q).
 /// This is an additive linear combination of secret values.
 struct SecretSumProof {
     summands: CommitmentProof<G1Projective, 2>,

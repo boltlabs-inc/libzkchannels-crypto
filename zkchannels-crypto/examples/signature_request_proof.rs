@@ -15,7 +15,7 @@ fn main() {
     // Time to bid!
     //
     // An organization is holding a sealed-bid auction to offload some items.
-    // Parties can bid over a bidding period, but shouldn't reveal what their bids until the
+    // Parties can bid over a bidding period, but shouldn't reveal their bids until the
     // auction concludes. Sealed bids must be registered with the organization to count.
     //
     // A bid is a signature over the amount and the date that the bid was placed.

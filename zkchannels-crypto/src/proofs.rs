@@ -272,7 +272,7 @@
 
 mod challenge;
 mod commitment;
-mod range;
+// mod range;
 mod range2;
 mod signature;
 mod signaturerequest;

@@ -1,6 +1,5 @@
 //! Constraint that a message lies within the range `[0, 2^63)`.
 
-use std::cmp::min;
 use crate::{
     common::*,
     pointcheval_sanders::{KeyPair, PublicKey, Signature},
@@ -8,6 +7,7 @@ use crate::{
 };
 use arrayvec::ArrayVec;
 use serde::*;
+use std::cmp::min;
 use thiserror::Error;
 
 /// The error type returned when attempting to form a range constraint for a value outside the range.
@@ -21,7 +21,17 @@ const RP_PARAMETER_U: u64 = 129;
 /// Number of digits used in the range constraint.
 const RP_PARAMETER_L: usize = 9;
 
-const G_S: [u64; RP_PARAMETER_L] = [71499008037633921, 554255876260728, 4296557180315, 33306644809, 258191045, 2001481, 15515, 121, 1];
+const G_S: [u64; RP_PARAMETER_L] = [
+    71499008037633921,
+    554255876260728,
+    4296557180315,
+    33306644809,
+    258191045,
+    2001481,
+    15515,
+    121,
+    1,
+];
 
 /// Parameters used to create and verify a [`RangeConstraint`].
 ///
@@ -170,11 +180,9 @@ impl RangeConstraintBuilder {
 
         // Decompose the value into digits.
         let mut digits = [0; RP_PARAMETER_L];
-        let mut j = 0;
-        for digit in &mut digits {
+        for (j, digit) in digits.iter_mut().enumerate() {
             *digit = min(RP_PARAMETER_U - 1, decomposing_value / G_S[j]);
             decomposing_value -= *digit * G_S[j];
-            j += 1;
         }
         // println!("{:?}", value);
         // println!("{:?}", digits);
@@ -204,7 +212,8 @@ impl RangeConstraintBuilder {
         // Compute sum ( u^j * commitment_scalar[j] )
         for (j, proof_builder) in digit_proof_builders.iter().enumerate() {
             // The message here is always of length 1, so it's always okay to index it at the 0th element.
-            commitment_scalar += Scalar::from(G_S[j]) * proof_builder.conjunction_commitment_scalars()[0];
+            commitment_scalar +=
+                Scalar::from(G_S[j]) * proof_builder.conjunction_commitment_scalars()[0];
         }
 
         Ok(Self {
@@ -319,7 +328,7 @@ mod test {
             &rp_params,
             &mut rng,
         )
-            .unwrap();
+        .unwrap();
 
         let builder_challenge = ChallengeBuilder::new()
             .with(&range_constraint_builder)
@@ -387,23 +396,23 @@ mod test {
     #[test]
     fn test_generate_combinatorial_factors() {
         let two: u64 = 2;
-        let mut H: u64 = two.pow(63);
+        let h: u64 = two.pow(63);
         let u: u64 = 9;
-        let mut Gs = Vec::new();
-        let mut Hs = Vec::new();
-        let mut new_H = H;
-        let mut new_G;
+        let mut g_s = Vec::new();
+        let mut h_s = Vec::new();
+        let mut new_h = h;
+        let mut new_g;
         let mut l = 0;
-        while new_H >= u - 1 {
-            Hs.push(new_H);
-            new_G = (new_H + 1) / u;
-            Gs.push(new_G);
-            new_H = new_H - (u - 1) * new_G;
+        while new_h >= u - 1 {
+            h_s.push(new_h);
+            new_g = (new_h + 1) / u;
+            g_s.push(new_g);
+            new_h -= (u - 1) * new_g;
             l += 1;
         }
-        println!("H: {:?}", Hs);
-        println!("H': {:?}", new_H);
-        println!("G: {:?}", Gs);
+        println!("H: {:?}", h_s);
+        println!("H': {:?}", new_h);
+        println!("G: {:?}", g_s);
         println!("l: {:?}", l);
     }
 }

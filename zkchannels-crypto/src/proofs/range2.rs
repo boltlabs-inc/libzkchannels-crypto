@@ -1,5 +1,6 @@
 //! Constraint that a message lies within the range `[0, 2^63)`.
 
+use std::cmp::min;
 use crate::{
     common::*,
     pointcheval_sanders::{KeyPair, PublicKey, Signature},
@@ -15,10 +16,12 @@ use thiserror::Error;
 pub struct ValueOutsideRange(pub i64);
 
 /// The arity of our digits used in the range constraint.
-const RP_PARAMETER_U: u64 = 128;
+const RP_PARAMETER_U: u64 = 129;
 
 /// Number of digits used in the range constraint.
 const RP_PARAMETER_L: usize = 9;
+
+const G_S: [u64; RP_PARAMETER_L] = [71499008037633921, 554255876260728, 4296557180315, 33306644809, 258191045, 2001481, 15515, 121, 1];
 
 /// Parameters used to create and verify a [`RangeConstraint`].
 ///
@@ -167,10 +170,14 @@ impl RangeConstraintBuilder {
 
         // Decompose the value into digits.
         let mut digits = [0; RP_PARAMETER_L];
+        let mut j = 0;
         for digit in &mut digits {
-            *digit = decomposing_value % RP_PARAMETER_U;
-            decomposing_value /= RP_PARAMETER_U;
+            *digit = min(RP_PARAMETER_U - 1, decomposing_value / G_S[j]);
+            decomposing_value -= *digit * G_S[j];
+            j += 1;
         }
+        // println!("{:?}", value);
+        // println!("{:?}", digits);
 
         // Compute signature proof builders on each digit.
         let digit_proof_builders: Box<[SignatureProofBuilder<1>; RP_PARAMETER_L]> = Box::new(
@@ -194,13 +201,10 @@ impl RangeConstraintBuilder {
 
         // Construct cumulative commitment scalar for value from the commitment scalars of its digits.
         let mut commitment_scalar = Scalar::zero();
-        // u_pow holds the term u^j for j = 0 .. RP_PARAMETER_L
-        let mut u_pow = Scalar::one();
         // Compute sum ( u^j * commitment_scalar[j] )
-        for proof_builder in &*digit_proof_builders {
+        for (j, proof_builder) in digit_proof_builders.iter().enumerate() {
             // The message here is always of length 1, so it's always okay to index it at the 0th element.
-            commitment_scalar += u_pow * proof_builder.conjunction_commitment_scalars()[0];
-            u_pow *= Scalar::from(RP_PARAMETER_U);
+            commitment_scalar += Scalar::from(G_S[j]) * proof_builder.conjunction_commitment_scalars()[0];
         }
 
         Ok(Self {
@@ -266,12 +270,9 @@ impl RangeConstraint {
 
         // Construct cumulative response scalar from the response scalars of the individual digits.
         let mut response_scalar = Scalar::zero();
-        // u_pow holds the term u^j for j = 0 .. RP_PARAMETER_L
-        let mut u_pow = Scalar::one();
         // sum ( u^j * response_scalar[j] )
-        for proof in &*self.digit_proofs {
-            response_scalar += u_pow * proof.conjunction_response_scalars()[0];
-            u_pow *= Scalar::from(RP_PARAMETER_U);
+        for (j, proof) in self.digit_proofs.iter().enumerate() {
+            response_scalar += Scalar::from(G_S[j]) * proof.conjunction_response_scalars()[0];
         }
 
         valid_digits && response_scalar == expected_response_scalar
@@ -318,7 +319,7 @@ mod test {
             &rp_params,
             &mut rng,
         )
-        .unwrap();
+            .unwrap();
 
         let builder_challenge = ChallengeBuilder::new()
             .with(&range_constraint_builder)
@@ -381,5 +382,28 @@ mod test {
         let _ = bincode::deserialize::<RangeConstraintParameters>(&ser_params).unwrap();
         let duration = deserialize_params_timer.elapsed();
         println!("{:?}", duration);
+    }
+
+    #[test]
+    fn test_generate_combinatorial_factors() {
+        let two: u64 = 2;
+        let mut H: u64 = two.pow(63);
+        let u: u64 = 9;
+        let mut Gs = Vec::new();
+        let mut Hs = Vec::new();
+        let mut new_H = H;
+        let mut new_G;
+        let mut l = 0;
+        while new_H >= u - 1 {
+            Hs.push(new_H);
+            new_G = (new_H + 1) / u;
+            Gs.push(new_G);
+            new_H = new_H - (u - 1) * new_G;
+            l += 1;
+        }
+        println!("H: {:?}", Hs);
+        println!("H': {:?}", new_H);
+        println!("G: {:?}", Gs);
+        println!("l: {:?}", l);
     }
 }

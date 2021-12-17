@@ -5,6 +5,7 @@ use bls12_381::{G1Projective, Scalar};
 use ff::Field;
 use rand::{CryptoRng, Rng, RngCore};
 use std::iter;
+use std::time::Instant;
 use zkchannels_crypto::{
     pedersen::PedersenParameters,
     pointcheval_sanders::KeyPair,
@@ -16,6 +17,7 @@ use zkchannels_crypto::{
 };
 
 #[test]
+#[cfg(feature = "bincode")]
 fn range_constraint_with_commitment_verifies() {
     run_range_constraint_with_commitment_verifies::<1>();
     run_range_constraint_with_commitment_verifies::<2>();
@@ -25,6 +27,7 @@ fn range_constraint_with_commitment_verifies() {
     run_range_constraint_with_commitment_verifies::<13>();
 }
 
+#[cfg(feature = "bincode")]
 fn run_range_constraint_with_commitment_verifies<const N: usize>() {
     let mut rng = test_utils::seeded_rng();
     let mut real_rng = test_utils::real_rng();
@@ -34,6 +37,7 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
 
     // Proof commitment phase: prepare range constraint on the value and use the resulting commitment scalar in the commitment proof.
     let rp_params = RangeConstraintParameters::new(&mut rng);
+    let range_constraint_timer = Instant::now();
     let range_constraint_builder = RangeConstraintBuilder::generate_constraint_commitments(
         range_tested_value.into(),
         &rp_params,
@@ -57,6 +61,8 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
 
     // Complete proofs - response phase.
     let range_constraint = range_constraint_builder.generate_constraint_response(challenge);
+    let serialized = bincode::serialize(&range_constraint).unwrap();
+    println!("constraint: {:?}", serialized);
     let proof = proof_builder.generate_proof_response(challenge);
 
     let verif_challenge = ChallengeBuilder::new()
@@ -72,6 +78,7 @@ fn run_range_constraint_with_commitment_verifies<const N: usize>() {
     ));
     // Verify commitment proof is valid.
     assert!(proof.verify_knowledge_of_opening(&params, verif_challenge));
+    println!("{:?}", range_constraint_timer.elapsed());
 
     // Verify that the range constraint *doesn't* pass with a different response scalar.
     for i in 0..N {

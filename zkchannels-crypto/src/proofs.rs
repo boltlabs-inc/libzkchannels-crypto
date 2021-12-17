@@ -273,7 +273,8 @@
 mod challenge;
 mod commitment;
 mod range;
+mod range2;
 mod signature;
 mod signaturerequest;
 
-pub use self::{challenge::*, commitment::*, range::*, signature::*, signaturerequest::*};
+pub use self::{challenge::*, commitment::*, range2::*, signature::*, signaturerequest::*};

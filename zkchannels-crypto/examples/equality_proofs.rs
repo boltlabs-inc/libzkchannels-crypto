@@ -14,6 +14,9 @@ fn main() {
     let mut rng = rand::thread_rng();
     let pedersen_parameters = PedersenParameters::new(&mut rng);
 
+    // Note on encoding: these small examples do not clearly specify an input domain, so we
+    // just take the direct encoding of small values. See Message docs for more details.
+
     // Build and verify a double message proof
     let double_message_proof =
         RepeatedMessageProof::new(&mut rng, &pedersen_parameters, Scalar::from(1000));

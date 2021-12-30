@@ -13,6 +13,10 @@ use zkchannels_crypto::{
     BlindingFactor, Message, Rng,
 };
 
+/// Note on encoding: this small example does not clearly specify an input domain for the
+/// commitment part of the proof, so we just take the direct encoding of small values.
+/// A range proof implicitly limits the domain of its input to [0, 2^63).;w
+/// See Message docs for more details.
 fn main() {
     // Generate parameters
     let mut rng = thread_rng();

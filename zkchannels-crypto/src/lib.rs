@@ -4,6 +4,16 @@
 //! - Pointcheval Sanders signatures and blind signatures (CT-RSA 2016).
 //! - Schnorr-style zero-knowledge proofs for commitments, signatures, conjunctions, linear
 //!   relationships, and ranges
+//!
+//! # Recommended documentation
+//! The documentation in this crate is written to explain practical considerations and potential
+//! pitfalls to prevent misuse of the library.
+//! It does not attempt to explain the schemes used.
+//!
+//! Some important concepts include:
+//! - [Message encoding](Message)
+//! - [Designing complex zero-knowledge proofs](proofs)
+//!
 
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
@@ -35,7 +45,18 @@ use std::{iter, ops::Deref};
 
 /// Fixed-length message type used across schemes.
 ///
-/// Uses Box to avoid stack overflows with long messages.
+/// ## Encoding
+/// The `Message` type explicitly encodes messages using the BLS12-381 `Scalar` type. In many
+/// practical use cases, however, the data being encoded does not naturally map to this type.
+/// We strongly recommend that users explicitly define the map used to transform semantic data
+/// into a `Scalar` array, including consideration of edge cases.
+///
+/// For example, the `Scalar` modulus is roughly 31.86 bytes. An invalid encoding of a `u32` might
+/// simply apply the modulus, but will result in very large and very small values mapping to the
+/// same `Scalar`. If the domain is the full `u32` space, a valid encoding could split the input
+/// into two 16-byte strings and output a `Scalar` array of length 2.
+///
+// Developer note: uses Box to avoid stack overflows with long messages.
 #[derive(Debug, Clone)]
 pub struct Message<const N: usize>(Box<[Scalar; N]>);
 

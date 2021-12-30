@@ -87,6 +87,9 @@ impl BidRequest {
         bid_amount: u64,
     ) -> (BlindingFactor, Self) {
         // Encode date and bid amount in the message
+        // Note on encoding: for this example, we assume that the bid amount is smaller than the
+        // Scalar modulus. A real application should clearly document such an assumption.
+        // See Message docs for more details
         let message = Message::new([Scalar::from(bid_amount), date()]);
 
         // Create the proof builder with no constraints on the message

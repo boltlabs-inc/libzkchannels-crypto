@@ -17,6 +17,9 @@ use {
 /// equation, where (a, b, c) are public values, (x, y, z) are secret values, and q is the modulus of
 /// the BLS12-381 Scalar field:
 /// a*x + b*y + c === z (mod q)
+///
+/// Note on encoding: these small examples do not clearly specify an input domain, so we
+/// just take the direct encoding of small values. See Message docs for more details.
 fn main() {
     let mut rng = rand::thread_rng();
     let pedersen_parameters = PedersenParameters::new(&mut rng);

@@ -5,6 +5,8 @@ use zkchannels_crypto::{
     Message, Rng,
 };
 
+/// Note on encoding: this small example does not clearly specify an input domain, so we
+/// just take the direct encoding of small values. See Message docs for more details.
 fn main() {
     let mut rng = rand::thread_rng();
     let pedersen_params = PedersenParameters::new(&mut rng);
@@ -20,6 +22,7 @@ fn main() {
 
     assert!(public_opening_proof.verify(&pedersen_params, public_value));
 }
+
 /// A zero-knowledge proof of knowledge of the opening (x, y) of a commitment,
 /// where the first element x is a known public value.
 struct PartialOpeningProof {

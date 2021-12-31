@@ -67,8 +67,9 @@ impl RepeatedMessageProof {
             pedersen_parameters,
         );
 
-        // Generate challenge, including the public parts of the proof (contained in the proof
-        // builder) and the shared parameters
+        // Generate challenge with all public data related to the proof:
+        // - proof statement & commitment (via `proof_builder`)
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(pedersen_parameters)
@@ -84,6 +85,10 @@ impl RepeatedMessageProof {
         // 1. Check that the response scalars for the matching elements, match
         let responses_match = self.proof.conjunction_response_scalars()[0]
             == self.proof.conjunction_response_scalars()[1];
+
+        // Reconstruct challenge with all public data related to the proof:
+        // - proof statement & commitment (via `proof`)
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&self.proof)
             .with(pedersen_parameters)
@@ -151,6 +156,11 @@ impl FlipFlopSignatureProof {
             commitment_parameters,
         );
 
+        // Generate challenge with all public data related to the proof:
+        // - signature proof statement & blinded signature (via `signature_proof_builder`)
+        // - commitment proof statement & commitment (via `commitment_proof_builder`)
+        // - public key corresponding to the blinded signature
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&signature_proof_builder)
             .with(&commitment_proof_builder)
@@ -173,7 +183,11 @@ impl FlipFlopSignatureProof {
         let responses_match = self.first.conjunction_response_scalars()[0]
             == self.second.conjunction_response_scalars()[1];
 
-        // Regenerate challenge
+        // Reconstruct challenge with all public data related to the proof:
+        // - signature proof statement & blinded signature (via `self.first`, a `SignatureProof`)
+        // - commitment proof statement & commitment (via `self.second`, a `CommitmentProof`)
+        // - public key corresponding to the blinded signature
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&self.first)
             .with(&self.second)

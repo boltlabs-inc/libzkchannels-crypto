@@ -103,6 +103,11 @@ impl BidRequest {
         // Save the commitment scalar for the date so it can be revealed with the proof
         let date_commitment_scalar = proof_builder.conjunction_commitment_scalars()[1];
 
+        // Generate challenge with all public components of the proof
+        // - signature request proof statement & underlying commitment (via `proof_builder`)
+        // - expected value for the revealed date
+        // - commitment scalar for the revealed date
+        // - public key corresponding to the requested signature
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(&date())
@@ -126,6 +131,11 @@ impl BidRequest {
         // Make sure date is correct
         let date_is_correct = self.date == date();
 
+        // Reconstruct challenge with all public components of the proof
+        // - signature request proof statement & underlying commitment (via `self.proof`)
+        // - expected value for the revealed date
+        // - stated commitment scalar for the revealed date
+        // - public key corresponding to the requested signature
         let challenge = ChallengeBuilder::new()
             .with(&self.proof)
             .with(&self.date)

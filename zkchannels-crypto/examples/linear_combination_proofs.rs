@@ -96,7 +96,11 @@ impl SecretSumProof {
             key_pair.public_key(),
         );
 
-        // Form challenge
+        // Generate challenge with all public data related to the proof:
+        // - commitment proof statement & commitment (via `summand_proof_builder`)
+        // - signature proof statement & blinded signature (via `sum_proof_builder`)
+        // - public key corresponding to the blinded signature
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&summand_proof_builder)
             .with(&sum_proof_builder)
@@ -121,6 +125,11 @@ impl SecretSumProof {
         let responses_sum =
             self.sum.conjunction_response_scalars()[0] == summand_scalars[0] + summand_scalars[1];
 
+        // Reconstruct challenge with all public data related to the proof:
+        // - commitment proof statement & commitment (via `self.summands`, a `CommitmentProof`)
+        // - signature proof statement & blinded signature (via `self.sum`, a `SignatureProof`)
+        // - public key corresponding to the blinded signature
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&self.summands)
             .with(&self.sum)
@@ -172,7 +181,10 @@ impl FixedDifferenceProof {
             pedersen_parameters,
         );
 
-        // Form the challenge
+        // Generate challenge with all public data related to the proof:
+        // - commitment proof statement & commitment (via `proof_builder`)
+        // - public value describing the expected difference
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(&difference)
@@ -194,6 +206,10 @@ impl FixedDifferenceProof {
         // Check that expected difference matches the one in the proof
         let difference_matches = self.difference == expected_difference;
 
+        // Reconstruct challenge with all public data related to the proof:
+        // - commitment proof statement & commitment (via `self.proof`)
+        // - public value describing the expected difference
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&self.proof)
             .with(&self.difference)
@@ -250,7 +266,10 @@ impl PublicProductProof {
             key_pair.public_key(),
         );
 
-        // Form the challenge
+        // Generate challenge with all public data related to the proof:
+        // - signature proof statement & blinded signature (via `proof_builder`)
+        // - public value describing the expected multiplier
+        // - public key corresponding to the blinded signature
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(&multiplier)
@@ -272,6 +291,10 @@ impl PublicProductProof {
         let response_scalars = self.proof.conjunction_response_scalars();
         let responses_correspond = response_scalars[1] == response_scalars[0] * self.multiplier;
 
+        // Reconstruct challenge with all public data related to the proof:
+        // - signature proof statement & blinded signature (via `self.proof`)
+        // - public value describing the expected multiplier
+        // - public key corresponding to the blinded signature
         let challenge = ChallengeBuilder::new()
             .with(&self.proof)
             .with(&self.multiplier)

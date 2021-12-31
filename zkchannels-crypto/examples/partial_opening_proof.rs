@@ -57,7 +57,11 @@ impl PartialOpeningProof {
         // Save the commitment scalar corresponding to `public_value` (the first in the tuple)
         let public_value_commitment_scalar = proof_builder.conjunction_commitment_scalars()[0];
 
-        // Construct challenge with _all_ public components of the proof
+        // Generate challenge with all public components of the proof
+        // - commitment proof statement & commitment (via `proof_builder`)
+        // - commitment scalar for the message x that will be revealed
+        // - expected value for the message x
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&proof_builder)
             .with(&public_value_commitment_scalar)
@@ -78,6 +82,11 @@ impl PartialOpeningProof {
         pedersen_params: &PedersenParameters<G1Projective, 2>,
         expected_public_value: Scalar,
     ) -> bool {
+        // Reconstruct challenge with all public components of the proof
+        // - commitment proof statement & commitment (via `self.commitment_proof`)
+        // - commitment scalar for the message x that will be revealed
+        // - stated value (by the proof) for the message x
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&self.commitment_proof)
             .with(&self.public_value_commitment_scalar)
@@ -85,7 +94,7 @@ impl PartialOpeningProof {
             .with(pedersen_params)
             .finish();
 
-        // 1. Make sure the public value is correct
+        // 1. Make sure the stated public value matches what is expected
         let public_value_matches_expected = expected_public_value == self.public_value;
 
         // 2. Make sure the proof is correctly constructed with respect to the public value

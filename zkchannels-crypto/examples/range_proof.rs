@@ -106,6 +106,12 @@ impl RangeProof {
             pedersen_parameters,
         );
 
+        // Generate challenge with all public components of the proof
+        // - range proof statement (signature proof statements for each digit + the corresponding
+        //   blinded signatures) via `range_constraint_builder`
+        // - range constraint parameters
+        // - commitment proof statement & commitment (via `proof_builder`)
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&range_constraint_builder)
             .with(&range_constraint_parameters)
@@ -134,6 +140,12 @@ impl RangeProof {
             .validate()
             .map_err(RangeError::InvalidParameters)?;
 
+        // Reconstruct challenge with all public components of the proof
+        // - range proof statement (signature proof statements for each digit + the corresponding
+        //   blinded signatures) via `self.range_constraint`
+        // - range constraint parameters
+        // - commitment proof statement & commitment (via `self.proof`)
+        // - commitment parameters
         let challenge = ChallengeBuilder::new()
             .with(&self.range_constraint)
             .with(&range_constraint_parameters)
